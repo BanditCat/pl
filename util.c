@@ -32,5 +32,36 @@ void strcopy( const char* src, char* dst ){
   }
   dst[ c ] = 0;
 }
+void strreverse( char* s ){
+  u64 e = slen( s ) - 1;
+  u64 b = 0;
+  while( b < e ){
+    char c = s[ e ];
+    s[ e ] = s[ b ];
+    s[ b ] = c;
+    ++b;
+    --e;
+  }
+}
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.
-void tostring( char* s, u64 n, u64 count );
+void tostring( char* s, u64 n, u64 count ){
+  u64 i = 0;
+  u64 d = n;
+  u64 om = count - 1;
+  if( !count )
+    return;
+  if( om ){
+    if( !n ){
+      s[ 0 ] = '0';
+      s[ 1 ] = 0;
+      return;
+    }
+    while( i < om && d ){
+      s[ i ] = '0' + d % 10;
+      d /= 10;
+      ++i;
+    }
+    s[ i ] = 0;
+  }
+  strreverse( s );
+}

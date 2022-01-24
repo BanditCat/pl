@@ -21,6 +21,7 @@
 
 #include "pl.h"
 #include "os.h"
+#include "util.h"
 #include <windows.h>
 
 states state;
@@ -53,19 +54,27 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
-  HeapDestroy( state.heap );
 #ifdef DEBUG
-  print( "Ending...\n" );
+  char* m = memperm( 256 );
+  tostring( m, 4534546254366, 256 );
+  print( "Ending with " );
+  print( m );
+  print( " unfreed allocs.\n" );
 #endif
+  HeapDestroy( state.heap );
   ExitProcess( ecode );
 }
 
 // Generates exception if out of memory. Memory is zerod. Automatically freed at end.
 void* mem( u64 size ){
+  ++state.allocCount;
   return HeapAlloc( state.heap, HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY, size );
 }
-
-// Frees memory, although it will be automatically freed at end.
+// Same, but doesnt increment the alloc count. This allocates memory that is freed at end.
+void* memperm( u64 size ){
+  return HeapAlloc( state.heap, HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY, size );
+}
 void freemem( void* p ){
+  --state.allocCount;
   HeapFree( state.heap, 0, p );
 }

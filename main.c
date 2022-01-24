@@ -23,7 +23,7 @@
 
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
-  message( "S" );
+  eprint( "S" );
   end( 0 );
 }
 
