@@ -23,7 +23,7 @@
 
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
-  die( "S" );
+  message( "S" );
 
     end( 0 );
 }

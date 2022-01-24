@@ -24,4 +24,4 @@ void message( const char* str );
 void emessage( const char* str );
 void end( int ecode );
 	  
-#define die( x ) emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); 
+#define die( x ) emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 )
