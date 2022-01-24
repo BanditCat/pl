@@ -56,7 +56,7 @@ void emessage( const char* message ){
 void end( int ecode ){
 #ifdef DEBUG
   char* m = memperm( 256 );
-  tostring( m, 4534546254366, 256 );
+  tostring( m, state.allocCount, 256 );
   print( "Ending with " );
   print( m );
   print( " unfreed allocs.\n" );
