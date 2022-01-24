@@ -15,13 +15,22 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// OS logic.                                                                  //
+// Utilities.                                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void print( const char* str );
-void eprint( const char* str );
-void message( const char* str );
-void emessage( const char* str );
-void end( int ecode );
-	  
-#define die( x ) emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 )
+#include "pl.h"
+
+void memcopy( const char* src, char* dst, u64 count ){
+  for( u64 i = 0; i < count; ++i )
+    dst[ i ] = src[ i ];
+}
+void strcopy( const char* src, char* dst ){
+  u64 c = 0;
+  while( src[ c ] ){
+    dst[ c ] = src[ c ];
+    ++c;
+  }
+  dst[ c ] = 0;
+}
+// Puts a number in a string, with a trailing nul character, writing at most count bytes.
+void tostring( char* s, u64 n, u64 count );

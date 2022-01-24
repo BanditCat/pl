@@ -30,6 +30,7 @@ int main( int argc, const char** argv );
 int WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
   (void)hInstance; (void)hPrevInstance; (void)pCmdLine; (void)nCmdShow;
   state.heap = HeapCreate( HEAP_GENERATE_EXCEPTIONS, 0, 0 );
+  state.allocCount = 0;
   return main( 0, NULL );
 }
 

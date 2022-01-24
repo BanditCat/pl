@@ -15,13 +15,11 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// OS logic.                                                                  //
+// Utilities.                                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
-void print( const char* str );
-void eprint( const char* str );
-void message( const char* str );
-void emessage( const char* str );
-void end( int ecode );
-	  
-#define die( x ) emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 )
+
+void memcopy( const void* src, void* dst, u64 count );
+void strcopy( const void* src, void* dst );
+// Puts a number in a string, with a trailing nul character, writing at most count bytes.
+void tostring( char* s, u64 n, u64 count );

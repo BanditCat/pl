@@ -26,12 +26,6 @@
 
 #include <limits.h>
 
-// Global state.
-typedef struct {
-  void* heap;
-} states;
-extern states state;
-
 // Types.
 typedef unsigned char u8;
 typedef unsigned short int u16;
@@ -81,3 +75,11 @@ inline u64 slen( const char* str ){
     ;
   return c - 1;
 }
+
+// Global state.
+typedef struct {
+  void* heap;
+  u64 allocCount;
+} states;
+extern states state;
+
