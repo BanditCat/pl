@@ -22,7 +22,7 @@
 # Targets in this section are the ones meant to be used by users.
 .PHONY: all
 all: depend debug run
-
+rall: depend release run
 
 
 # Toolchain.
