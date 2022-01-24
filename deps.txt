@@ -1,0 +1,2 @@
+main.o: main.c pl.h os.h
+os.o: os.c pl.h os.h

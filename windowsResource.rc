@@ -1,0 +1,47 @@
+////////////////////////////////////////////////////////////////////////////////
+//     Copyright (c) Jon DuBois 2022. This file is part of pseudoluminal.     //
+//                                                                            //
+// This program is free software: you can redistribute it and/or modify       //
+// it under the terms of the GNU Affero General Public License as published   //
+// by the Free Software Foundation, either version 3 of the License, or       // 
+// (at your option) any later version.                                        //
+//                                                                            //
+// This program is distributed in the hope that it will be useful,            //
+// but WITHOUT ANY WARRANTY; without even the implied warranty of             //
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              //
+// GNU Affero General Public License for more details.                        //
+//                                                                            //
+// You should have received a copy of the GNU Affero General Public License   //
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+// Windows resource file.                                                     //
+////////////////////////////////////////////////////////////////////////////////
+
+101 ICON "pl.ico"
+
+
+1 VERSIONINFO
+FILEVERSION     0,0,0,1
+PRODUCTVERSION  0,0,0,1
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName", "Jon DuBois"
+      VALUE "FileDescription", "pseudoluminal"
+      VALUE "FileVersion", "0.1a"
+      VALUE "InternalName", "pl0.1a"
+      VALUE "LegalCopyright", "Copyright Jon DuBois"
+      VALUE "OriginalFilename", "pl.exe"
+      VALUE "ProductName", "pseudoluminal"
+      VALUE "ProductVersion", "0.1a"
+    END
+  END
+
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1252
+  END
+END
