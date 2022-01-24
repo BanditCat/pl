@@ -1,4 +1,4 @@
-__magic__
+# [__magic__](https://kinda.science)
 
 
      
