@@ -24,7 +24,6 @@
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
   message( "S" );
-
-    end( 0 );
+  end( 0 );
 }
 

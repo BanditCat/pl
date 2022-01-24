@@ -23,10 +23,13 @@
 #include "os.h"
 #include <windows.h>
 
+states state;
+
 int main( int argc, const char** argv );
 
 int WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
   (void)hInstance; (void)hPrevInstance; (void)pCmdLine; (void)nCmdShow;
+  state.heap = HeapCreate( HEAP_GENERATE_EXCEPTIONS, 0, 0 );
   return main( 0, NULL );
 }
 
@@ -49,5 +52,19 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
+  HeapDestroy( state.heap );
+#ifdef DEBUG
+  print( "Ending...\n" );
+#endif
   ExitProcess( ecode );
+}
+
+// Generates exception if out of memory. Memory is zerod. Automatically freed at end.
+void* mem( u64 size ){
+  return HeapAlloc( state.heap, HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY, size );
+}
+
+// Frees memory, although it will be automatically freed at end.
+void freemem( void* p ){
+  HeapFree( state.heap, 0, p );
 }

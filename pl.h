@@ -26,6 +26,12 @@
 
 #include <limits.h>
 
+// Global state.
+typedef struct {
+  void* heap;
+} states;
+extern states state;
+
 // Types.
 typedef unsigned char u8;
 typedef unsigned short int u16;
