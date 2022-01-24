@@ -84,6 +84,7 @@ clean:
 backup: clean release
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
+	git push -u origin master
 
 .PHONY: depend
 depend:
