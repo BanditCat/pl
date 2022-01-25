@@ -28,10 +28,16 @@ typedef struct{
 typedef struct{
   u64 stateSize;
   u32* state;
+  u32* args;
   
-  u64 functionSize;
+  u64 functionCount;
   function* functions;
+  u64 functionsAllocd;
+  u32* funcData;
+  u64 funcDataAllocd;
+  
 } program;
 
 
 program* newProgram( u64 size );
+void deleteProgram( program* p );

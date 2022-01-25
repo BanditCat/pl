@@ -20,10 +20,13 @@
 
 #include "pl.h"
 #include "os.h"
+#include "prog.h"
 
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
-  eprint( "S" );
+  program* np = newProgram( 256 );
+  deleteProgram( np );
+  eprint( "\nSomething\n" );
   end( 0 );
 }
 

@@ -25,6 +25,25 @@
 
 program* newProgram( u64 size ){
   new( ret, program );
-  ret->state = mem( size );
+  ret->stateSize = size;
+  newa( state, u32, size );
+  newa( args, u32, size );
+  ret->state = state;
+  ret->args = args;
+  ret->functionCount = 0;
+  ret->functionsAllocd = 256;
+  newa( functions, function, 256 );
+  ret->functions = functions;
+  newa( funcData, u32, 256 );
+  ret->funcData = funcData;
+  ret->funcDataAllocd = 256;
   return ret;
+}
+
+void deleteProgram( program* p ){
+  freemem( p->state );
+  freemem( p->args );
+  freemem( p->functions );
+  freemem( p->funcData );
+  freemem( p );
 }
