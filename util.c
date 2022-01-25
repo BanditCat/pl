@@ -19,6 +19,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "pl.h"
+#include "os.h"
 
 void memcopy( const char* src, char* dst, u64 count ){
   for( u64 i = 0; i < count; ++i )
@@ -64,4 +65,26 @@ void tostring( char* s, u64 n, u64 count ){
     s[ i ] = 0;
   }
   strreverse( s );
+}
+void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
+  u32 i = 0;
+  u32 r = 0;
+  char* m = mem( 256 );
+  while( i < nums ){
+    if( !r ){
+      printl( "," );
+      for( u32 j = 0; j < indent; ++j )
+	print( " " );
+    } else {
+      print( ", " );
+      if( r == numsPerRow )
+	r = -1;
+    }
+    ++r;
+    tostring( m, arr[ i ], 256 );
+    print( m );
+    ++i;
+    
+  }
+  memfree( m );
 }

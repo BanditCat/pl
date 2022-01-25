@@ -22,11 +22,11 @@
 #include "os.h"
 #include "prog.h"
 
+
+// BUGBUG make argc/argv actually work.
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
-  program* np = newProgram( 256 );
-  deleteProgram( np );
-  eprint( "\nSomething\n" );
+  testPrograms();
   end( 0 );
 }
 

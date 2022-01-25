@@ -34,9 +34,7 @@ typedef struct{
   u32 functionCount;
   function* functions;
   u32 functionsAllocd;
-  u32* funcData;
-  u32 funcDataAllocd;
-  u32 funcDataUsed;
+
   
 } program;
 
@@ -44,3 +42,5 @@ typedef struct{
 program* newProgram( u32 size );
 void deleteProgram( program* p );
 void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) );
+void printProgram( const program* p );
+void testPrograms( void );

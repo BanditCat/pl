@@ -35,10 +35,6 @@ program* newProgram( u32 size ){
   ret->functionsAllocd = 1;
   newa( functions, function, 1 );
   ret->functions = functions;
-  newa( funcData, u32, 1 );
-  ret->funcData = funcData;
-  ret->funcDataAllocd = 1;
-  ret->funcDataUsed = 0;
   newa( funcs, u32, size );
   ret->funcs = funcs;
   return ret;
@@ -47,11 +43,25 @@ program* newProgram( u32 size ){
 void deleteProgram( program* p ){
   memfree( p->state );
   memfree( p->args );
+  for( u32 i = 0; i < p->functionCount; ++i )
+    memfree( p->functions[ i ].data );
   memfree( p->functions );
-  memfree( p->funcData );
   memfree( p->funcs );
   memfree( p );
 }
+
+const function* newFunction( u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
+  u32 fsize = 1 << ( a1s + a2s );
+  new( ret, function );
+  newa( d, u32, fsize );
+  ret->data = d;
+  ret->arg1Size = a1s;
+  ret->arg2Size = a2s;
+  for( u32 i = 0; i < fsize; ++i )
+    *d++ = f( i );
+  return ret;
+}  
+
 
 void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
   // Ensure there is room for one more function.
@@ -62,26 +72,29 @@ void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
     p->functions = nf;
     p->functionsAllocd *= 2;
   }
+  
   u32 fsize = 1 << ( a1s + a2s );
-  u32 needed = p->funcDataUsed + fsize;
-  // Ensure there is room for the funciton data.
-  if( needed > p->funcDataAllocd ){
-    u32 ns = p->funcDataAllocd;
-    while( ns < needed )
-      ns *= 2;
-    newa( nfd, u32, ns );
-    memcopy( p->funcData, nfd, p->funcDataUsed * sizeof( u32 ) );
-    memfree( p->funcData );
-    p->funcData = nfd;
-    p->funcDataAllocd = ns;
-  }
-  u32* d = p->funcData + p->funcDataUsed;
-
+  newa( d, u32, fsize );
+  p->functions[ p->functionCount ].data = d;
   p->functions[ p->functionCount ].arg1Size = a1s;
   p->functions[ p->functionCount ].arg2Size = a2s;
-  p->functions[ p->functionCount ].data = d;
   for( u32 i = 0; i < fsize; ++i )
     *d++ = f( i );
 
   ++p->functionCount;
+}
+
+void printProgram( const program* p ){
+  char* m = mem( 256 );
+  tostring( m, p->stateSize, 256 );
+  print( "Prog[ " ); print( m ); printl( " ]{" );
+  printArray( 2, 8, p->stateSize, p->state );
+  printl( "}" );
+  memfree( m );
+}
+
+void testPrograms( void ){
+  program* p = newProgram( 64 );
+  printProgram( p );
+  deleteProgram( p );
 }

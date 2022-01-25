@@ -24,3 +24,4 @@ void strcopy( const void* src, void* dst );
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.
 void tostring( char* s, u64 n, u64 count );
 void strreverse( char* s );
+void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr );
