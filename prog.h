@@ -27,6 +27,8 @@ typedef struct{
 
 typedef struct{
   u32 stateSize;
+  u32* ping;
+  u32* pong;
   u32* state;
   u32* args;
   u32* funcs;
@@ -43,4 +45,5 @@ program* newProgram( u32 size );
 void deleteProgram( program* p );
 void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) );
 void printProgram( const program* p, bool full );
+void traceProgram( program* p, u32 stepCount );
 void testPrograms( void );

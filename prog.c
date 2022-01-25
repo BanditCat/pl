@@ -27,9 +27,12 @@
 program* newProgram( u32 size ){
   new( ret, program );
   ret->stateSize = size;
-  newa( state, u32, size );
+  newa( ping, u32, size );
+  ret->ping = ping;
+  newa( pong, u32, size );
+  ret->pong = pong;
+  ret->state = ping;
   newa( args, u32, size );
-  ret->state = state;
   ret->args = args;
   ret->functionCount = 0;
   ret->functionsAllocd = 1;
@@ -41,7 +44,8 @@ program* newProgram( u32 size ){
 }
 
 void deleteProgram( program* p ){
-  memfree( p->state );
+  memfree( p->ping );
+  memfree( p->pong );
   memfree( p->args );
   for( u32 i = 0; i < p->functionCount; ++i )
     memfree( p->functions[ i ].data );
@@ -50,17 +54,6 @@ void deleteProgram( program* p ){
   memfree( p );
 }
 
-const function* newFunction( u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
-  u32 fsize = 1 << ( a1s + a2s );
-  new( ret, function );
-  newa( d, u32, fsize );
-  ret->data = d;
-  ret->arg1Size = a1s;
-  ret->arg2Size = a2s;
-  for( u32 i = 0; i < fsize; ++i )
-    *d++ = f( i );
-  return ret;
-}  
 
 
 void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
@@ -109,6 +102,21 @@ void printProgram( const program* p, bool full ){
   printl( "}" );
   memfree( m );
 }
+void tick( program* p ){
+  u32* read = p->state;
+  u32* write = ( read == p->ping ) ? p->pong : p->ping;
+  for( u32 i = 0; i < p->stateSize; ++i ){
+    
+  }
+  p->state = write;
+}
+void traceProgram( program* p, u32 stepCount ){
+  printProgram( p, true );
+  for( u32 i = 0; i < stepCount; ++i ){
+    tick( p );
+    printProgram( p, false );
+  }
+}
 
 u32 inc( u32 x ){ return ( x + 1 ) % 64; }
 u32 mul( u32 x ){ return ( ( x >> 6 ) * ( x & 63 ) ) % 64; }
@@ -120,6 +128,6 @@ void testPrograms( void ){
   addFunction( p, 6, 0, inc );
   addFunction( p, 0, 0, constant );
   addFunction( p, 6, 6, mul );
-  printProgram( p, true );
+  traceProgram( p, 10 );
   deleteProgram( p );
 }
