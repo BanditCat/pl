@@ -106,7 +106,13 @@ void tick( program* p ){
   u32* read = p->state;
   u32* write = ( read == p->ping ) ? p->pong : p->ping;
   for( u32 i = 0; i < p->stateSize; ++i ){
-    
+    const function* func = p->functions + p->funcs[ i ];
+    u32 arg2shift = func->arg1Size;
+    u32 arg1and = ( 1 << arg2shift ) - 1;
+    u32 arg2and = ( 1 << func->arg2Size ) - 1;
+    u32 arg = read[ i ] & arg1and;
+    arg |= ( read[ p->args[ i ] ] & arg2and ) << arg2shift;
+    write[ i ] = func->data[ arg ];
   }
   p->state = write;
 }
