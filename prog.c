@@ -15,24 +15,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// OS logic.                                                                  //
+// Program logic.                                                             //
 ////////////////////////////////////////////////////////////////////////////////
 
-void print( const char* str );
-void eprint( const char* str );
-void message( const char* str );
-void emessage( const char* str );
-void end( int ecode );
+#include "pl.h"
+#include "prog.h"
+#include "os.h"
 
-// Generates exception if out of memory. Memory is zerod. Automatically freed at end.
-void* mem( u64 size );
 
-// Convienience macros.
-#define new( x, y ) y* x = (y*)( mem( sizeof( y ) ) )
-#define newa( x, y, s ) y* x = (y*)( mem( sizeof( y ) * s ) )
-
-// Same, but doesnt increment the alloc count. This allocates memory that is freed at end.
-void* memperm( u64 size );
-void freemem( void* p );
-
-#define die( x ) emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 )
+program* newProgram( u64 size ){
+  new( ret, program );
+  ret->state = mem( size );
+  return ret;
+}

@@ -1,1 +1,1 @@
-Memory instrumentation.
+Core logic testing.

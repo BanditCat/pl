@@ -1,3 +1,4 @@
 main.o: main.c pl.h os.h
 os.o: os.c pl.h os.h util.h
+prog.o: prog.c pl.h prog.h os.h
 util.o: util.c pl.h
