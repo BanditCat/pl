@@ -89,7 +89,7 @@ void printProgram( const program* p ){
   tostring( m, p->stateSize, 256 );
   print( "Prog[ " ); print( m ); printl( " ]{" );
   printArray( 2, 8, p->stateSize, p->state );
-  printl( "}" );
+  printl( "\n}" );
   memfree( m );
 }
 

@@ -72,15 +72,17 @@ void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
   char* m = mem( 256 );
   while( i < nums ){
     if( !r ){
-      printl( "," );
+      if( i )
+	printl( "," );
       for( u32 j = 0; j < indent; ++j )
 	print( " " );
+      r = 1;
     } else {
+      ++r;
       print( ", " );
       if( r == numsPerRow )
-	r = -1;
+	r = 0;
     }
-    ++r;
     tostring( m, arr[ i ], 256 );
     print( m );
     ++i;
