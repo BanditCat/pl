@@ -19,9 +19,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void memcopy( const void* src, void* dst, u64 count );
-void strcopy( const void* src, void* dst );
+#define memcopy( d, s, t, c ) memcpy( d, s, sizeof( t ) * c )
+void strcopy( void* dst, const void* src );
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.
-void tostring( char* s, u64 n, u64 count );
+void intToString( char* s, u64 n, u64 count );
+// Puts a number in a string, with a trailing nul character, writing at most count bytes.
+void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minwidth );
 void strreverse( char* s );
 void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr );

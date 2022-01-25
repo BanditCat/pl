@@ -21,10 +21,6 @@
 #include "pl.h"
 #include "os.h"
 
-void memcopy( const char* src, char* dst, u64 count ){
-  for( u64 i = 0; i < count; ++i )
-    dst[ i ] = src[ i ];
-}
 void strcopy( const char* src, char* dst ){
   u64 c = 0;
   while( src[ c ] ){
@@ -45,7 +41,7 @@ void strreverse( char* s ){
   }
 }
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.
-void tostring( char* s, u64 n, u64 count ){
+void intToString( char* s, u64 n, u64 count ){
   u64 i = 0;
   u64 d = n;
   u64 om = count - 1;
@@ -66,6 +62,21 @@ void tostring( char* s, u64 n, u64 count ){
   }
   strreverse( s );
 }
+void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minwidth ){
+  intToString( s, n, count );
+  u32 olen = slen( s );
+  if( olen < minwidth && ( 1 + minwidth - olen < count ) ){
+    u32 shift = minwidth - olen;
+    for( s32 i = 0; i < (s32)minwidth; ++i ){
+      s32 j = ( minwidth - i ) - 1;
+      s32 sj = j - shift;
+      if( sj >= 0 )
+	s[ j ] = s[ sj ];
+      else
+	s[ j ] = ' ';
+    }
+  }
+}
 void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
   u32 i = 0;
   u32 r = 0;
@@ -83,7 +94,7 @@ void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
       if( r == numsPerRow )
 	r = 0;
     }
-    tostring( m, arr[ i ], 256 );
+    intToStringWithPrefix( m, arr[ i ], 256, 10 );
     print( m );
     ++i;
     

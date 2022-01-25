@@ -19,10 +19,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
+#include <windows.h>
 #include "pl.h"
 #include "os.h"
 #include "util.h"
-#include <windows.h>
 
 states state;
 
@@ -64,7 +64,7 @@ void emessage( const char* message ){
 void end( int ecode ){
 #ifdef DEBUG
   char* m = memperm( 256 );
-  tostring( m, state.allocCount, 256 );
+  intToString( m, state.allocCount, 256 );
   print( "Ending with " );
   print( m );
   print( " unfreed allocs.\n" );
@@ -85,4 +85,10 @@ void* memperm( u64 size ){
 void memfree( void* p ){
   --state.allocCount;
   HeapFree( state.heap, 0, p );
+}
+
+void* memcpy( void* dst, void const* src, size_t size ){
+  for( u64 i = 0; i < size; ++i )
+    ( (char*)dst )[ i ] = ( (const char*)src )[ i ];
+  return dst;
 }

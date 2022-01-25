@@ -67,7 +67,7 @@ void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
   // Ensure there is room for one more function.
   if( p->functionsAllocd == p->functionCount ){
     newa( nf, function, p->functionsAllocd * 2 );
-    memcopy( p->functions, nf, sizeof( function ) * p->functionCount );
+    memcopy( nf, p->functions, function, p->functionCount );
     memfree( p->functions );
     p->functions = nf;
     p->functionsAllocd *= 2;
@@ -86,7 +86,7 @@ void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
 
 void printProgram( const program* p, bool full ){
   char* m = mem( 256 );
-  tostring( m, p->stateSize, 256 );
+  intToString( m, p->stateSize, 256 );
   print( "Prog[ " ); print( m ); printl( " ]{" );
   printArray( 2, 8, p->stateSize, p->state );
   printl( "" );
@@ -97,13 +97,29 @@ void printProgram( const program* p, bool full ){
     printl( "  Args{" );
     printArray( 4, 8, p->stateSize, p->args );
     printl( "\n  }" );
+    for( u32 i = 0; i < p->functionCount; ++i ){
+      u32 fsize = 1 << ( p->functions[ i ].arg1Size + p->functions[ i ].arg2Size );
+      intToString( m, i, 256 );
+      print( "  Func[ " ); print( m ); printl( " ]{" );
+      printl( "" );
+      printArray( 4, 8, fsize, p->functions[ i ].data );
+      printl( "\n  }" );
+    }
   }
   printl( "}" );
   memfree( m );
 }
 
+u32 inc( u32 x ){ return ( x + 1 ) % 64; }
+u32 mul( u32 x ){ return ( ( x >> 6 ) * ( x & 63 ) ) % 64; }
+u32 constant( u32 x ){ (void)x; return 42; }
 void testPrograms( void ){
-  program* p = newProgram( 64 );
+  program* p = newProgram( 16 );
+  u32 args[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0 };
+  memcopy( p->args, args, u32, 16 );
+  addFunction( p, 6, 0, inc );
+  addFunction( p, 0, 0, constant );
+  addFunction( p, 6, 6, mul );
   printProgram( p, true );
   deleteProgram( p );
 }

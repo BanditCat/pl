@@ -18,6 +18,9 @@
 // OS logic.                                                                  //
 ////////////////////////////////////////////////////////////////////////////////
 
+
+void* memcpy( void* dst, void const* src, size_t size );
+
 void print( const char* str );
 void printl( const char* str );
 void eprint( const char* str );
