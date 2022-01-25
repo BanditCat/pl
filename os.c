@@ -39,10 +39,18 @@ void print( const char* str ){
   u64 l = slen( str );
   WriteFile( GetStdHandle( STD_OUTPUT_HANDLE ), str, l, NULL, NULL );
 }
+void printl( const char* str ){
+  print( str );
+  print( "\n" );
+}
 
 void eprint( const char* str ){
   u64 l = slen( str );
   WriteFile( GetStdHandle( STD_ERROR_HANDLE ), str, l, NULL, NULL );
+}
+void eprintl( const char* str ){
+  eprint( str );
+  eprint( "\n" );
 }
 
 void message( const char* message ){
@@ -74,7 +82,7 @@ void* mem( u64 size ){
 void* memperm( u64 size ){
   return HeapAlloc( state.heap, HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY, size );
 }
-void freemem( void* p ){
+void memfree( void* p ){
   --state.allocCount;
   HeapFree( state.heap, 0, p );
 }

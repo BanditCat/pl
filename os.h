@@ -19,7 +19,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void print( const char* str );
+void printl( const char* str );
 void eprint( const char* str );
+void eprintl( const char* str );
 void message( const char* str );
 void emessage( const char* str );
 void end( int ecode );
@@ -33,6 +35,6 @@ void* mem( u64 size );
 
 // Same, but doesnt increment the alloc count. This allocates memory that is freed at end.
 void* memperm( u64 size );
-void freemem( void* p );
+void memfree( void* p );
 
 #define die( x ) emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 )

@@ -26,18 +26,21 @@ typedef struct{
 } function;
 
 typedef struct{
-  u64 stateSize;
+  u32 stateSize;
   u32* state;
   u32* args;
+  u32* funcs;
   
-  u64 functionCount;
+  u32 functionCount;
   function* functions;
-  u64 functionsAllocd;
+  u32 functionsAllocd;
   u32* funcData;
-  u64 funcDataAllocd;
+  u32 funcDataAllocd;
+  u32 funcDataUsed;
   
 } program;
 
 
-program* newProgram( u64 size );
+program* newProgram( u32 size );
 void deleteProgram( program* p );
+void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) );
