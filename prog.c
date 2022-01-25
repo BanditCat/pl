@@ -129,8 +129,13 @@ u32 mul( u32 x ){ return ( ( x >> 6 ) * ( x & 63 ) ) % 64; }
 u32 constant( u32 x ){ (void)x; return 42; }
 void testPrograms( void ){
   program* p = newProgram( 16 );
-  u32 args[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0 };
+  u32 args[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 11, 10, 13, 14, 15, 0 };
   memcopy( p->args, args, u32, 16 );
+  for( u32 i = 0; i < 16; ++i ){
+    p->funcs[ i ] = i % 3;
+    p->state[ i ] = i;
+  }
+  
   addFunction( p, 6, 0, inc );
   addFunction( p, 0, 0, constant );
   addFunction( p, 6, 6, mul );
