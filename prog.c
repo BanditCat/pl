@@ -84,17 +84,26 @@ void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
   ++p->functionCount;
 }
 
-void printProgram( const program* p ){
+void printProgram( const program* p, bool full ){
   char* m = mem( 256 );
   tostring( m, p->stateSize, 256 );
   print( "Prog[ " ); print( m ); printl( " ]{" );
   printArray( 2, 8, p->stateSize, p->state );
-  printl( "\n}" );
+  printl( "" );
+  if( full ){
+    printl( "  Funcs{" );
+    printArray( 4, 8, p->stateSize, p->funcs );
+    printl( "\n  }" );
+    printl( "  Args{" );
+    printArray( 4, 8, p->stateSize, p->args );
+    printl( "\n  }" );
+  }
+  printl( "}" );
   memfree( m );
 }
 
 void testPrograms( void ){
   program* p = newProgram( 64 );
-  printProgram( p );
+  printProgram( p, true );
   deleteProgram( p );
 }

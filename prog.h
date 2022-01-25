@@ -42,5 +42,5 @@ typedef struct{
 program* newProgram( u32 size );
 void deleteProgram( program* p );
 void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) );
-void printProgram( const program* p );
+void printProgram( const program* p, bool full );
 void testPrograms( void );
