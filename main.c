@@ -23,10 +23,10 @@
 #include "prog.h"
 #include "util.h"
 
-// BUGBUG make argc/argv actually work.
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
-  print( "hi こんにちは" );
+  message( "hi Привет\n" );
+  print( "hi  Привет\n" );
   testPrograms();
   
   end( 0 );

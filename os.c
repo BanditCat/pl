@@ -27,21 +27,29 @@
 
 states state;
 
-
+inline u64 wslen( const u16* str ){
+  u64 c = 0;
+  while( *( c++ + str ) )
+    ;
+  return c - 1;
+}
 
 int main( int argc, const char** argv );
+
 
 int WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
   (void)hInstance; (void)hPrevInstance; (void)pCmdLine; (void)nCmdShow;
   state.heap = HeapCreate( HEAP_GENERATE_EXCEPTIONS, 0, 0 );
   state.allocCount = 0;
+  AttachConsole( ATTACH_PARENT_PROCESS );
+  SetConsoleOutputCP( CP_UTF8 );
   //  *((char***)&state.argv) = CommandLineToArgvW( GetCommandLine(), &state.argc );
+  
   return main( 0, NULL );
 }
 
 void print( const char* str ){
   u64 l = slen( str );
-  //WideCharToMultiByte( CP_UTF8,0, str, l + 1, NULL, 0, 0, NULL );
   WriteFile( GetStdHandle( STD_OUTPUT_HANDLE ), str, l, NULL, NULL );
 }
 void printl( const char* str ){
@@ -82,6 +90,7 @@ void end( int ecode ){
   print( m );
   print( " unfreed allocs.\n" );
 #endif
+  FreeConsole();
   LocalFree( state.argv );
   HeapDestroy( state.heap );
   ExitProcess( ecode );
