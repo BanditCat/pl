@@ -37,11 +37,11 @@ int WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   AttachConsole( ATTACH_PARENT_PROCESS );
   SetConsoleOutputCP( CP_UTF8 );
 
-  // Convert commandline to utf-8 and store in state.
+  //Convert commandline to utf-8 and store in state.
   u32 size = 0;
   u16** cl = CommandLineToArgvW( GetCommandLine(), &state.argc );
-  state.argv = memperm( sizeof( char* ) * state.argc );
   if( cl != NULL ){
+    state.argv = memperm( sizeof( char* ) * state.argc );
     for( int i = 0; i < state.argc; ++i ){
       if( cl[ i ] == NULL )
 	die( "NULL command line argument!" );
@@ -99,10 +99,8 @@ void emessage( const char* message ){
 
 void end( int ecode ){
 #ifdef DEBUG
-  newa( m, char, 256 );
-  intToString( m, state.allocCount, 256 );
   print( "Ending with " );
-  print( m );
+  printInt( state.allocCount );
   print( " unfreed allocs.\n" );
 #endif
   FreeConsole();

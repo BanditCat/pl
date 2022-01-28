@@ -118,9 +118,8 @@ void timeProgram( program* p, u64 count ){
     tick( p );
   }
   time = tickCount() - time;
-  newa( msg, char, 256 );
-  intToString( msg, ( count * p->stateSize * tickFrequency() ) / time, 256 );
-  printl( msg );
+  printInt( ( count * p->stateSize * tickFrequency() ) / time );
+  printl( "" );
 }
 
 u32 inc( u32 x ){ return ( x + 1 ) % 64; }
