@@ -21,8 +21,7 @@
 
 typedef struct{
   u32* data;
-  u8 arg1Size;
-  u8 arg2Size;
+  u32 mask;
 } function;
 
 typedef struct{
@@ -43,7 +42,7 @@ typedef struct{
 
 program* newProgram( u32 size );
 void deleteProgram( program* p );
-void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) );
+void addFunction( program* p, u8 size, u32 (*f)( u32 ) );
 void printProgram( const program* p, bool full );
 void traceProgram( program* p, u32 stepCount );
 void testPrograms( void );

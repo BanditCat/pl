@@ -19,7 +19,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Defines.
-#define NAME "Pseudoluminal"
+#define NAME "Pseudoluminal😄"
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #define AT __FILE__ ":" TOSTRING(__LINE__)
@@ -84,5 +84,7 @@ inline u64 slen( const char* str ){
 typedef struct {
   void* heap;
   u64 allocCount;
+  const char** argv;
+  int argc;
 } states;
 extern states state;

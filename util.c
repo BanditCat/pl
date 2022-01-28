@@ -80,7 +80,7 @@ void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minwidth ){
 void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
   u32 i = 0;
   u32 r = 0;
-  char* m = mem( 256 );
+  newa( m, char, 256 );
   while( i < nums ){
     if( !r ){
       if( i )

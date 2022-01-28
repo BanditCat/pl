@@ -1,1 +1,1 @@
-Core logic testing.
+Command line, window, unicode.

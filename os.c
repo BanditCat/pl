@@ -18,6 +18,7 @@
 // OS logic.                                                                  //
 ////////////////////////////////////////////////////////////////////////////////
 
+#define UNICODE
 
 #include <windows.h>
 #include "pl.h"
@@ -26,17 +27,21 @@
 
 states state;
 
+
+
 int main( int argc, const char** argv );
 
 int WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
   (void)hInstance; (void)hPrevInstance; (void)pCmdLine; (void)nCmdShow;
   state.heap = HeapCreate( HEAP_GENERATE_EXCEPTIONS, 0, 0 );
   state.allocCount = 0;
+  //  *((char***)&state.argv) = CommandLineToArgvW( GetCommandLine(), &state.argc );
   return main( 0, NULL );
 }
 
 void print( const char* str ){
   u64 l = slen( str );
+  //WideCharToMultiByte( CP_UTF8,0, str, l + 1, NULL, 0, 0, NULL );
   WriteFile( GetStdHandle( STD_OUTPUT_HANDLE ), str, l, NULL, NULL );
 }
 void printl( const char* str ){
@@ -54,21 +59,30 @@ void eprintl( const char* str ){
 }
 
 void message( const char* message ){
-  MessageBoxA( NULL, message, NAME, 0 );
+  wchar_t* c = (wchar_t*)utf8to16( message );
+  wchar_t* t = (wchar_t*)utf8to16( NAME );
+  MessageBox( NULL, c, t, 0 );
+  memfree( c );
+  memfree( t );
 }
 
 void emessage( const char* message ){
-  MessageBoxA( NULL, message, NAME, MB_ICONEXCLAMATION );
+  wchar_t* c = (wchar_t*)utf8to16( message );
+  wchar_t* t = (wchar_t*)utf8to16( NAME );
+  MessageBox( NULL, c, t, MB_ICONEXCLAMATION );
+  memfree( c );
+  memfree( t );
 }
 
 void end( int ecode ){
 #ifdef DEBUG
-  char* m = memperm( 256 );
+  newa( m, char, 256 );
   intToString( m, state.allocCount, 256 );
   print( "Ending with " );
   print( m );
   print( " unfreed allocs.\n" );
 #endif
+  LocalFree( state.argv );
   HeapDestroy( state.heap );
   ExitProcess( ecode );
 }
@@ -91,4 +105,25 @@ void* memcpy( void* dst, void const* src, size_t size ){
   for( u64 i = 0; i < size; ++i )
     ( (char*)dst )[ i ] = ( (const char*)src )[ i ];
   return dst;
+}
+
+// Timing functions.
+u64 tickFrequency( void ){
+  LARGE_INTEGER ret;
+  if( !QueryPerformanceFrequency( &ret ) )
+    die( "QueryPerformanceFrequency failed." );
+  return ret.QuadPart;
+}
+u64 tickCount( void ){
+  LARGE_INTEGER ret;
+  if( !QueryPerformanceCounter( &ret ) )
+    die( "QueryPerformanceCounter failed." );
+  return ret.QuadPart;
+}
+
+u16* utf8to16( const char* str ){
+  int size = MultiByteToWideChar( CP_UTF8, 0, str, -1, NULL, 0 );
+  newa( ws, u16, size );
+  MultiByteToWideChar( CP_UTF8, 0, str, -1, ws, size );
+  return ws;
 }

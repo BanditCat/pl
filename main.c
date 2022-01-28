@@ -21,12 +21,14 @@
 #include "pl.h"
 #include "os.h"
 #include "prog.h"
-
+#include "util.h"
 
 // BUGBUG make argc/argv actually work.
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
+  print( "hi こんにちは" );
   testPrograms();
+  
   end( 0 );
 }
 

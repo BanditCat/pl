@@ -40,4 +40,11 @@ void* mem( u64 size );
 void* memperm( u64 size );
 void memfree( void* p );
 
-#define die( x ) emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 )
+#define die( x ) { emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 ); }
+
+// Allocates the returned value, which should be freed. NUL terminated strings only.
+u16* utf8to16( const char* str );
+
+// Timing functions.
+u64 tickFrequency( void );
+u64 tickCount( void );

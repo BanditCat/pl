@@ -56,7 +56,7 @@ void deleteProgram( program* p ){
 
 
 
-void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
+void addFunction( program* p, u8 size, u32 (*f)( u32 ) ){
   // Ensure there is room for one more function.
   if( p->functionsAllocd == p->functionCount ){
     newa( nf, function, p->functionsAllocd * 2 );
@@ -66,11 +66,10 @@ void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
     p->functionsAllocd *= 2;
   }
   
-  u32 fsize = 1 << ( a1s + a2s );
+  u32 fsize = 1 << size;
   newa( d, u32, fsize );
   p->functions[ p->functionCount ].data = d;
-  p->functions[ p->functionCount ].arg1Size = a1s;
-  p->functions[ p->functionCount ].arg2Size = a2s;
+  p->functions[ p->functionCount ].mask = fsize - 1;
   for( u32 i = 0; i < fsize; ++i )
     *d++ = f( i );
 
@@ -78,7 +77,7 @@ void addFunction( program* p, u8 a1s, u8 a2s, u32 (*f)( u32 ) ){
 }
 
 void printProgram( const program* p, bool full ){
-  char* m = mem( 256 );
+  newa( m, char, 256 );
   intToString( m, p->stateSize, 256 );
   print( "Prog[ " ); print( m ); printl( " ]{" );
   printArray( 2, 8, p->stateSize, p->state );
@@ -91,11 +90,10 @@ void printProgram( const program* p, bool full ){
     printArray( 4, 8, p->stateSize, p->args );
     printl( "\n  }" );
     for( u32 i = 0; i < p->functionCount; ++i ){
-      u32 fsize = 1 << ( p->functions[ i ].arg1Size + p->functions[ i ].arg2Size );
       intToString( m, i, 256 );
       print( "  Func[ " ); print( m ); printl( " ]{" );
       printl( "" );
-      printArray( 4, 8, fsize, p->functions[ i ].data );
+      printArray( 4, 8, p->functions[ i ].mask - 1, p->functions[ i ].data );
       printl( "\n  }" );
     }
   }
@@ -107,12 +105,7 @@ void tick( program* p ){
   u32* write = ( read == p->ping ) ? p->pong : p->ping;
   for( u32 i = 0; i < p->stateSize; ++i ){
     const function* func = p->functions + p->funcs[ i ];
-    u32 arg2shift = func->arg1Size;
-    u32 arg1and = ( 1 << arg2shift ) - 1;
-    u32 arg2and = ( 1 << func->arg2Size ) - 1;
-    u32 arg = read[ i ] & arg1and;
-    arg |= ( read[ p->args[ i ] ] & arg2and ) << arg2shift;
-    write[ i ] = func->data[ arg ];
+    write[ i ] = func->data[ ( read[ p->args[ i ] ] ^ read[ i ] ) ];
   }
   p->state = write;
 }
@@ -123,22 +116,33 @@ void traceProgram( program* p, u32 stepCount ){
     printProgram( p, false );
   }
 }
+void timeProgram( program* p, u64 count ){
+  u64 time = tickCount();
+  for( u64 i = 0; i < count; ++i ){
+    tick( p );
+  }
+  time = tickCount() - time;
+  newa( msg, char, 256 );
+  intToString( msg, ( count * p->stateSize * tickFrequency() ) / time, 256 );
+  printl( msg );
+}
 
 u32 inc( u32 x ){ return ( x + 1 ) % 64; }
 u32 mul( u32 x ){ return ( ( x >> 6 ) * ( x & 63 ) ) % 64; }
 u32 constant( u32 x ){ (void)x; return 42; }
 void testPrograms( void ){
-  program* p = newProgram( 16 );
-  u32 args[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 11, 10, 13, 14, 15, 0 };
-  memcopy( p->args, args, u32, 16 );
-  for( u32 i = 0; i < 16; ++i ){
-    p->funcs[ i ] = i % 3;
-    p->state[ i ] = i;
+  const u32 testSize = 8;
+  program* p = newProgram( testSize );
+  for( u32 i = 0; i < testSize; ++i ){
+    p->args[ i ] = ( i + 1 ) % testSize;
+    p->funcs[ i ] = i % 2;
+    p->state[ i ] = i % 64;
   }
   
-  addFunction( p, 6, 0, inc );
-  addFunction( p, 0, 0, constant );
-  addFunction( p, 6, 6, mul );
-  traceProgram( p, 10 );
+  addFunction( p, 6, inc );
+  //addFunction( p, 0, constant );
+  addFunction( p, 12, mul );
+  //traceProgram( p, 10 );
+  timeProgram( p, 10000000 );
   deleteProgram( p );
 }
