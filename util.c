@@ -21,7 +21,7 @@
 #include "pl.h"
 #include "os.h"
 
-void strcopy( const char* src, char* dst ){
+void strcopy( char* dst, const char* src ){
   u64 c = 0;
   while( src[ c ] ){
     dst[ c ] = src[ c ];
@@ -62,13 +62,18 @@ void intToString( char* s, u64 n, u64 count ){
   }
   strreverse( s );
 }
-void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minwidth ){
+void printInt( u64 n ){
+  char s[ 256 ];
+  intToString( s, n, 256 );
+  print( s );
+}
+void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth ){
   intToString( s, n, count );
   u32 olen = slen( s );
-  if( olen < minwidth && ( 1 + minwidth - olen < count ) ){
-    u32 shift = minwidth - olen;
-    for( s32 i = 0; i < (s32)minwidth; ++i ){
-      s32 j = ( minwidth - i ) - 1;
+  if( olen < minWidth && ( 1 + minWidth - olen < count ) ){
+    u32 shift = minWidth - olen;
+    for( s32 i = 0; i < (s32)minWidth; ++i ){
+      s32 j = ( minWidth - i ) - 1;
       s32 sj = j - shift;
       if( sj >= 0 )
 	s[ j ] = s[ sj ];
@@ -77,10 +82,14 @@ void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minwidth ){
     }
   }
 }
+void printIntWithPrefix( u64 n, u32 minWidth ){
+  char s[ 256 ];
+  intToStringWithPrefix( s, n, 256, minWidth );
+  print( s );
+}
 void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
   u32 i = 0;
   u32 r = 0;
-  newa( m, char, 256 );
   while( i < nums ){
     if( !r ){
       if( i )
@@ -94,10 +103,8 @@ void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
       if( r == numsPerRow )
 	r = 0;
     }
-    intToStringWithPrefix( m, arr[ i ], 256, 10 );
-    print( m );
+    printIntWithPrefix( arr[ i ], 10 );
     ++i;
     
   }
-  memfree( m );
 }

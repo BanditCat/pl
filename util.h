@@ -24,6 +24,8 @@ void strcopy( void* dst, const void* src );
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.
 void intToString( char* s, u64 n, u64 count );
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.
-void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minwidth );
+void printInt( u64 n );
+void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth );
+void printIntWithPrefix( u64 n, u32 minWidth );
 void strreverse( char* s );
 void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr );

@@ -44,6 +44,8 @@ void memfree( void* p );
 
 // Allocates the returned value, which should be freed. NUL terminated strings only.
 u16* utf8to16( const char* str );
+char* utf16to8( const u16* str );
+char* utf16to8perm( const u16* str );
 
 // Timing functions.
 u64 tickFrequency( void );

@@ -36,7 +36,7 @@ RC=llvm-rc
 PACKC=upx
 
 TARGET=pl.exe
-TARGETDEFINE=-DWINDOWS
+TARGETDEFINE=-DWINDOWS -DTARGET=\"$(TARGET)\"
 OBJS:=$(OBJS) windowsResource.res
 
 # Actual build rules.

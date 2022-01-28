@@ -77,9 +77,7 @@ void addFunction( program* p, u8 size, u32 (*f)( u32 ) ){
 }
 
 void printProgram( const program* p, bool full ){
-  newa( m, char, 256 );
-  intToString( m, p->stateSize, 256 );
-  print( "Prog[ " ); print( m ); printl( " ]{" );
+  print( "Prog[ " ); printInt( p->stateSize ); printl( " ]{" );
   printArray( 2, 8, p->stateSize, p->state );
   printl( "" );
   if( full ){
@@ -90,15 +88,13 @@ void printProgram( const program* p, bool full ){
     printArray( 4, 8, p->stateSize, p->args );
     printl( "\n  }" );
     for( u32 i = 0; i < p->functionCount; ++i ){
-      intToString( m, i, 256 );
-      print( "  Func[ " ); print( m ); printl( " ]{" );
+      print( "  Func[ " ); printInt( i ); printl( " ]{" );
       printl( "" );
       printArray( 4, 8, p->functions[ i ].mask - 1, p->functions[ i ].data );
       printl( "\n  }" );
     }
   }
   printl( "}" );
-  memfree( m );
 }
 void tick( program* p ){
   u32* read = p->state;

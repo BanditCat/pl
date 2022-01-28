@@ -27,13 +27,6 @@
 
 states state;
 
-inline u64 wslen( const u16* str ){
-  u64 c = 0;
-  while( *( c++ + str ) )
-    ;
-  return c - 1;
-}
-
 int main( int argc, const char** argv );
 
 
@@ -43,8 +36,30 @@ int WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
   state.allocCount = 0;
   AttachConsole( ATTACH_PARENT_PROCESS );
   SetConsoleOutputCP( CP_UTF8 );
-  //  *((char***)&state.argv) = CommandLineToArgvW( GetCommandLine(), &state.argc );
-  
+
+  // Convert commandline to utf-8 and store in state.
+  u32 size = 0;
+  u16** cl = CommandLineToArgvW( GetCommandLine(), &state.argc );
+  state.argv = memperm( sizeof( char* ) * state.argc );
+  if( cl != NULL ){
+    for( int i = 0; i < state.argc; ++i ){
+      if( cl[ i ] == NULL )
+	die( "NULL command line argument!" );
+      if( !cl[ i ][ 0 ] )
+	die( "Empty command line argument!" );
+      state.argv[ i ] = utf16to8perm( cl[ i ] );
+    }
+    LocalFree( cl );
+  } else
+    state.argc = 0;
+  if( !state.argc ){
+    u32 ts = slen( TARGET ) + 1;
+    size = sizeof( char* ) + ts;
+    state.argv = memperm( sizeof( char* ) * 1 );
+    *state.argv = memperm( slen( TARGET ) + 1 );
+    strcopy( ((char*)*state.argv), TARGET);
+    state.argc = 1;
+  }
   return main( 0, NULL );
 }
 
@@ -91,7 +106,6 @@ void end( int ecode ){
   print( " unfreed allocs.\n" );
 #endif
   FreeConsole();
-  LocalFree( state.argv );
   HeapDestroy( state.heap );
   ExitProcess( ecode );
 }
@@ -135,4 +149,16 @@ u16* utf8to16( const char* str ){
   newa( ws, u16, size );
   MultiByteToWideChar( CP_UTF8, 0, str, -1, ws, size );
   return ws;
+}
+char* utf16to8( const u16* str ){
+  int size = WideCharToMultiByte( CP_UTF8, 0, str, -1, NULL, 0, NULL, NULL);
+  newa( s, char, size );
+  WideCharToMultiByte( CP_UTF8, 0, str, -1, s, size, NULL, NULL );
+  return s;
+}
+char* utf16to8perm( const u16* str ){
+  int size = WideCharToMultiByte( CP_UTF8, 0, str, -1, NULL, 0, NULL, NULL);
+  char* s = memperm( size );
+  WideCharToMultiByte( CP_UTF8, 0, str, -1, s, size, NULL, NULL );
+  return s;
 }
