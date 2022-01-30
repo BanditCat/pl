@@ -27,10 +27,10 @@ rall: depend release run
 
 # Toolchain.
 CC=clang
-CCFLAGS=-m64 -std=c17 -Wall -fno-exceptions -Wextra -Werror -ffreestanding -c 
+CCFLAGS=-m64 -std=c17 -Wall -fno-exceptions -Wextra -Werror -ffreestanding -c
 CCINCFLAG=
 LD=clang
-LDFLAGS=-luser32 -lkernel32 -nostdlib -lshell32 -Wl,-entry:__entry,-subsystem:windows
+LDFLAGS=-luser32 -lkernel32 -nostdlib -lshell32 -lvulkan-1 -Wl,-entry:__entry,-subsystem:windows
 STRIPC=llvm-strip
 RC=llvm-rc
 PACKC=upx

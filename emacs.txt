@@ -39,7 +39,11 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- )
+ '(tab-line ((t (:inherit variable-pitch :background "black" :foreground "light gray" :height 0.9))))
+ '(tab-line-highlight ((t (:inherit tab-line-tab :background "midnight blue"))))
+ '(tab-line-tab ((t (:inherit tab-line :foreground "white" :box (:line-width 1 :color "white" :style released-button)))))
+ '(tab-line-tab-current ((t (:inherit tab-line-tab :background "medium blue"))))
+ '(tab-line-tab-inactive ((t (:inherit tab-line-tab :background "black")))))
 
 (defun bandit-run (&optional arg) (interactive)
        (bandit-save)
@@ -89,17 +93,20 @@
 (global-set-key (kbd "<f5>") 'bandit-run)
 (global-set-key (kbd "<f1>") 'find-file)
 (global-set-key (kbd "<f2>") 'ispell-comments-and-strings)
+(global-set-key (kbd "<S-f2>") 'ispell-buffer)
 (global-set-key (kbd "<f3>") 'bandit-indent)
 (global-set-key (kbd "<f6>") (lambda () (interactive) (bandit-run "rall")))
 (global-set-key (kbd "<f7>") (lambda () (interactive) (bandit-run "clean")))
 (global-set-key (kbd "<f8>") (lambda () (interactive) (bandit-run "backup")))
+(global-set-key (kbd "<f9>") (lambda () (interactive) (comment-region (mark) (point))))
+(global-set-key (kbd "<f10>") (lambda () (interactive) (uncomment-region (mark) (point))))
 
 (global-set-key (kbd "C-a") 'mark-whole-buffer)
 (global-set-key (kbd "C-f") 'isearch-forward)
 (global-set-key (kbd "C-S-f") (lambda () (interactive) (multi-occur-in-matching-buffers ".*" (read-string "Regexp:"))))
 
 
-(add-to-list 'exec-path "C:/root/bin/")
+(add-to-list 'exec-path "C:/root/bin/")2
 
 (setq ispell-program-name (locate-file "hunspell"
 				       exec-path exec-suffixes 'file-executable-p))

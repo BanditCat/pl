@@ -1,3 +1,10 @@
+This software include portions of the Vulkan runtime, distributed under the
+apache and MIT licenses as described by VulkanRT-License.txt included with this
+software. All other code is copyright Jon DuBois, distributed under the GNU
+Affero general public license, listed below.
+
+////////////////////////////////////////////////////////////////////////////////
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
