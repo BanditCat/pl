@@ -80,11 +80,14 @@ inline u64 slen( const char* str ){
   return c - 1;
 }
 
+#include "vk.h"
+
 // Global state.
 typedef struct {
   void* heap;
   u64 allocCount;
   const char** argv;
   int argc;
+  plvkStatep vk;
 } states;
 extern states state;

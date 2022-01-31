@@ -24,13 +24,14 @@
 #include "pl.h"
 #include "os.h"
 #include "util.h"
+#include "vk.h"
 
 states state;
 
 int main( int argc, const char** argv );
 
 
-int WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
+void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
   (void)hInstance; (void)hPrevInstance; (void)pCmdLine; (void)nCmdShow;
   state.heap = HeapCreate( HEAP_GENERATE_EXCEPTIONS, 0, 0 );
   state.allocCount = 0;
@@ -60,7 +61,8 @@ int WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     strcopy( ((char*)*state.argv), TARGET);
     state.argc = 1;
   }
-  return main( 0, NULL );
+  state.vk = plvkInit();
+  end( main( state.argc, state.argv ) );
 }
 
 void print( const char* str ){
@@ -98,6 +100,7 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
+  plvkEnd( state.vk );
 #ifdef DEBUG
   print( "Ending with " );
   printInt( state.allocCount );

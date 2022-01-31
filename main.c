@@ -25,11 +25,10 @@
 
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
-  message( "hi Привет\n" );
+  //print( "hi Привет\n" );
   for( int i = 0; i < state.argc; ++i)
     printl( state.argv[ i ] );
   testPrograms();
-  
-  end( 0 );
+  return 0;
 }
 
