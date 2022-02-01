@@ -15,40 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// OS logic.                                                                  //
+// win32 GUI.                                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
+typedef struct{
+} window;
+  
 
-void* memcpy( void* dst, void const* src, size_t size );
-
-void print( const char* str );
-void printl( const char* str );
-void eprint( const char* str );
-void eprintl( const char* str );
-void message( const char* str );
-void emessage( const char* str );
-void end( int ecode );
-
-// Generates exception if out of memory. Memory is zerod. Automatically freed at end.
-void* mem( u64 size );
-
-// Convienience macros.
-#define new( x, y ) y* x = (y*)( mem( sizeof( y ) ) )
-#define newe( y ) ( (y*)( mem( sizeof( y ) ) ) )
-#define newa( x, y, s ) y* x = (y*)( mem( sizeof( y ) * s ) )
-#define newae( y, s ) ( (y*)( mem( sizeof( y )  * s ) ) )
-
-// Same, but doesnt increment the alloc count. This allocates memory that is freed at end.
-void* memperm( u64 size );
-void memfree( void* p );
-
-#define die( x ) { emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 ); }
-
-// Allocates the returned value, which should be freed. NUL terminated strings only.
-u16* utf8to16( const char* str );
-char* utf16to8( const u16* str );
-char* utf16to8perm( const u16* str );
-
-// Timing functions.
-u64 tickFrequency( void );
-u64 tickCount( void );
+// Returned pointer must be deallocated with wend.
+window* wsetup( HMODULE ll, HICON hi, HINSTANCE hinst, char* title, int x, int y, int width, int height, BYTE type, DWORD flags );
+void wend( window* p );
+bool weventLoop( window* p );

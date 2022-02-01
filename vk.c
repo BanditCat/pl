@@ -22,10 +22,13 @@
 #include "pl.h"
 #include "os.h"
 #include "vk.h"
-
+#include "util.h"
 
 typedef struct {
   VkInstance instance;
+  u32 numGpus;
+  VkPhysicalDevice* gpus;
+  VkPhysicalDeviceProperties* gpuProperties;
 } plvkState;
 
 plvkStatep plvkInit( void ){
@@ -34,7 +37,6 @@ plvkStatep plvkInit( void ){
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
-  return ret;
   VkApplicationInfo prog;
   prog.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   prog.pApplicationName = TARGET;
@@ -44,16 +46,41 @@ plvkStatep plvkInit( void ){
   prog.apiVersion = VK_API_VERSION_1_0;
   VkInstanceCreateInfo create;
   create.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+  create.pNext = NULL;
+  create.flags = 0;
   create.pApplicationInfo = &prog;
-  
+  create.enabledLayerCount = 0;
+  const char* layerNames[ 1 ] = { "" };
+  create.ppEnabledLayerNames = layerNames;
   create.enabledExtensionCount = 0;
-  create.ppEnabledExtensionNames = NULL;
-  if( VK_SUCCESS != vkCreateInstance( &create, NULL, &(vk->instance) ) )
+  const char* extNames[ 1 ] = { "" };
+  create.ppEnabledExtensionNames = extNames;
+  if( VK_SUCCESS != vkCreateInstance( &create, NULL, &vk->instance ) )
     die( "Failed to create vulkan instance." );
+  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, NULL ) )
+    die( "Failed to count gpus." );
+  vk->gpus = newae( VkPhysicalDevice, vk->numGpus );
+  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, vk->gpus ) )
+    die( "Failed to enumerate gpus." );
+  vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGpus );
+#ifdef DEBUG
+  printl( "GPUs:" );
+#endif
+  for( u32 i = 0; i < vk->numGpus; ++i ){
+    vkGetPhysicalDeviceProperties( vk->gpus[ i ], vk->gpuProperties + i );
+#ifdef DEBUG
+    printInt( i ); print( ": " ); printl( vk->gpuProperties[ i ].deviceName );
+#endif
+      }
+  return ret;
 }
 
 void plvkEnd( plvkStatep vkp ){
   plvkState* vk = vkp;
+  if( vk->gpus )
+    memfree( vk->gpus );
+  if( vk->gpuProperties )
+    memfree( vk->gpuProperties );
   vkDestroyInstance( vk->instance, NULL );
   memfree( vk );
 }

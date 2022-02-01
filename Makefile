@@ -22,6 +22,7 @@
 # Targets in this section are the ones meant to be used by users.
 .PHONY: all
 all: depend debug run
+.PHONY: rall
 rall: depend release run
 
 
@@ -91,5 +92,5 @@ depend:
 	clang $(CCINCFLAG) $(TARGETDEFINE) -MM $(CS) > ./deps.txt
 
 .PHONY: run
-run: all
+run: 
 	./$(TARGET)
