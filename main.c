@@ -22,10 +22,17 @@
 #include "os.h"
 #include "prog.h"
 #include "util.h"
+#include "gui.h"
 
 int main( int argc, const char** argv ){
   (void)argc; (void)argv;
-  //print( "hi Привет\n" );
+  guiInfo* gui = wsetup( TARGET, 10, 10, 200, 200 );
+  (void)gui;
+  while( weventLoop( gui ) )
+    ;
+  wend( gui );
+
+  print( "hi Привет\n" );
   for( int i = 0; i < state.argc; ++i)
     printl( state.argv[ i ] );
   testPrograms();

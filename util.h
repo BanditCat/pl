@@ -21,6 +21,8 @@
 
 #define memcopy( d, s, t, c ) memcpy( d, s, sizeof( t ) * c )
 void strcopy( void* dst, const void* src );
+// -1 if x < y, 1 if x > y, 0 if x == y.
+int strcomp( const char* x, const char* y );
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.
 void intToString( char* s, u64 n, u64 count );
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.

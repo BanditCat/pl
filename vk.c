@@ -24,26 +24,82 @@
 #include "vk.h"
 #include "util.h"
 
+// Requirements
+const char* requiredExtensions[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+#ifdef DEBUG
+const char* requiredLayers[] = { "VK_LAYER_KHRONOS_validation" };
+#else
+const char* requiredLayers[] = {};
+#endif
+const u32 numRequiredExtensions = sizeof( requiredExtensions ) / sizeof( char* );
+const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
+
+
 typedef struct {
   VkInstance instance;
   u32 numGpus;
   VkPhysicalDevice* gpus;
   VkPhysicalDeviceProperties* gpuProperties;
+  u32 numExtensions;
+  VkExtensionProperties* extensions;
+  u32 numLayers;
+  VkLayerProperties* layers;
 } plvkState;
 
 plvkStatep plvkInit( void ){
   new( vk, plvkState );
-  plvkStatep ret = vk;
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
+
+  // Get extensions.
+  vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, NULL );
+  vk->extensions = newae( VkExtensionProperties, vk->numExtensions );
+  vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, vk->extensions );
+  for( u32 i = 0; i < numRequiredExtensions; ++i ){
+    bool has = 0;
+    for( u32 j = 0; j < vk->numExtensions; j++ ){
+      if( !strcomp( requiredExtensions[ i ], vk->extensions[ j ].extensionName ) )
+	has = 1;
+    }
+    if( !has )
+      die( "Required extension not found!" );
+  }
+#ifdef DEBUG
+  printl( "Extensions:" );
+  for( u32 i = 0; i < vk->numExtensions; ++i ){
+    printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
+  }
+#endif
+
+  // Get layers.
+  vkEnumerateInstanceLayerProperties( &vk->numLayers, NULL );
+  vk->layers = newae( VkLayerProperties, vk->numLayers );
+  vkEnumerateInstanceLayerProperties( &vk->numLayers, vk->layers );
+  for( u32 i = 0; i < numRequiredLayers; ++i ){
+    bool has = 0;
+    for( u32 j = 0; j < vk->numLayers; j++ ){
+      if( !strcomp( requiredLayers[ i ], vk->layers[ j ].layerName ) )
+	has = 1;
+    }
+    if( !has )
+      die( "Required layer not found!" );
+  }
+#ifdef DEBUG
+  printl( "Layers:" );
+  for( u32 i = 0; i < vk->numLayers; ++i ){
+    print( vk->layers[ i ].layerName ); print( ": " ); printl( vk->layers[ i ].description );
+  }
+#endif  
+
+  // Create vulkan instance.
   VkApplicationInfo prog;
   prog.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   prog.pApplicationName = TARGET;
   prog.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
   prog.pEngineName = TARGET;
   prog.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-  prog.apiVersion = VK_API_VERSION_1_0;
+  prog.apiVersion = VK_API_VERSION_1_2;
   VkInstanceCreateInfo create;
   create.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   create.pNext = NULL;
@@ -57,22 +113,25 @@ plvkStatep plvkInit( void ){
   create.ppEnabledExtensionNames = extNames;
   if( VK_SUCCESS != vkCreateInstance( &create, NULL, &vk->instance ) )
     die( "Failed to create vulkan instance." );
+
+
+  // Enumerate GPUs.
   if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, NULL ) )
     die( "Failed to count gpus." );
   vk->gpus = newae( VkPhysicalDevice, vk->numGpus );
   if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, vk->gpus ) )
     die( "Failed to enumerate gpus." );
   vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGpus );
-#ifdef DEBUG
-  printl( "GPUs:" );
-#endif
-  for( u32 i = 0; i < vk->numGpus; ++i ){
+  for( u32 i = 0; i < vk->numGpus; ++i )
     vkGetPhysicalDeviceProperties( vk->gpus[ i ], vk->gpuProperties + i );
 #ifdef DEBUG
+  printl( "GPUs:" );
+  for( u32 i = 0; i < vk->numGpus; ++i ){
     printInt( i ); print( ": " ); printl( vk->gpuProperties[ i ].deviceName );
+  }
 #endif
-      }
-  return ret;
+
+  return vk;
 }
 
 void plvkEnd( plvkStatep vkp ){
@@ -81,6 +140,11 @@ void plvkEnd( plvkStatep vkp ){
     memfree( vk->gpus );
   if( vk->gpuProperties )
     memfree( vk->gpuProperties );
+  if( vk->extensions )
+    memfree( vk->extensions );
+  if( vk->layers )
+    memfree( vk->layers );
   vkDestroyInstance( vk->instance, NULL );
   memfree( vk );
 }
+

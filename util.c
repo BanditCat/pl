@@ -29,6 +29,26 @@ void strcopy( char* dst, const char* src ){
   }
   dst[ c ] = 0;
 }
+int strcomp( const char* x, const char* y ){
+  const char* xp = x;
+  const char* yp = y;
+  while( 1 ){
+    if( !(*xp) ){
+      if( !(*yp) )
+	return 0;
+      else
+	return -1;
+    }
+    if( !(*yp) )
+      return 1;
+    if( *xp < *yp )
+      return -1;
+    if( *xp > *yp )
+      return 1;
+    ++xp;
+    ++yp;
+  }
+}
 void strreverse( char* s ){
   u64 e = slen( s ) - 1;
   u64 b = 0;

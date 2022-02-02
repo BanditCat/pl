@@ -74,7 +74,7 @@ release: PACK:=$(PACKC) --best $(TARGET)
 
 .PHONY: debug 
 debug: $(TARGET)
-debug: CCFLAGS:=$(TARGETDEFINE) -O0 -gfull -DDEBUG $(CCFLAGS)
+debug: CCFLAGS:=$(TARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
 
 .PHONY: clean

@@ -18,11 +18,24 @@
 // win32 GUI.                                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
+
+typedef void* guiStatep;
+
 typedef struct{
-} window;
+  bool fullScreen;
+  u32 screenWidth;
+  u32 screenHeight;
+  u32 width;
+  u32 height;
+  u32 clientWidth;
+  u32 clientHeight;
+  u32 x;
+  u32 y;
+  guiStatep gui;
+} guiInfo;
   
 
 // Returned pointer must be deallocated with wend.
-window* wsetup( HMODULE ll, HICON hi, HINSTANCE hinst, char* title, int x, int y, int width, int height, BYTE type, DWORD flags );
-void wend( window* p );
-bool weventLoop( window* p );
+guiInfo* wsetup( char* title, int x, int y, int width, int height );
+void wend( guiInfo* p );
+bool weventLoop( guiInfo* p );
