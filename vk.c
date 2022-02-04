@@ -39,9 +39,40 @@ const u32 numRequiredExtensions = sizeof( requiredExtensions ) / sizeof( char* )
 const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
 
 
+// Instance wide state.
+typedef struct {
+  VkInstance instance;
+  u32 numGpus;
+  VkPhysicalDevice* gpus;
+  VkPhysicalDeviceProperties* gpuProperties;
+  u32 numExtensions;
+  VkExtensionProperties* extensions;
+  u32 numLayers;
+  VkLayerProperties* layers;
+
+  // Function pointers.
+#define FPDEFINE( x ) PFN_##x x
+#ifdef DEBUG
+  FPDEFINE( vkCreateDebugUtilsMessengerEXT );
+  FPDEFINE( vkDestroyDebugUtilsMessengerEXT );
+  VkDebugUtilsMessengerEXT vkdbg;
+#endif
+} plvkState;
+
+
+// Function pointer helper function.
+#define FPGET( x )   vk->x = (PFN_##x) vkGetInstanceProcAddr( vk->instance, #x );
+void getFuncPointers( plvkState* vk ){
+  (void)vk;
+#ifdef DEBUG   
+  FPGET( vkCreateDebugUtilsMessengerEXT );
+  FPGET( vkDestroyDebugUtilsMessengerEXT );
+#endif
+}
+
 // Validation layer callback.
 #ifdef DEBUG
-VKAPI_ATTR VkBool32 VKAPI_CALL dbgCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb(
 					   VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 					   VkDebugUtilsMessageTypeFlagsEXT type,
 					   const VkDebugUtilsMessengerCallbackDataEXT* callback,
@@ -58,17 +89,22 @@ VKAPI_ATTR VkBool32 VKAPI_CALL dbgCallback(
 }
 #endif
 
-
-typedef struct {
-  VkInstance instance;
-  u32 numGpus;
-  VkPhysicalDevice* gpus;
-  VkPhysicalDeviceProperties* gpuProperties;
-  u32 numExtensions;
-  VkExtensionProperties* extensions;
-  u32 numLayers;
-  VkLayerProperties* layers;
-} plvkState;
+// Debug layer createinfo helper.
+#ifdef DEBUG
+void setupDebugCreateinfo( VkDebugUtilsMessengerCreateInfoEXT* ci ){
+  ci->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+  ci->pNext = NULL;
+  ci->flags = 0;
+  ci->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+    //VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  ci->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+  ci->pfnUserCallback = plvkDebugcb;
+  ci->pUserData = NULL;
+}
+#endif
 
 plvkStatep plvkInit( void ){
   new( vk, plvkState );
@@ -122,28 +158,43 @@ plvkStatep plvkInit( void ){
   prog.pApplicationName = TARGET;
   prog.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
   prog.pEngineName = TARGET;
-  //prog.pNext = NULL
+  prog.pNext = NULL;
   prog.engineVersion = VK_MAKE_VERSION(0, 0, 1);
   prog.apiVersion = VK_API_VERSION_1_2;
   VkInstanceCreateInfo create;
   create.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  create.pNext = NULL;
   create.flags = 0;
   create.pApplicationInfo = &prog;
   create.enabledLayerCount = numRequiredLayers;
   create.ppEnabledLayerNames = requiredLayers;
   create.enabledExtensionCount = numRequiredExtensions;
   create.ppEnabledExtensionNames = requiredExtensions;
+#ifdef DEBUG
+  {
+    VkDebugUtilsMessengerCreateInfoEXT ci;
+    setupDebugCreateinfo( &ci );
+    create.pNext = &ci;
+  }
+#else
+  create.pNext = NULL;
+#endif
   if( VK_SUCCESS != vkCreateInstance( &create, NULL, &vk->instance ) )
     die( "Failed to create vulkan instance." );
 
-
+  // Get function pointers.
+  getFuncPointers( vk );
   // Set up validation layer callback.
-  
+#ifdef DEBUG
+  VkDebugUtilsMessengerCreateInfoEXT ci;
+  setupDebugCreateinfo( &ci );
+  vk->vkCreateDebugUtilsMessengerEXT( vk->instance, &ci, NULL, &vk->vkdbg );
+#endif
 
   // Enumerate GPUs.
   if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, NULL ) )
     die( "Failed to count gpus." );
+  if( !vk->numGpus )
+    die( "No GPUs found :(" );
   vk->gpus = newae( VkPhysicalDevice, vk->numGpus );
   if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, vk->gpus ) )
     die( "Failed to enumerate gpus." );
@@ -163,6 +214,10 @@ plvkStatep plvkInit( void ){
 
 void plvkEnd( plvkStatep vkp ){
   plvkState* vk = vkp;
+#ifdef DEBUG
+  vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
+#endif
+
   if( vk->gpus )
     memfree( vk->gpus );
   if( vk->gpuProperties )

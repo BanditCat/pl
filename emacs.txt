@@ -33,6 +33,8 @@
  '(shell-file-name "C:\\Program Files\\Git\\bin\\bash.exe")
  '(show-paren-mode t)
  '(tab-bar-mode nil)
+ '(tab-line-close-button-show nil)
+ '(tab-line-new-button-show nil)
  '(tab-line-tabs-function 'tab-line-tabs-window-buffers))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -41,7 +43,7 @@
  ;; If there is more than one, they won't work right.
  '(tab-line ((t (:inherit variable-pitch :background "black" :foreground "light gray" :height 0.9))))
  '(tab-line-highlight ((t (:inherit tab-line-tab :background "midnight blue"))))
- '(tab-line-tab ((t (:inherit tab-line :foreground "white" :box (:line-width 1 :color "white" :style released-button)))))
+ '(tab-line-tab ((t (:inherit tab-line :foreground "white" :box (:line-width 1 :color "white" :style released-button) :height 1.5 :width normal))))
  '(tab-line-tab-current ((t (:inherit tab-line-tab :background "medium blue"))))
  '(tab-line-tab-inactive ((t (:inherit tab-line-tab :background "black")))))
 
@@ -50,6 +52,7 @@
        (cond
 	((eq major-mode 'emacs-lisp-mode) (eval-buffer) (message "ran"))
 	((eq major-mode 'c-mode) (compile (concat "make " arg)))
+	((eq major-mode 'makefile-gmake-mode) (compile (concat "make " arg)))
 	(t (message "Unsupported language"))))
 
 (defun bandit-copypaste () (interactive)
@@ -79,6 +82,18 @@
 	    (elt (tab-line-tabs-window-buffers)
 		 (mod (+ (- (length (tab-line-tabs-window-buffers)) 1)
 			 (seq-position (tab-line-tabs-window-buffers) (current-buffer))) (length (tab-line-tabs-window-buffers)))))))
+(defun bandit-kill-nonfile-buffers () (interactive)
+       (mapc
+	(lambda (buf)
+	  (if (and (not (string-match "\*tab" (buffer-name buf) ))
+		   (eq (buffer-file-name buf) nil))
+	      (kill-buffer buf)))		     
+	(buffer-list)))
+
+(add-hook 'kill-emacs-hook 'bandit-kill-nonfile-buffers -100)
+
+(global-set-key (kbd "<f11>") 'bandit-kill-nonfile-buffers)
+
 
 (global-set-key (kbd "<kp-decimal>") 'bandit-copypaste)
 (global-set-key (kbd "C-s") 'bandit-save)  
@@ -103,10 +118,12 @@
 
 (global-set-key (kbd "C-a") 'mark-whole-buffer)
 (global-set-key (kbd "C-f") 'isearch-forward)
+(define-key isearch-mode-map "\C-f" 'isearch-repeat-forward)
 (global-set-key (kbd "C-S-f") (lambda () (interactive) (multi-occur-in-matching-buffers ".*" (read-string "Regexp:"))))
+(global-set-key (kbd "C-S-r") 'query-replace)
 
 
-(add-to-list 'exec-path "C:/root/bin/")2
+(add-to-list 'exec-path "C:/root/bin/")
 
 (setq ispell-program-name (locate-file "hunspell"
 				       exec-path exec-suffixes 'file-executable-p))
