@@ -25,7 +25,11 @@
 #include "util.h"
 
 // Requirements
+#ifdef DEBUG
+const char* requiredExtensions[] = { "VK_KHR_surface", "VK_KHR_win32_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+#else
 const char* requiredExtensions[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+#endif
 #ifdef DEBUG
 const char* requiredLayers[] = { "VK_LAYER_KHRONOS_validation" };
 #else
@@ -33,6 +37,26 @@ const char* requiredLayers[] = {};
 #endif
 const u32 numRequiredExtensions = sizeof( requiredExtensions ) / sizeof( char* );
 const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
+
+
+// Validation layer callback.
+#ifdef DEBUG
+VKAPI_ATTR VkBool32 VKAPI_CALL dbgCallback(
+					   VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+					   VkDebugUtilsMessageTypeFlagsEXT type,
+					   const VkDebugUtilsMessengerCallbackDataEXT* callback,
+					   void* user ) {
+  (void)user;
+  print( "validation " );
+  printInt(type );
+  print( ", " );
+  printInt( severity );
+  print( ": " );
+  printl( callback->pMessage );
+
+  return VK_FALSE;
+}
+#endif
 
 
 typedef struct {
@@ -98,6 +122,7 @@ plvkStatep plvkInit( void ){
   prog.pApplicationName = TARGET;
   prog.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
   prog.pEngineName = TARGET;
+  //prog.pNext = NULL
   prog.engineVersion = VK_MAKE_VERSION(0, 0, 1);
   prog.apiVersion = VK_API_VERSION_1_2;
   VkInstanceCreateInfo create;
@@ -105,15 +130,16 @@ plvkStatep plvkInit( void ){
   create.pNext = NULL;
   create.flags = 0;
   create.pApplicationInfo = &prog;
-  create.enabledLayerCount = 0;
-  const char* layerNames[ 1 ] = { "" };
-  create.ppEnabledLayerNames = layerNames;
-  create.enabledExtensionCount = 0;
-  const char* extNames[ 1 ] = { "" };
-  create.ppEnabledExtensionNames = extNames;
+  create.enabledLayerCount = numRequiredLayers;
+  create.ppEnabledLayerNames = requiredLayers;
+  create.enabledExtensionCount = numRequiredExtensions;
+  create.ppEnabledExtensionNames = requiredExtensions;
   if( VK_SUCCESS != vkCreateInstance( &create, NULL, &vk->instance ) )
     die( "Failed to create vulkan instance." );
 
+
+  // Set up validation layer callback.
+  
 
   // Enumerate GPUs.
   if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, NULL ) )
@@ -130,6 +156,7 @@ plvkStatep plvkInit( void ){
     printInt( i ); print( ": " ); printl( vk->gpuProperties[ i ].deviceName );
   }
 #endif
+
 
   return vk;
 }

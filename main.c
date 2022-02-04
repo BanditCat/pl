@@ -25,16 +25,25 @@
 #include "gui.h"
 
 int main( int argc, const char** argv ){
+#ifdef DEBUG  
+  printl( "Command line arguments:" );
+  for( int i = 0; i < argc; ++i){
+    printInt( i );
+    print( ": " );
+    printl( argv[ i ] );
+  }
+  printl( "" );
+#else
   (void)argc; (void)argv;
+#endif  
+
+
+  // Main loop.
   guiInfo* gui = wsetup( TARGET, 10, 10, 200, 200 );
-  (void)gui;
   while( weventLoop( gui ) )
     ;
   wend( gui );
 
-  print( "hi Привет\n" );
-  for( int i = 0; i < state.argc; ++i)
-    printl( state.argv[ i ] );
   testPrograms();
   return 0;
 }
