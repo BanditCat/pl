@@ -108,8 +108,14 @@ int main( int argc, const char** argv ){
   }
 
   // Initialize vulkan.
-  plvkInit( gpu, debugLevel );
+#ifdef DEBUG
+  printl( "Initializing vulkan..." );
+#endif
 
+  plvkInit( gpu, debugLevel );
+#ifdef DEBUG
+  plvkPrintInitInfo();
+#endif
   // Main loop.
   if( run ){
     guiInfo* gui = wsetup( TARGET, x, y, w, h );
@@ -118,7 +124,8 @@ int main( int argc, const char** argv ){
     wend( gui );
   
     testPrograms();
-  }
+  }else
+    plvkPrintGPUs( gpu );
   return 0;
 }
 

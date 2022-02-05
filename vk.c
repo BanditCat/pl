@@ -122,9 +122,6 @@ u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
 void plvkInit( u32 whichGPU, u32 debugLevel ){
   new( vk, plvkState );
   state.vk = vk;
-#ifdef DEBUG
-  printl( "Initializing vulkan..." );
-#endif
   vk->debugLevel = debugLevel;
 
   // Get extensions.
@@ -140,12 +137,6 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
     if( !has )
       die( "Required extension not found!" );
   }
-#ifdef DEBUG
-  printl( "Extensions:" );
-  for( u32 i = 0; i < vk->numExtensions; ++i ){
-    printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
-  }
-#endif
 
   // Get layers.
   vkEnumerateInstanceLayerProperties( &vk->numLayers, NULL );
@@ -160,12 +151,6 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
     if( !has )
       die( "Required layer not found!" );
   }
-#ifdef DEBUG
-  printl( "Layers:" );
-  for( u32 i = 0; i < vk->numLayers; ++i ){
-    print( vk->layers[ i ].layerName ); print( ": " ); printl( vk->layers[ i ].description );
-  }
-#endif  
 
   // Create vulkan instance.
   VkApplicationInfo prog;
@@ -216,6 +201,39 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGPUs );
   for( u32 i = 0; i < vk->numGPUs; ++i )
     vkGetPhysicalDeviceProperties( vk->gpus[ i ], vk->gpuProperties + i );
+  u32 best = 0;
+  u32 bestScore = 0;
+  for( u32 i = 0; i < vk->numGPUs; ++i ){
+    u64 score = scoreGPU( vk->gpuProperties + i );
+    if( score > bestScore ){
+      best = i;
+      bestScore = score;
+    }
+  }
+  if( whichGPU != (u32)-1 ){
+    if( whichGPU >= vk->numGPUs )
+      die( "Non-existent gpu selected." );
+    vk->gpu = whichGPU;
+  } else{
+    vk->gpu = best;
+  }
+}
+#ifdef DEBUG
+void plvkPrintInitInfo( void ){
+  plvkState* vk = state.vk;
+  printl( "Extensions:" );
+  for( u32 i = 0; i < vk->numExtensions; ++i ){
+    printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
+  }
+  printl( "Layers:" );
+  for( u32 i = 0; i < vk->numLayers; ++i ){
+    print( vk->layers[ i ].layerName ); print( ": " ); printl( vk->layers[ i ].description );
+  }
+}
+#endif  
+
+void plvkPrintGPUs( u32 whichGPU ){
+  plvkState* vk = state.vk;
   printl( "GPUs:" );
   u32 best = 0;
   u32 bestScore = 0;
@@ -236,11 +254,9 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   if( whichGPU != (u32)-1 ){
     if( whichGPU >= vk->numGPUs )
       die( "Non-existent gpu selected." );
-    vk->gpu = whichGPU;
     print( "Using GPU " ); printInt( vk->gpu ); print( " selected on the command line: " );
     printl( vk->gpuProperties[ vk->gpu ].deviceName );
   } else{
-    vk->gpu = best;
     print( "Using GPU " ); printInt( vk->gpu ); print( " based on score: " );
     print( vk->gpuProperties[ vk->gpu ].deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
   }

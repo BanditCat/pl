@@ -23,3 +23,8 @@ typedef void* plvkStatep;
 // Scores and picks gpus to pick one, unless whichGPU is a positive, in which case it picks that one.
 void plvkInit( u32 whichGPU, u32 debugLevel );
 void plvkEnd( plvkStatep vk );  
+
+void plvkPrintGPUs( u32 whichGPU );
+#ifdef DEBUG
+void plvkPrintInitInfo( void );
+#endif		    
