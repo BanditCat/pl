@@ -50,13 +50,14 @@ typedef struct {
   u32 numLayers;
   VkLayerProperties* layers;
   u32 numQueues;
-  VkQueueFamilyProperties* queues;
+  VkQueueFamilyProperties* queueFamilies;
   
   // The actually used items.
   u32 gpuIndex;
   VkPhysicalDevice gpu;
+  VkQueue queue;
   VkPhysicalDeviceProperties* selectedGpuProperties;
-  u32 queue;
+  u32 queueFamily;
   VkDevice device;
   u32 debugLevel;
   
@@ -226,13 +227,13 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   // Get queue families
   vk->numQueues = 0;
   vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues, NULL );
-  vk->queues = newae( VkQueueFamilyProperties, vk->numQueues );
-  vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues, vk->queues );
+  vk->queueFamilies = newae( VkQueueFamilyProperties, vk->numQueues );
+  vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues, vk->queueFamilies );
   bool found = 0;
   for( u32 i = 0; i < vk->numQueues; ++i ){
-    if( !found && ( vk->queues[ i ].queueFlags & VK_QUEUE_GRAPHICS_BIT ) ){
+    if( !found && ( vk->queueFamilies[ i ].queueFlags & VK_QUEUE_GRAPHICS_BIT ) ){
       found = 1;
-      vk->queue = i;
+      vk->queueFamily = i;
     }
   }
   if( !found )
@@ -241,7 +242,7 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   // Create logical device.
   VkDeviceQueueCreateInfo qci = {};
   qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-  qci.queueFamilyIndex = vk->queue;
+  qci.queueFamilyIndex = vk->queueFamily;
   qci.queueCount = 1;
   float qpriority = 1.0f;
   qci.pQueuePriorities = &qpriority;
@@ -254,6 +255,7 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   vk->device = NULL;
   if( VK_SUCCESS != vkCreateDevice( vk->gpu, &dci, NULL, &vk->device) != VK_SUCCESS ){
     die( "Device creation failed." );
+  vkGetDeviceQueue( vk->device, vk->queueFamily, 0, &vk->queue );
 }
 
 }
@@ -270,9 +272,9 @@ void plvkPrintInitInfo( void ){
   }
   printl( "Queue families:" );
   for( u32 i = 0; i < vk->numQueues; ++i ){
-    printInt( i );  print( ": " ); printInt( vk->queues[ i ].queueFlags ); printl( "" );
+    printInt( i );  print( ": " ); printInt( vk->queueFamilies[ i ].queueFlags ); printl( "" );
   }
-  print( "Using queue " ); printInt( vk->queue ); endl();
+  print( "Using queue " ); printInt( vk->queueFamily ); endl();
 }
 #endif  
 
@@ -313,8 +315,8 @@ void plvkEnd( plvkStatep vkp ){
     memfree( vk->extensions );
   if( vk->layers )
     memfree( vk->layers );
-  if( vk->queues )
-    memfree( vk->queues );
+  if( vk->queueFamilies )
+    memfree( vk->queueFamilies );
   vkDestroyDevice( vk->device, NULL);
   vkDestroyInstance( vk->instance, NULL );
   memfree( vk );
