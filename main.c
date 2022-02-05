@@ -32,7 +32,13 @@ const char* clUsage =
   "                           width at the screen position specified by X and Y\n"
   "\n"
   "-gpu=<G>                   Use the gpu specified by G, which is an integer.\n"
-  "                           The output of this program contains the gpu numbers.\n";
+  "\n"
+#ifdef DEBUG  
+  "-debugLevel=<D>            Prevents validation messages with severity less than\n"
+  "                           D from being output. (default is 2).\n";
+#else
+;
+#endif
 
 // Default window position
 #define defX 100
@@ -47,6 +53,8 @@ int main( int argc, const char** argv ){
   u32 h = minH;
   // -1 means pick GPU based on score.
   int gpu = -1;
+  u32 debugLevel = 2;
+  bool run = 1;
 
   // Parse and execute command line.
   for( int i = 1; i < argc; ++i ){
@@ -55,22 +63,22 @@ int main( int argc, const char** argv ){
       const char* trackOpt = opt;
       w = parseInt( &opt );
       if( opt == trackOpt || *opt != 'x' )
-	die( "Malformed -window command line option." );
+	die( "Malformed -window= command line option." );
       ++opt;
       trackOpt = opt;
       h = parseInt( &opt );
       if( opt == trackOpt || *opt != ',' )
-	die( "Malformed -window command line option." );
+	die( "Malformed -window= command line option." );
       ++opt;
       trackOpt = opt;
       x = parseInt( &opt );
       if( opt == trackOpt || *opt != ',' )
-	die( "Malformed -window command line option." );
+	die( "Malformed -window= command line option." );
       ++opt;
       trackOpt = opt;
       y = parseInt( &opt );
       if( opt == trackOpt || *opt )
-	die( "Malformed -window command line option." );
+	die( "Malformed -window= command line option." );
       continue;
     }
     if( strStartsWith( "-gpu=", argv[ i ] ) ){
@@ -78,27 +86,39 @@ int main( int argc, const char** argv ){
       const char* trackOpt = opt;
       gpu = parseInt( &opt );
       if( opt == trackOpt || *opt )
-	die( "Malformed -gpu command line option." );
+	die( "Malformed -gpu= command line option." );
       continue;
     }
+#ifdef DEBUG    
+    if( strStartsWith( "-debugLevel=", argv[ i ] ) ){
+      const char* opt = argv[ i ] + slen( "-debugLevel=" );
+      const char* trackOpt = opt;
+      debugLevel = parseInt( &opt );
+      if( opt == trackOpt || *opt )
+	die( "Malformed -debugLevel= command line option." );
+      continue;
+    }
+#endif    
     if( strcomp( argv[ i ], "-help" ) && strcomp( argv[ i ], "--help" ) && strcomp( argv[ i ], "-?" ) ){
       print( "Unrecognized command line option " );
       printl( argv[ i ] );
     }
     printl( clUsage );
-    return 0;
+    run = 0;
   }
 
-  // Initialize vulkan
-  state.vk = plvkInit( gpu );
+  // Initialize vulkan.
+  plvkInit( gpu, debugLevel );
 
   // Main loop.
-  guiInfo* gui = wsetup( TARGET, x, y, w, h );
-  while( weventLoop( gui ) )
-    ;
-  wend( gui );
-
-  testPrograms();
+  if( run ){
+    guiInfo* gui = wsetup( TARGET, x, y, w, h );
+    while( weventLoop( gui ) )
+      ;
+    wend( gui );
+  
+    testPrograms();
+  }
   return 0;
 }
 

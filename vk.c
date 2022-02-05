@@ -51,7 +51,8 @@ typedef struct {
   VkLayerProperties* layers;
   // The index of the gpu being used.
   u32 gpu;
-
+  u32 debugLevel;
+  
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
 #ifdef DEBUG
@@ -79,12 +80,14 @@ VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb( VkDebugUtilsMessageSeverityFlagBitsE
 					    const VkDebugUtilsMessengerCallbackDataEXT* callback,
 					    void* user ) {
   (void)user;
-  print( "validation " );
-  printInt(type );
-  print( ", " );
-  printInt( severity );
-  print( ": " );
-  printl( callback->pMessage );
+  if( (u32)severity >= ((plvkState*)state.vk)->debugLevel ){
+    print( "validation " );
+    printInt( type );
+    print( ", " );
+    printInt( severity );
+    print( ": " );
+    printl( callback->pMessage );
+  }
 
   return VK_FALSE;
 }
@@ -97,7 +100,7 @@ void setupDebugCreateinfo( VkDebugUtilsMessengerCreateInfoEXT* ci ){
   ci->pNext = NULL;
   ci->flags = 0;
   ci->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-    //VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
     VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
   ci->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
@@ -116,11 +119,13 @@ u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
   return score;
 }
 
-plvkStatep plvkInit( u32 whichGPU ){
+void plvkInit( u32 whichGPU, u32 debugLevel ){
   new( vk, plvkState );
+  state.vk = vk;
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
+  vk->debugLevel = debugLevel;
 
   // Get extensions.
   vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, NULL );
@@ -239,7 +244,6 @@ plvkStatep plvkInit( u32 whichGPU ){
     print( "Using GPU " ); printInt( vk->gpu ); print( " based on score: " );
     print( vk->gpuProperties[ vk->gpu ].deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
   }
-  return vk;
 }
 
 void plvkEnd( plvkStatep vkp ){
