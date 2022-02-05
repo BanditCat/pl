@@ -97,20 +97,12 @@ debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 clean:
 	rm -f ./*.o ./*.res ./$(TARGET) ./$(DBGTARGET)
 
-.PHONY: backupr
-backupr: clean release 
+.PHONY: backup
+backup: clean release
+	make clean releasedebug
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
-
-.PHONY: backupdbg
-backupdbg: clean releasedebug 
-	git add -A
-	git commit -a -m "$(shell cat ./message.txt)" || true
-	git push -u origin master
-
-.PHONE: backup
-backup: backupr backupdbg
 
 .PHONY: depend
 depend:
