@@ -171,15 +171,8 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   create.ppEnabledLayerNames = requiredLayers;
   create.enabledExtensionCount = numRequiredExtensions;
   create.ppEnabledExtensionNames = requiredExtensions;
-#ifdef DEBUG
-  {
-    VkDebugUtilsMessengerCreateInfoEXT ci = {};
-    setupDebugCreateinfo( &ci );
-    create.pNext = &ci;
-  }
-#else
   create.pNext = NULL;
-#endif
+
   if( VK_SUCCESS != vkCreateInstance( &create, NULL, &vk->instance ) )
     die( "Failed to create vulkan instance." );
 

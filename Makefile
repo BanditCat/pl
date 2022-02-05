@@ -21,9 +21,11 @@
 
 # Targets in this section are the ones meant to be used by users.
 .PHONY: all
-all: depend debug run
+all: depend debug dbgrun
 .PHONY: rall
 rall: depend release run
+.PHONY: rdall
+rdall: depend releasedebug dbgrun
 
 
 # Toolchain.
@@ -37,7 +39,9 @@ RC=llvm-rc
 PACKC=upx
 
 TARGET=pl.exe
+DBGTARGET=pl_debug.exe
 TARGETDEFINE=-DWINDOWS -DTARGET=\"$(TARGET)\"
+DBGTARGETDEFINE=-DWINDOWS -DTARGET=\"$(DBGTARGET)\"
 OBJS:=$(OBJS) windowsResource.res
 
 # Actual build rules.
@@ -63,6 +67,11 @@ $(TARGET): $(OBJS)
 	$(STRIP)
 	$(PACK)
 
+$(DBGTARGET): $(OBJS)
+	$(LD) $^ -o $@ $(LDFLAGS)
+	$(STRIP)
+	$(PACK)
+
 
 
 .PHONY: release 
@@ -72,26 +81,37 @@ release: LDFLAGS:=-O3 -flto $(LDFLAGS)
 release: STRIP:=$(STRIPC) -s $(TARGET)
 release: PACK:=$(PACKC) --best $(TARGET)
 
+.PHONY: releasedebug
+releasedebug: $(DBGTARGET)
+releasedebug: CCFLAGS:=-O3 $(DBGTARGETDEFINE) -DDEBUG $(CCFLAGS)
+releasedebug: LDFLAGS:=-O3 -flto $(LDFLAGS)
+releasedebug: STRIP:=$(STRIPC) -s $(DBGTARGET)
+releasedebug: PACK:=$(PACKC) --best $(DBGTARGET)
+
 
 .PHONY: debug 
-debug: $(TARGET)
-debug: CCFLAGS:=$(TARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
+debug: $(DBGTARGET)
+debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
 
 .PHONY: clean
 clean:
-	rm -f ./*.o ./*.res ./$(TARGET) 
+	rm -f ./*.o ./*.res ./$(TARGET) ./$(DBGTARGET)
 
 .PHONY: backup
-backup: clean release
+backup: clean release releasedebug
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
 
 .PHONY: depend
 depend:
-	clang $(CCINCFLAG) $(TARGETDEFINE) -MM $(CS) > ./deps.txt
+	clang $(CCINCFLAG) -MM $(CS) > ./deps.txt
 
 .PHONY: run
 run: 
 	./$(TARGET)
+
+.PHONY: dbgrun
+dbgrun: 
+	./$(DBGTARGET)
