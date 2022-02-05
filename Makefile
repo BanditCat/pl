@@ -98,8 +98,12 @@ debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 clean:
 	rm -f ./*.o ./*.res ./$(TARGET) ./$(DBGTARGET)
 
+.PHONY: cleanobjs
+clean:
+	rm -f ./*.o ./*.res
+
 .PHONY: backup
-backup: clean release releasedebug
+backup: clean release cleanobjs releasedebug
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
