@@ -99,7 +99,7 @@ int main( int argc, const char** argv ){
       continue;
     }
 #endif    
-    if( strcomp( argv[ i ], "-help" ) && strcomp( argv[ i ], "--help" ) && strcomp( argv[ i ], "-?" ) ){
+    if( strcomp( argv[ i ], "-help" ) && strcomp( argv[ i ], "--help" ) && strcomp( argv[ i ], "-?" ) && strcomp( argv[ i ], "/?" ) ){
       print( "Unrecognized command line option " );
       printl( argv[ i ] );
     }
