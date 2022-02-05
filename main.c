@@ -52,7 +52,22 @@ int main( int argc, const char** argv ){
       const char* opt = argv[ i ] + slen( "-window=" );
       const char* trackOpt = opt;
       w = parseInt( &opt );
-      if( opt == trackOpt )
+      if( opt == trackOpt || *opt != 'x' )
+	die( "Malformed -window command line option." );
+      ++opt;
+      trackOpt = opt;
+      h = parseInt( &opt );
+      if( opt == trackOpt || *opt != ',' )
+	die( "Malformed -window command line option." );
+      ++opt;
+      trackOpt = opt;
+      x = parseInt( &opt );
+      if( opt == trackOpt || *opt != ',' )
+	die( "Malformed -window command line option." );
+      ++opt;
+      trackOpt = opt;
+      y = parseInt( &opt );
+      if( opt == trackOpt || *opt )
 	die( "Malformed -window command line option." );
       continue;
     }
