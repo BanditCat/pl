@@ -93,17 +93,16 @@ releasedebug: PACK:=$(PACKC) --best $(DBGTARGET)
 debug: $(DBGTARGET)
 debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
+.PHONY: touch
+touch:
+	touch ./Makefile
 
 .PHONY: clean
 clean:
 	rm -f ./*.o ./*.res ./$(TARGET) ./$(DBGTARGET)
 
-.PHONY: cleanobjs
-clean:
-	rm -f ./*.o ./*.res
-
 .PHONY: backup
-backup: clean release cleanobjs releasedebug
+backup: clean release touch releasedebug
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
