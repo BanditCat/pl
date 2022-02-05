@@ -20,5 +20,6 @@
 
 typedef void* plvkStatep;
 
-plvkStatep plvkInit( void );
+// Scores and picks gpus to pick one, unless whichGPU is a positive, in which case it picks that one.
+plvkStatep plvkInit( u32 whichGPU );
 void plvkEnd( plvkStatep vk );  

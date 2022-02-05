@@ -42,13 +42,15 @@ const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
 // Instance wide state.
 typedef struct {
   VkInstance instance;
-  u32 numGpus;
+  u32 numGPUs;
   VkPhysicalDevice* gpus;
   VkPhysicalDeviceProperties* gpuProperties;
   u32 numExtensions;
   VkExtensionProperties* extensions;
   u32 numLayers;
   VkLayerProperties* layers;
+  // The index of the gpu being used.
+  u32 gpu;
 
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -114,7 +116,7 @@ u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
   return score;
 }
 
-plvkStatep plvkInit( void ){
+plvkStatep plvkInit( u32 whichGPU ){
   new( vk, plvkState );
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
@@ -199,26 +201,44 @@ plvkStatep plvkInit( void ){
 #endif
 
   // Enumerate GPUs and pick one.
-  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, NULL ) )
+  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGPUs, NULL ) )
     die( "Failed to count gpus." );
-  if( !vk->numGpus )
+  if( !vk->numGPUs )
     die( "No GPUs found :(" );
-  vk->gpus = newae( VkPhysicalDevice, vk->numGpus );
-  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, vk->gpus ) )
+  vk->gpus = newae( VkPhysicalDevice, vk->numGPUs );
+  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGPUs, vk->gpus ) )
     die( "Failed to enumerate gpus." );
-  vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGpus );
-  for( u32 i = 0; i < vk->numGpus; ++i )
+  vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGPUs );
+  for( u32 i = 0; i < vk->numGPUs; ++i )
     vkGetPhysicalDeviceProperties( vk->gpus[ i ], vk->gpuProperties + i );
   printl( "GPUs:" );
-  for( u32 i = 0; i < vk->numGpus; ++i ){
+  u32 best = 0;
+  u32 bestScore = 0;
+  for( u32 i = 0; i < vk->numGPUs; ++i ){
+    u64 score = scoreGPU( vk->gpuProperties + i );
+    if( score > bestScore ){
+      best = i;
+      bestScore = score;
+    }
+    print( "GPU " );
     printInt( i );
+    print( ": " );
+    print( vk->gpuProperties[ i ].deviceName );
     print( " (score " );
-    printInt( scoreGPU( vk->gpuProperties + i ) );
-    print( "): " );
-    printl( vk->gpuProperties[ i ].deviceName );
+    printInt( score );
+    printl( ")" );
   }
-
-
+  if( whichGPU != (u32)-1 ){
+    if( whichGPU >= vk->numGPUs )
+      die( "Non-existent gpu selected." );
+    vk->gpu = whichGPU;
+    print( "Using GPU " ); printInt( vk->gpu ); print( " selected on the command line: " );
+    printl( vk->gpuProperties[ vk->gpu ].deviceName );
+  } else{
+    vk->gpu = best;
+    print( "Using GPU " ); printInt( vk->gpu ); print( " based on score: " );
+    printl( vk->gpuProperties[ vk->gpu ].deviceName );
+  }
   return vk;
 }
 

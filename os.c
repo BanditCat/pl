@@ -61,7 +61,7 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
     strcopy( ((char*)*state.argv), TARGET);
     state.argc = 1;
   }
-  state.vk = plvkInit();
+  state.vk = NULL;
   end( main( state.argc, state.argv ) );
 }
 
@@ -100,7 +100,8 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
-  plvkEnd( state.vk );
+  if( state.vk )
+    plvkEnd( state.vk );
 #ifdef DEBUG
   print( "Ending with " );
   printInt( state.allocCount );

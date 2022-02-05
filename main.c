@@ -45,6 +45,8 @@ int main( int argc, const char** argv ){
   u32 y = defY;
   u32 w = minW;
   u32 h = minH;
+  // -1 means pick GPU based on score.
+  int gpu = -1;
 
   // Parse and execute command line.
   for( int i = 1; i < argc; ++i ){
@@ -71,6 +73,14 @@ int main( int argc, const char** argv ){
 	die( "Malformed -window command line option." );
       continue;
     }
+    if( strStartsWith( "-gpu=", argv[ i ] ) ){
+      const char* opt = argv[ i ] + slen( "-gpu=" );
+      const char* trackOpt = opt;
+      gpu = parseInt( &opt );
+      if( opt == trackOpt || *opt )
+	die( "Malformed -gpu command line option." );
+      continue;
+    }
     if( strcomp( argv[ i ], "-help" ) && strcomp( argv[ i ], "--help" ) && strcomp( argv[ i ], "-?" ) ){
       print( "Unrecognized command line option " );
       printl( argv[ i ] );
@@ -78,7 +88,9 @@ int main( int argc, const char** argv ){
     printl( clUsage );
     return 0;
   }
-  printInt( x );printl("foo");
+
+  // Initialize vulkan
+  state.vk = plvkInit( gpu );
 
   // Main loop.
   guiInfo* gui = wsetup( TARGET, x, y, w, h );
