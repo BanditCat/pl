@@ -124,6 +124,8 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   state.vk = vk;
   vk->debugLevel = debugLevel;
 
+
+
   // Get extensions.
   vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, NULL );
   vk->extensions = newae( VkExtensionProperties, vk->numExtensions );
@@ -171,7 +173,7 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   create.ppEnabledExtensionNames = requiredExtensions;
 #ifdef DEBUG
   {
-    VkDebugUtilsMessengerCreateInfoEXT ci;
+    VkDebugUtilsMessengerCreateInfoEXT ci = {};
     setupDebugCreateinfo( &ci );
     create.pNext = &ci;
   }

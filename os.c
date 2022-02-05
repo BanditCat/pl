@@ -131,6 +131,36 @@ void* memcpy( void* dst, void const* src, size_t size ){
     ( (char*)dst )[ i ] = ( (const char*)src )[ i ];
   return dst;
 }
+void* memset( void* dst, int chr, size_t size ){
+  for( u64 i = 0; i < size; ++i )
+    ( (char*)dst )[ i ] = (char)chr;
+  return dst;
+}
+void* memmove( void* dst, const void* src, size_t num ){
+  if( src < dst ){
+    for( s64 i = num - 1; i >= 0; --i )
+      ( (char*)dst )[ i ] = ( (const char*)src )[ i ];
+  }else{
+    for( u64 i = 0; i < num; ++i )
+      ( (char*)dst )[ i ] = ( (const char*)src )[ i ];
+  }
+  return dst;
+}
+int memcmp( const void* ptr1, const void *ptr2, size_t num ){
+  const char* xp = ptr1;
+  const char* yp = ptr2;
+  u64 c = 0;
+  while( c < num ){
+    if( *xp < *yp )
+      return -1;
+    if( *xp > *yp )
+      return 1;
+    ++xp;
+    ++yp;
+    ++c;
+  }
+  return 0;
+}
 
 // Timing functions.
 u64 tickFrequency( void ){

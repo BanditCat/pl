@@ -72,6 +72,7 @@ release: LDFLAGS:=-O3 -flto $(LDFLAGS)
 release: STRIP:=$(STRIPC) -s $(TARGET)
 release: PACK:=$(PACKC) --best $(TARGET)
 
+
 .PHONY: debug 
 debug: $(TARGET)
 debug: CCFLAGS:=$(TARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
