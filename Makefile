@@ -93,19 +93,24 @@ releasedebug: PACK:=$(PACKC) --best $(DBGTARGET)
 debug: $(DBGTARGET)
 debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
-.PHONY: touch
-touch:
-	touch ./Makefile
-
 .PHONY: clean
 clean:
 	rm -f ./*.o ./*.res ./$(TARGET) ./$(DBGTARGET)
 
-.PHONY: backup
-backup: clean release touch releasedebug
+.PHONY: backupr
+backupr: clean release 
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
+
+.PHONY: backupdbg
+backupdbg: clean releasedebug 
+	git add -A
+	git commit -a -m "$(shell cat ./message.txt)" || true
+	git push -u origin master
+
+.PHONE: backup
+backup: backupr backupdbg
 
 .PHONY: depend
 depend:
