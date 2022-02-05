@@ -1,1 +1,1 @@
-Commandline options
+queues and logical devices
