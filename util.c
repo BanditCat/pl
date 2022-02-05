@@ -49,6 +49,32 @@ int strcomp( const char* x, const char* y ){
     ++yp;
   }
 }
+bool strStartsWith( const char* init, const char* str ){
+  const char* xp = init;
+  const char* yp = str;
+  while( 1 ){
+    if( !(*xp) )
+      return 1;
+    if( !(*yp) )
+      return 0;
+    if( *xp != *yp )
+      return 0;
+    ++xp;
+    ++yp;
+  }
+  
+}
+u64 parseInt( const char** s ){
+  u64 ret = 0;
+  u64 digits = 0;
+  while( digits < 17 && **s >= '0' && **s <= '9' ){
+    ret *= 10;
+    ret += **s - '0';
+    ++*s;
+    ++digits;
+  }
+  return ret;
+}
 void strreverse( char* s ){
   u64 e = slen( s ) - 1;
   u64 b = 0;

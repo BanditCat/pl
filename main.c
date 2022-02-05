@@ -24,22 +24,49 @@
 #include "util.h"
 #include "gui.h"
 
-int main( int argc, const char** argv ){
-#ifdef DEBUG  
-  printl( "Command line arguments:" );
-  for( int i = 0; i < argc; ++i){
-    printInt( i );
-    print( ": " );
-    printl( argv[ i ] );
-  }
-  printl( "" );
-#else
-  (void)argc; (void)argv;
-#endif  
+const char* clUsage =
+  ////////////////////////////////////////////////////////////////////////////////
+  "Command line options:\n"
+  "\n"
+  "-window=<H>x<W>,<X>,<Y>    Set the size size of the window to H height at W \n"
+  "                           width at the screen position specified by X and Y\n"
+  "\n"
+  "-gpu=<G>                   Use the gpu specified by G, which is an integer.\n"
+  "                           The output of this program contains the gpu numbers.\n";
 
+// Default window position
+#define defX 100
+#define defY 100
+#define minW 320
+#define minH 240
+
+int main( int argc, const char** argv ){
+  u32 x = defX;
+  u32 y = defY;
+  u32 w = minW;
+  u32 h = minH;
+
+  // Parse and execute command line.
+  for( int i = 1; i < argc; ++i ){
+    if( strStartsWith( "-window=", argv[ i ] ) ){
+      const char* opt = argv[ i ] + slen( "-window=" );
+      const char* trackOpt = opt;
+      w = parseInt( &opt );
+      if( opt == trackOpt )
+	die( "Malformed -window command line option." );
+      continue;
+    }
+    if( strcomp( argv[ i ], "-help" ) && strcomp( argv[ i ], "--help" ) && strcomp( argv[ i ], "-?" ) ){
+      print( "Unrecognized command line option " );
+      printl( argv[ i ] );
+    }
+    printl( clUsage );
+    return 0;
+  }
+  printInt( x );printl("foo");
 
   // Main loop.
-  guiInfo* gui = wsetup( TARGET, 10, 10, 200, 200 );
+  guiInfo* gui = wsetup( TARGET, x, y, w, h );
   while( weventLoop( gui ) )
     ;
   wend( gui );

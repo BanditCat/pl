@@ -61,7 +61,7 @@ typedef struct {
 
 
 // Function pointer helper function.
-#define FPGET( x )   vk->x = (PFN_##x) vkGetInstanceProcAddr( vk->instance, #x );
+#define FPGET( x ) vk->x = (PFN_##x) vkGetInstanceProcAddr( vk->instance, #x );
 void getFuncPointers( plvkState* vk ){
   (void)vk;
 #ifdef DEBUG   
@@ -72,11 +72,10 @@ void getFuncPointers( plvkState* vk ){
 
 // Validation layer callback.
 #ifdef DEBUG
-VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb(
-					   VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-					   VkDebugUtilsMessageTypeFlagsEXT type,
-					   const VkDebugUtilsMessengerCallbackDataEXT* callback,
-					   void* user ) {
+VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb( VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+					    VkDebugUtilsMessageTypeFlagsEXT type,
+					    const VkDebugUtilsMessengerCallbackDataEXT* callback,
+					    void* user ) {
   (void)user;
   print( "validation " );
   printInt(type );
@@ -105,6 +104,15 @@ void setupDebugCreateinfo( VkDebugUtilsMessengerCreateInfoEXT* ci ){
   ci->pUserData = NULL;
 }
 #endif
+
+// GPU scoring function
+u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
+  u64 score = 0;
+  if( gpu->deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU )
+    score += 1000000;
+  score += gpu->limits.maxImageDimension2D;
+  return score;
+}
 
 plvkStatep plvkInit( void ){
   new( vk, plvkState );
@@ -190,7 +198,7 @@ plvkStatep plvkInit( void ){
   vk->vkCreateDebugUtilsMessengerEXT( vk->instance, &ci, NULL, &vk->vkdbg );
 #endif
 
-  // Enumerate GPUs.
+  // Enumerate GPUs and pick one.
   if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGpus, NULL ) )
     die( "Failed to count gpus." );
   if( !vk->numGpus )
@@ -201,12 +209,14 @@ plvkStatep plvkInit( void ){
   vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGpus );
   for( u32 i = 0; i < vk->numGpus; ++i )
     vkGetPhysicalDeviceProperties( vk->gpus[ i ], vk->gpuProperties + i );
-#ifdef DEBUG
   printl( "GPUs:" );
   for( u32 i = 0; i < vk->numGpus; ++i ){
-    printInt( i ); print( ": " ); printl( vk->gpuProperties[ i ].deviceName );
+    printInt( i );
+    print( " (score " );
+    printInt( scoreGPU( vk->gpuProperties + i ) );
+    print( "): " );
+    printl( vk->gpuProperties[ i ].deviceName );
   }
-#endif
 
 
   return vk;
