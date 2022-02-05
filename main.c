@@ -125,7 +125,7 @@ int main( int argc, const char** argv ){
   
     testPrograms();
   }else
-    plvkPrintGPUs( gpu );
+    plvkPrintGPUs();
   return 0;
 }
 

@@ -30,6 +30,8 @@ states state;
 
 int main( int argc, const char** argv );
 
+// lol
+u32 _fltused = 1;
 
 void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
   (void)hInstance; (void)hPrevInstance; (void)pCmdLine; (void)nCmdShow;

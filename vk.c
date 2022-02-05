@@ -49,9 +49,17 @@ typedef struct {
   VkExtensionProperties* extensions;
   u32 numLayers;
   VkLayerProperties* layers;
-  // The index of the gpu being used.
-  u32 gpu;
+  u32 numQueues;
+  VkQueueFamilyProperties* queues;
+  
+  // The actually used items.
+  u32 gpuIndex;
+  VkPhysicalDevice gpu;
+  VkPhysicalDeviceProperties* selectedGpuProperties;
+  u32 queue;
+  VkDevice device;
   u32 debugLevel;
+  
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -208,10 +216,46 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   if( whichGPU != (u32)-1 ){
     if( whichGPU >= vk->numGPUs )
       die( "Non-existent gpu selected." );
-    vk->gpu = whichGPU;
+    vk->gpuIndex = whichGPU;
   } else{
-    vk->gpu = best;
+    vk->gpuIndex = best;
   }
+  vk->gpu = vk->gpus[ vk->gpuIndex ];
+  vk->selectedGpuProperties = vk->gpuProperties + vk->gpuIndex;
+
+  // Get queue families
+  vk->numQueues = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues, NULL );
+  vk->queues = newae( VkQueueFamilyProperties, vk->numQueues );
+  vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues, vk->queues );
+  bool found = 0;
+  for( u32 i = 0; i < vk->numQueues; ++i ){
+    if( !found && ( vk->queues[ i ].queueFlags & VK_QUEUE_GRAPHICS_BIT ) ){
+      found = 1;
+      vk->queue = i;
+    }
+  }
+  if( !found )
+    die( "No vulkan queue family found that has VK_QUEUE_GRAPHICS_BIT." );
+
+  // Create logical device.
+  VkDeviceQueueCreateInfo qci = {};
+  qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+  qci.queueFamilyIndex = vk->queue;
+  qci.queueCount = 1;
+  float qpriority = 1.0f;
+  qci.pQueuePriorities = &qpriority;
+  VkPhysicalDeviceFeatures deviceFeatures = {};
+  VkDeviceCreateInfo dci = {};
+  dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  dci.pQueueCreateInfos = &qci;
+  dci.queueCreateInfoCount = 1;
+  dci.pEnabledFeatures = &deviceFeatures;
+  vk->device = NULL;
+  if( VK_SUCCESS != vkCreateDevice( vk->gpu, &dci, NULL, &vk->device) != VK_SUCCESS ){
+    die( "Device creation failed." );
+}
+
 }
 #ifdef DEBUG
 void plvkPrintInitInfo( void ){
@@ -224,10 +268,15 @@ void plvkPrintInitInfo( void ){
   for( u32 i = 0; i < vk->numLayers; ++i ){
     print( vk->layers[ i ].layerName ); print( ": " ); printl( vk->layers[ i ].description );
   }
+  printl( "Queue families:" );
+  for( u32 i = 0; i < vk->numQueues; ++i ){
+    printInt( i );  print( ": " ); printInt( vk->queues[ i ].queueFlags ); printl( "" );
+  }
+  print( "Using queue " ); printInt( vk->queue ); endl();
 }
 #endif  
 
-void plvkPrintGPUs( u32 whichGPU ){
+void plvkPrintGPUs( void ){
   plvkState* vk = state.vk;
   printl( "GPUs:" );
   u32 best = 0;
@@ -246,15 +295,8 @@ void plvkPrintGPUs( u32 whichGPU ){
     printInt( score );
     printl( ")" );
   }
-  if( whichGPU != (u32)-1 ){
-    if( whichGPU >= vk->numGPUs )
-      die( "Non-existent gpu selected." );
-    print( "Using GPU " ); printInt( vk->gpu ); print( " selected on the command line: " );
-    printl( vk->gpuProperties[ vk->gpu ].deviceName );
-  } else{
-    print( "Using GPU " ); printInt( vk->gpu ); print( " based on score: " );
-    print( vk->gpuProperties[ vk->gpu ].deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
-  }
+  print( "Using GPU " ); printInt( vk->gpuIndex ); print( ": " );
+  print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
 }
 
 void plvkEnd( plvkStatep vkp ){
@@ -271,6 +313,9 @@ void plvkEnd( plvkStatep vkp ){
     memfree( vk->extensions );
   if( vk->layers )
     memfree( vk->layers );
+  if( vk->queues )
+    memfree( vk->queues );
+  vkDestroyDevice( vk->device, NULL);
   vkDestroyInstance( vk->instance, NULL );
   memfree( vk );
 }

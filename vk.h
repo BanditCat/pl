@@ -24,7 +24,7 @@ typedef void* plvkStatep;
 void plvkInit( u32 whichGPU, u32 debugLevel );
 void plvkEnd( plvkStatep vk );  
 
-void plvkPrintGPUs( u32 whichGPU );
+void plvkPrintGPUs( void );
 #ifdef DEBUG
 void plvkPrintInitInfo( void );
 #endif		    

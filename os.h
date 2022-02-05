@@ -26,6 +26,7 @@ int memcmp( const void * ptr1, const void* ptr2, size_t num );
 
 void print( const char* str );
 void printl( const char* str );
+#define endl() printl( "" )
 void eprint( const char* str );
 void eprintl( const char* str );
 void message( const char* str );

@@ -79,7 +79,7 @@ void addFunction( program* p, u8 size, u32 (*f)( u32 ) ){
 void printProgram( const program* p, bool full ){
   print( "Prog[ " ); printInt( p->stateSize ); printl( " ]{" );
   printArray( 2, 8, p->stateSize, p->state );
-  printl( "" );
+  endl();
   if( full ){
     printl( "  Funcs{" );
     printArray( 4, 8, p->stateSize, p->funcs );
@@ -89,7 +89,7 @@ void printProgram( const program* p, bool full ){
     printl( "\n  }" );
     for( u32 i = 0; i < p->functionCount; ++i ){
       print( "  Func[ " ); printInt( i ); printl( " ]{" );
-      printl( "" );
+      endl();
       printArray( 4, 8, p->functions[ i ].mask - 1, p->functions[ i ].data );
       printl( "\n  }" );
     }
@@ -119,7 +119,7 @@ void timeProgram( program* p, u64 count ){
   }
   time = tickCount() - time;
   printInt( ( count * p->stateSize * tickFrequency() ) / time );
-  printl( "" );
+  endl();
 }
 
 u32 inc( u32 x ){ return ( x + 1 ) % 64; }

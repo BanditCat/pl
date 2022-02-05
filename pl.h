@@ -42,6 +42,7 @@ typedef int bool;
 #define true 1
 #define false 0
 
+
 // Types sanity check.
 #if CHAR_BIT != 8
 #error Alien build envioronment, check vislib.h for correct typedefs.
