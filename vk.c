@@ -237,7 +237,7 @@ plvkStatep plvkInit( u32 whichGPU ){
   } else{
     vk->gpu = best;
     print( "Using GPU " ); printInt( vk->gpu ); print( " based on score: " );
-    printl( vk->gpuProperties[ vk->gpu ].deviceName );
+    print( vk->gpuProperties[ vk->gpu ].deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
   }
   return vk;
 }
