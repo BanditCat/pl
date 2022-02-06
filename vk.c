@@ -18,6 +18,7 @@
 // Vulkan interface.                                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
+#define VK_USE_PLATFORM_WIN32_KHR
 #include "inc\vulkan\vulkan.h"
 #include "pl.h"
 #include "os.h"
@@ -51,8 +52,7 @@ typedef struct {
   VkLayerProperties* layers;
   u32 numQueues;
   VkQueueFamilyProperties* queueFamilies;
-  
-  // The actually used items.
+  VkSurfaceKHR surface;
   u32 gpuIndex;
   VkPhysicalDevice gpu;
   VkQueue queue;
@@ -128,11 +128,10 @@ u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
   return score;
 }
 
-void plvkInit( u32 whichGPU, u32 debugLevel ){
+void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   new( vk, plvkState );
   state.vk = vk;
   vk->debugLevel = debugLevel;
-
 
 
   // Get extensions.
@@ -239,7 +238,21 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   if( !found )
     die( "No vulkan queue family found that has VK_QUEUE_GRAPHICS_BIT." );
 
-  // Create logical device.
+
+  // Create surface
+  VkWin32SurfaceCreateInfoKHR sci = {};
+  sci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+  sci.hwnd = gui->gui->hWnd;
+  sci.hinstance = GetModuleHandle( NULL ); 
+  if( VK_SUCCESS != vkCreateWin32SurfaceKHR( vk->instance, &sci, NULL, &vk->surface ) != VK_SUCCESS )
+    die( "Win32 surface creation failed." );
+  VkBool32 supported = 0;
+  vkGetPhysicalDeviceSurfaceSupportKHR( vk->gpu, 0, vk->surface, &supported );
+  if( VK_FALSE == supported )
+    die( "Surface not supported." );
+
+
+  // Create logical device and get queue handle for it.
   VkDeviceQueueCreateInfo qci = {};
   qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
   qci.queueFamilyIndex = vk->queueFamily;
@@ -253,10 +266,9 @@ void plvkInit( u32 whichGPU, u32 debugLevel ){
   dci.queueCreateInfoCount = 1;
   dci.pEnabledFeatures = &deviceFeatures;
   vk->device = NULL;
-  if( VK_SUCCESS != vkCreateDevice( vk->gpu, &dci, NULL, &vk->device) != VK_SUCCESS ){
+  if( VK_SUCCESS != vkCreateDevice( vk->gpu, &dci, NULL, &vk->device ) != VK_SUCCESS )
     die( "Device creation failed." );
   vkGetDeviceQueue( vk->device, vk->queueFamily, 0, &vk->queue );
-}
 
 }
 #ifdef DEBUG
@@ -274,7 +286,7 @@ void plvkPrintInitInfo( void ){
   for( u32 i = 0; i < vk->numQueues; ++i ){
     printInt( i );  print( ": " ); printInt( vk->queueFamilies[ i ].queueFlags ); printl( "" );
   }
-  print( "Using queue " ); printInt( vk->queueFamily ); endl();
+  print( "Using queue family " ); printInt( vk->queueFamily ); printl( "." );
 }
 #endif  
 
@@ -317,6 +329,7 @@ void plvkEnd( plvkStatep vkp ){
     memfree( vk->layers );
   if( vk->queueFamilies )
     memfree( vk->queueFamilies );
+  vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
   vkDestroyDevice( vk->device, NULL);
   vkDestroyInstance( vk->instance, NULL );
   memfree( vk );

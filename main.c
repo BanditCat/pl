@@ -22,7 +22,6 @@
 #include "os.h"
 #include "prog.h"
 #include "util.h"
-#include "gui.h"
 
 const char* clUsage =
   ////////////////////////////////////////////////////////////////////////////////
@@ -112,20 +111,20 @@ int main( int argc, const char** argv ){
   printl( "Initializing vulkan..." );
 #endif
 
-  plvkInit( gpu, debugLevel );
+  guiInfo* gui = wsetup( TARGET, x, y, w, h );
+  plvkInit( gpu, gui, debugLevel );
 #ifdef DEBUG
   plvkPrintInitInfo();
 #endif
   // Main loop.
   if( run ){
-    guiInfo* gui = wsetup( TARGET, x, y, w, h );
+    guiShow( gui );
     while( weventLoop( gui ) )
       ;
-    wend( gui );
-  
     testPrograms();
   }else
     plvkPrintGPUs();
+  wend( gui );
   return 0;
 }
 

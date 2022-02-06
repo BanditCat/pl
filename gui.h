@@ -19,7 +19,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-typedef void* guiStatep;
+
+typedef struct{
+  WNDCLASS wc;
+  u16* title;
+  HDC hDC;
+  bool quit;
+  HINSTANCE instance;
+  HWND hWnd;
+} guiState;
 
 typedef struct{
   bool fullScreen;
@@ -31,11 +39,16 @@ typedef struct{
   u32 clientHeight;
   u32 x;
   u32 y;
-  guiStatep gui;
+  guiState* gui;
 } guiInfo;
-  
+
+
+
 
 // Returned pointer must be deallocated with wend.
 guiInfo* wsetup( char* title, int x, int y, int width, int height );
 void wend( guiInfo* p );
 bool weventLoop( guiInfo* p );
+
+void guiShow( guiInfo* g );
+void guiHide( guiInfo* g );

@@ -23,23 +23,11 @@
 
 #include <windows.h>
 #include "pl.h"
-#include "gui.h"
-#include "os.h"
-#include "util.h"
 
 #define className ( L"plClassName" )
 
 LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
   
-typedef struct{
-  WNDCLASS wc;
-  u16* title;
-  HINSTANCE instance;
-  HWND hWnd;
-  HDC hDC;
-  bool quit;
-} guiState;
-
 
 // Returned pointer must be deallocated with wend.
 guiInfo* wsetup( char* title, int x, int y, int width, int height ){
@@ -75,7 +63,6 @@ guiInfo* wsetup( char* title, int x, int y, int width, int height ){
 			       x, y, width, height, NULL, NULL, gui->instance, NULL );
   SetWindowLongPtr( gui->hWnd, 0, (LONG_PTR)ret );
   gui->hDC = GetDC( gui->hWnd );
-  ShowWindow( gui->hWnd, SW_SHOW );
 
   return ret;
 }
@@ -141,4 +128,12 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
     return 0;
   }
   return (LONG)DefWindowProc( hWnd, uMsg, wParam, lParam );
+}
+
+void guiShow( guiInfo* g ){
+     ShowWindow( g->gui->hWnd, SW_SHOW );
+}
+
+void guiHide( guiInfo* g ){
+     ShowWindow( g->gui->hWnd, SW_HIDE );
 }

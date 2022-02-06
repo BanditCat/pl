@@ -1,7 +1,8 @@
-gui.o: gui.c pl.h vk.h gui.h os.h util.h
-main.o: main.c pl.h vk.h os.h prog.h util.h gui.h
-os.o: os.c pl.h vk.h os.h util.h
-prog.o: prog.c pl.h vk.h prog.h os.h util.h
-util.o: util.c pl.h vk.h os.h
+gui.o: gui.c pl.h os.h gui.h vk.h
+main.o: main.c pl.h os.h gui.h vk.h prog.h util.h
+os.o: os.c pl.h os.h gui.h vk.h util.h
+prog.o: prog.c pl.h os.h gui.h vk.h prog.h util.h
+util.o: util.c pl.h os.h gui.h vk.h
 vk.o: vk.c inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
-  inc\vulkan\vulkan_core.h pl.h vk.h os.h util.h
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h os.h gui.h \
+  vk.h util.h
