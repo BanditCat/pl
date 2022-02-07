@@ -103,7 +103,10 @@ clean: cleanobjs
 
 .PHONY: backup
 backup: clean release
-	git add -A && git commit -a -m "$(shell cat ./message.txt)" && git push -u origin master
+	git add -A
+	git commit -a -m "$(shell cat ./message.txt)" || true
+	git push -u origin master
+	touch ./Makefile
 
 .PHONY: depend
 depend:
