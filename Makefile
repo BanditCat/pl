@@ -43,7 +43,7 @@ TARGET=pl.exe
 DBGTARGET=pl_debug.exe
 TARGETDEFINE=-DWINDOWS -DTARGET=\"$(TARGET)\"
 DBGTARGETDEFINE=-DWINDOWS -DTARGET=\"$(DBGTARGET)\"
-OBJS:=$(OBJS) windowsResource.res
+RES=windowsResource.res
 
 # Actual build rules.
 # These are supposed to be everything that might be edited.
@@ -52,7 +52,8 @@ SRCS:=$(SRCS) $(wildcard ./*.h) $(wildcard ./*.c) $(wildcard ./*.vert) $(wildcar
 CS:=$(CS) $(wildcard ./*.c)
 SHADERS:=$(SHADERS) $(wildcard ./*.vert) $(wildcard ./*.frag)
 SOBJS:=$(SOBJS) $(SHADERS:.vert=.spv) $(SHADERS:.frag=.spv)
-OBJS:=$(OBJS) $(CS:.c=.o)
+OBJS:=$(RES) $(CS:.c=.o)
+DOBJS:=$(RES) $(CS:.c=_dbg.o)
 $(OBJS): Makefile
 
 include deps.txt
@@ -69,13 +70,15 @@ windowsResource.res: windowsResource.rc pl.ico $(SOBJS)
 
 %.o: %.c
 	$(CC) $(CCINCFLAG) $(CCFLAGS) $< -o $@
+%_dbg.o: %.c
+	$(CC) $(CCINCFLAG) $(CCFLAGS) $< -o $@
 
-$(TARGET): $(OBJS)
+$(TARGET): $(OBJS) 
 	$(LD) $^ -o $@ $(LDFLAGS)
 	$(STRIP)
 	$(PACK)
 
-$(DBGTARGET): $(OBJS)
+$(DBGTARGET): $(DOBJS)
 	$(LD) $^ -o $@ $(LDFLAGS)
 	$(STRIP)
 	$(PACK)
@@ -101,16 +104,13 @@ releasedebug: PACK:=$(PACKC) --best $(DBGTARGET)
 debug: $(DBGTARGET)
 debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
-.PHONY: cleanobjs
-cleanobjs:
-	rm -f ./*.o ./*.res ./*.spv
-
 .PHONY: clean
-clean: cleanobjs
-	rm -f ./$(TARGET) ./$(DBGTARGET)
+clean:
+	rm -f ./*.o ./*.res ./*.spv ./$(TARGET) ./$(DBGTARGET)
+
 
 .PHONY: backup
-backup: release
+backup: clean $(RES) release releasedebug
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
