@@ -76,6 +76,8 @@ typedef struct {
   VkSurfaceFormatKHR* surfaceFormats;
   u32 numSurfacePresentations;
   VkPresentModeKHR* surfacePresentations;
+
+  VkSwapchainKHR swap;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -97,6 +99,26 @@ void getFuncPointers( plvkState* vk ){
 #endif
 }
 
+
+// Choose window size.
+VkExtent2D getExtent( const VkSurfaceCapabilitiesKHR* caps, const guiInfo* g ) {
+  if( caps->currentExtent.width != UINT32_MAX ){
+    return caps->currentExtent;
+  } else {
+    VkExtent2D  wh;
+    wh.width = g->clientWidth;
+    wh.height = g->clientHeight;
+    if( wh.width > caps->maxImageExtent.width )
+      wh.width = caps->maxImageExtent.width;
+    if( wh.width < caps->minImageExtent.width )
+      wh.width = caps->minImageExtent.width;
+    if( wh.height > caps->maxImageExtent.height )
+      wh.height = caps->maxImageExtent.height;
+    if( wh.height < caps->minImageExtent.height )
+      wh.height = caps->minImageExtent.height;
+    return wh;
+  }
+}
 // Validation layer callback.
 #ifdef DEBUG
 VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb
@@ -326,7 +348,45 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu, vk->surface,
 					&vk->numSurfaceFormats,
 					vk->surfaceFormats );
- 
+  vkGetPhysicalDeviceSurfacePresentModesKHR( vk->gpu, vk->surface,
+					     &vk->numSurfacePresentations,
+					     NULL );
+  vk->surfacePresentations = newae( VkPresentModeKHR,
+				    vk->numSurfacePresentations );
+  vkGetPhysicalDeviceSurfacePresentModesKHR( vk->gpu, vk->surface,
+					     &vk->numSurfacePresentations,
+					     vk->surfacePresentations );
+  // Swapchain. Just pick the easy ones. VK_PRESENT_MODE_FIFO_KHR is
+  // guarenteed to be supported by spec.
+  // Require double buffering.
+  if( vk->surfaceCapabilities.maxImageCount < 2 &&
+      vk->surfaceCapabilities.minImageCount < 2 )
+    die( "Double buffering not supported." );
+  VkSurfaceFormatKHR sf = vk->surfaceFormats[ 0 ];
+  VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR;
+  VkExtent2D extent = getExtent( &vk->surfaceCapabilities, gui );
+  VkSwapchainCreateInfoKHR scci = {};
+  printInt( vk->surfaceCapabilities.maxImageCount );printl("foo");
+  scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+  scci.surface = vk->surface;
+  scci.minImageCount = 2;
+  scci.imageFormat = sf.format;
+  scci.imageColorSpace = sf.colorSpace;
+  scci.imageExtent = extent;
+  scci.imageArrayLayers = 1;
+  scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  scci.queueFamilyIndexCount = 0;
+  scci.pQueueFamilyIndices = NULL;
+  scci.preTransform = vk->surfaceCapabilities.currentTransform;
+  scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+  scci.presentMode = pm;
+  scci.clipped = VK_TRUE;
+  scci.oldSwapchain = VK_NULL_HANDLE;
+  if( VK_SUCCESS != vkCreateSwapchainKHR( vk->device, &scci, NULL, &vk->swap ) )
+    die( "Device creation failed." );
+
+
 }
 
 #ifdef DEBUG
@@ -359,6 +419,11 @@ void plvkPrintInitInfo( void ){
     printInt( vk->surfaceFormats[ i ].format ); endl();
     print( "  color space: " );
     printInt( vk->surfaceFormats[ i ].colorSpace ); endl();
+  }
+  printl( "\nSurface presentations:" );
+  for( u32 i = 0; i < vk->numSurfacePresentations; ++i ){
+    printInt( i ); print( ": " );
+    printInt( vk->surfacePresentations[ i ] ); endl();
   }
 
 }
@@ -393,6 +458,10 @@ void plvkEnd( plvkStatep vkp ){
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
 
+  vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
+  vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
+  vkDestroyDevice( vk->device, NULL);
+  vkDestroyInstance( vk->instance, NULL );
   if( vk->gpus )
     memfree( vk->gpus );
   if( vk->gpuProperties )
@@ -407,9 +476,8 @@ void plvkEnd( plvkStatep vkp ){
     memfree( vk->queueFamilies );
   if( vk->surfaceFormats )
     memfree( vk->surfaceFormats );
-  vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
-  vkDestroyDevice( vk->device, NULL);
-  vkDestroyInstance( vk->instance, NULL );
+  if( vk->surfacePresentations )
+    memfree( vk->surfacePresentations );
   memfree( vk );
 }
 
