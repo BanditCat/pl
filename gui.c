@@ -20,11 +20,26 @@
 
 #define UNICODE
 #define WIN32_LEAN_AND_MEAN
-
 #include <windows.h>
+
 #include "pl.h"
+#include "vk.h"
+#include "gui.h"
+#include "os.h"
 
 #define className ( L"plClassName" )
+
+
+typedef struct{
+  WNDCLASS wc;
+  u16* title;
+  HDC hDC;
+  bool quit;
+  HINSTANCE instance;
+} guiState;
+
+
+
 
 LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
   
@@ -59,18 +74,19 @@ guiInfo* wsetup( char* title, int x, int y, int width, int height ){
   RegisterClassW( &gui->wc );
   
   gui->title = utf8to16( title );
-  gui->hWnd = CreateWindowExW( WS_EX_WINDOWEDGE, className, gui->title, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+  ret->handle = CreateWindowExW( WS_EX_WINDOWEDGE, className, gui->title, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
 			       x, y, width, height, NULL, NULL, gui->instance, NULL );
-  SetWindowLongPtr( gui->hWnd, 0, (LONG_PTR)ret );
-  gui->hDC = GetDC( gui->hWnd );
+  SetWindowLongPtr( ret->handle, 0, (LONG_PTR)ret );
+  gui->hDC = GetDC( ret->handle );
 
   return ret;
 }
 
-void wend( guiInfo* p ){
+void wend( guiInfo* vp ){
+  guiInfo* p = (guiInfo*)vp;
   guiState* gui = p->gui;
-  ReleaseDC( gui->hWnd, gui->hDC );
-  DestroyWindow( gui->hWnd );
+  ReleaseDC( p->handle, gui->hDC );
+  DestroyWindow( p->handle );
   DestroyIcon( gui->wc.hIcon );
   if( gui->title )
     memfree( gui->title );
@@ -78,11 +94,12 @@ void wend( guiInfo* p ){
     memfree( p->gui );
   memfree( p );
 }
-bool weventLoop( guiInfo* p ){
+bool weventLoop( guiInfo* vp ){
+  guiInfo* p = (guiInfo*)vp;
   guiState* gui = p->gui;
   MSG msg;
 
-  while( PeekMessage( &msg, gui->hWnd, 0, 0, PM_REMOVE )){
+  while( PeekMessage( &msg, p->handle, 0, 0, PM_REMOVE )){
     TranslateMessage( &msg );
     DispatchMessageW( &msg );
   }
@@ -130,10 +147,11 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
   return (LONG)DefWindowProc( hWnd, uMsg, wParam, lParam );
 }
 
-void guiShow( guiInfo* g ){
-     ShowWindow( g->gui->hWnd, SW_SHOW );
+void guiShow( guiInfo* p ){
+  ShowWindow( p->handle, SW_SHOW );
 }
 
-void guiHide( guiInfo* g ){
-     ShowWindow( g->gui->hWnd, SW_HIDE );
+void guiHide( guiInfo* p ){
+  ShowWindow( p->handle, SW_HIDE );
 }
+

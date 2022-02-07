@@ -25,8 +25,6 @@
 #define AT __FILE__ ":" TOSTRING(__LINE__)
 
 #include <limits.h>
-#define UNICODE
-#include <windows.h>
 
 
 
@@ -46,6 +44,8 @@ typedef int bool;
 #define true 1
 #define false 0
 
+typedef void* plvkStatep;
+typedef void* guiStatep;
 
 // Types sanity check.
 #if CHAR_BIT != 8
@@ -85,10 +85,6 @@ inline u64 slen( const char* str ){
   return c - 1;
 }
 
-// Do this so all we need to include is pl.jh
-#include "os.h"
-#include "gui.h"
-#include "vk.h"
 
 // Global state.
 typedef struct {

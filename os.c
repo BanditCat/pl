@@ -18,6 +18,9 @@
 // OS logic.                                                                  //
 ////////////////////////////////////////////////////////////////////////////////
 
+#define UNICODE
+#include <windows.h>
+
 #include "pl.h"
 #include "os.h"
 #include "util.h"

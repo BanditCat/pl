@@ -22,19 +22,27 @@
 #include "os.h"
 #include "prog.h"
 #include "util.h"
+#include "gui.h"
+#include "vk.h"
 
 const char* clUsage =
-  ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////
+  ////////////////////////////////////////
   "Command line options:\n"
   "\n"
-  "-window=<H>x<W>,<X>,<Y>    Set the size size of the window to H height at W \n"
-  "                           width at the screen position specified by X and Y\n"
+  "-window=<H>x<W>,<X>,<Y>    Set the size"
+  " size of the window to H height at W \n"
+  "                           width at the"
+  " screen position specified by X and Y\n"
   "\n"
-  "-gpu=<G>                   Use the gpu specified by G, which is an integer.\n"
+  "-gpu=<G>                   Use the gpu "
+  "specified by G, which is an integer.\n"
   "\n"
 #ifdef DEBUG  
-  "-debugLevel=<D>            Prevents validation messages with severity less than\n"
-  "                           D from being output. (default is 2).\n";
+  "-debugLevel=<D>            Prevents val"
+  "idation messages with severity less than\n"
+  "                           D from being"
+  " output. (default is 2).\n";
 #else
 ;
 #endif

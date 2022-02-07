@@ -1,8 +1,16 @@
-gui.o: gui.c pl.h os.h gui.h vk.h
-main.o: main.c pl.h os.h gui.h vk.h prog.h util.h
-os.o: os.c pl.h os.h gui.h vk.h util.h
-prog.o: prog.c pl.h os.h gui.h vk.h prog.h util.h
-util.o: util.c pl.h os.h gui.h vk.h
+gui.o: gui.c pl.h vk.h gui.h os.h
+main.o: main.c pl.h os.h prog.h util.h gui.h vk.h
+os.o: os.c pl.h os.h util.h vk.h
+prog.o: prog.c pl.h prog.h os.h util.h
+util.o: util.c pl.h os.h
 vk.o: vk.c inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
-  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h os.h gui.h \
-  vk.h util.h
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h os.h vk.h \
+  util.h gui.h
+gui_dbg.o: gui.c pl.h vk.h gui.h os.h
+main_dbg.o: main.c pl.h os.h prog.h util.h gui.h vk.h
+os_dbg.o: os.c pl.h os.h util.h vk.h
+prog_dbg.o: prog.c pl.h prog.h os.h util.h
+util_dbg.o: util.c pl.h os.h
+vk_dbg.o: vk.c inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h os.h vk.h \
+  util.h gui.h

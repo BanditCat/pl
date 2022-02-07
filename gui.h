@@ -18,17 +18,6 @@
 // win32 GUI.                                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-typedef struct{
-  WNDCLASS wc;
-  u16* title;
-  HDC hDC;
-  bool quit;
-  HINSTANCE instance;
-  HWND hWnd;
-} guiState;
-
 typedef struct{
   bool fullScreen;
   u32 screenWidth;
@@ -39,10 +28,9 @@ typedef struct{
   u32 clientHeight;
   u32 x;
   u32 y;
-  guiState* gui;
+  void* handle;
+  guiStatep gui;
 } guiInfo;
-
-
 
 
 // Returned pointer must be deallocated with wend.

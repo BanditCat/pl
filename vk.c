@@ -24,6 +24,7 @@
 #include "os.h"
 #include "vk.h"
 #include "util.h"
+#include "gui.h"
 
 // Requirements
 #ifdef DEBUG
@@ -299,7 +300,8 @@ void plvkEnd( plvkStatep vkp ){
 
 
 
-void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
+void plvkInit( u32 whichGPU, void* vgui, u32 debugLevel ){
+  guiInfo* gui = (guiInfo*)vgui;
   new( vk, plvkState );
   state.vk = vk;
   vk->debugLevel = debugLevel;
@@ -439,7 +441,7 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   // Create surface
   VkWin32SurfaceCreateInfoKHR sci = {};
   sci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-  sci.hwnd = gui->gui->hWnd;
+  sci.hwnd = gui->handle;
   sci.hinstance = GetModuleHandle( NULL ); 
   if( VK_SUCCESS != vkCreateWin32SurfaceKHR( vk->instance, &sci, NULL,
 					     &vk->surface ) )

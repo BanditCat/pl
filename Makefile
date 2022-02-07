@@ -58,6 +58,7 @@ $(OBJS): Makefile
 
 include deps.txt
 
+
 # windres
 windowsResource.res: windowsResource.rc pl.ico $(SOBJS)
 	$(RC) $<
@@ -115,10 +116,6 @@ backup: clean $(RES) release releasedebug
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
 
-.PHONY: depend
-depend:
-	clang $(CCINCFLAG) -MM $(CS) > ./deps.txt
-
 .PHONY: run
 run: $(TARGET)
 	./$(TARGET)
@@ -126,3 +123,8 @@ run: $(TARGET)
 .PHONY: dbgrun
 dbgrun: ./$(DBGTARGET)
 	./$(DBGTARGET)
+
+.PHONY: depend
+depend:
+	clang $(CCINCFLAG) -MM $(CS) > ./deps.txt && cat ./deps.txt | sed -re 's/(.*)\.o:/\1_dbg.o:/' >> ./deps.txt
+
