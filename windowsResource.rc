@@ -20,6 +20,8 @@
 
 
 101 ICON "pl.ico"
+vert PLCUSTOM "mainVert.vert"
+frag PLCUSTOM "mainFrag.spv"
 
 
 1 VERSIONINFO

@@ -193,3 +193,21 @@ char* utf16to8perm( const u16* str ){
   WideCharToMultiByte( CP_UTF8, 0, str, -1, s, size, NULL, NULL );
   return s;
 }
+const char* loadBuiltin( const char* name, u32* size ){
+  HRSRC r = FindResourceA( NULL, name, "PLCUSTOM" );
+  if( NULL == r )
+    die( "Failed to find resource." );
+  HGLOBAL rd = LoadResource( NULL, r );
+  if( NULL == rd )
+    die( "Failed to load resource." );
+  const char* res = LockResource( rd );
+  if( NULL == size )
+    die( "Null pointer passed to loadBuiltin." );
+  *size = SizeofResource( NULL, r );
+  printInt( *size );
+  if( !(*size) )
+    die( "Zero size resource." );
+  if( NULL == res )
+    die( "Failed to lock resource." );
+  return res;
+}

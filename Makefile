@@ -37,6 +37,7 @@ LDFLAGS=-luser32 -lkernel32 -nostdlib -lshell32 -lvulkan-1 -Wl,-entry:__entry,-s
 STRIPC=llvm-strip
 RC=llvm-rc
 PACKC=upx
+GLSLC=glslc
 
 TARGET=pl.exe
 DBGTARGET=pl_debug.exe
@@ -49,16 +50,23 @@ OBJS:=$(OBJS) windowsResource.res
 TXTS:=$(TXTS) $(wildcard ./*.txt) ./Makefile ./README.md ./windowsResource.rc
 SRCS:=$(SRCS) $(wildcard ./*.h) $(wildcard ./*.c) $(wildcard ./*.vert) $(wildcard ./*.frag)
 CS:=$(CS) $(wildcard ./*.c)
+SHADERS:=$(SHADERS) $(wildcard ./*.vert) $(wildcard ./*.frag)
+SOBJS:=$(SOBJS) $(SHADERS:.vert=.spv) $(SHADERS:.frag=.spv)
 OBJS:=$(OBJS) $(CS:.c=.o)
 $(OBJS): Makefile
 
 include deps.txt
 
 # windres
-windowsResource.res: windowsResource.rc pl.ico
+windowsResource.res: windowsResource.rc pl.ico $(SOBJS)
 	$(RC) $<
 
 # Override defaults
+%.spv: %.vert
+	$(GLSLC) $< -o $@
+%.spv: %.frag
+	$(GLSLC) $< -o $@
+
 %.o: %.c
 	$(CC) $(CCINCFLAG) $(CCFLAGS) $< -o $@
 
@@ -95,7 +103,7 @@ debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
 .PHONY: cleanobjs
 cleanobjs:
-	rm -f ./*.o ./*.res
+	rm -f ./*.o ./*.res ./*.spv
 
 .PHONY: clean
 clean: cleanobjs

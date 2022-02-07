@@ -56,3 +56,9 @@ char* utf16to8perm( const u16* str );
 // Timing functions.
 u64 tickFrequency( void );
 u64 tickCount( void );
+
+// This function returns a resource as a char array, terminating on error. The
+// size is stored in size, if size is null, an error occurs. Resources must be
+// of type "PLCUSTOM".
+const char* loadBuiltin( const char* name, u32* size );
+
