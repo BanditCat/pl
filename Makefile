@@ -47,7 +47,7 @@ OBJS:=$(OBJS) windowsResource.res
 # Actual build rules.
 # These are supposed to be everything that might be edited.
 TXTS:=$(TXTS) $(wildcard ./*.txt) ./Makefile ./README.md ./windowsResource.rc
-SRCS:=$(SRCS) $(wildcard ./*.h) $(wildcard ./*.c)
+SRCS:=$(SRCS) $(wildcard ./*.h) $(wildcard ./*.c) $(wildcard ./*.vert) $(wildcard ./*.frag)
 CS:=$(CS) $(wildcard ./*.c)
 OBJS:=$(OBJS) $(CS:.c=.o)
 $(OBJS): Makefile
@@ -103,9 +103,7 @@ clean: cleanobjs
 
 .PHONY: backup
 backup: clean release
-	git add -A
-	git commit -a -m "$(shell cat ./message.txt)" || true
-	git push -u origin master
+	git add -A && git commit -a -m "$(shell cat ./message.txt)" && git push -u origin master
 
 .PHONY: depend
 depend:
