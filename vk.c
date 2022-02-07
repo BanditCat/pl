@@ -81,7 +81,9 @@ typedef struct {
   u32 numImages;
   VkImage* images;
   VkImageView* imageViews;
-  
+
+  VkExtent2D extent;
+  VkPipelineLayout pipelineLayout;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -103,8 +105,19 @@ void getFuncPointers( plvkState* vk ){
 #endif
 }
 
+// This function creates shader modules.
+VkShaderModule createModule( VkDevice vkd, const char* data, u32 size ){
+  VkShaderModuleCreateInfo ci = {};
+  ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  ci.codeSize = size;
+  ci.pCode = (const u32*)data;
+  VkShaderModule ret;
+  if( VK_SUCCESS != vkCreateShaderModule( vkd, &ci, NULL, &ret ) )
+    die( "Module creation failed." );
+  return ret;
+}
 
-// Choose window size.
+// This function chooses the render size.
 VkExtent2D getExtent( const VkSurfaceCapabilitiesKHR* caps, const guiInfo* g ) {
   if( caps->currentExtent.width != UINT32_MAX ){
     return caps->currentExtent;
@@ -169,6 +182,107 @@ u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
   score += gpu->limits.maxImageDimension2D;
   return score;
 }
+
+
+#ifdef DEBUG
+void plvkPrintInitInfo( void ){
+  plvkState* vk = state.vk;
+  printl( "\nInstance extensions:" );
+  for( u32 i = 0; i < vk->numExtensions; ++i ){
+    printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
+  }
+  printl( "\nLayers:" );
+  for( u32 i = 0; i < vk->numLayers; ++i ){
+    print( vk->layers[ i ].layerName ); print( ": " );
+    printl( vk->layers[ i ].description );
+  }
+  printl( "\nQueue families:" );
+  for( u32 i = 0; i < vk->numQueues; ++i ){
+    printInt( i );  print( ": " );
+    printInt( vk->queueFamilies[ i ].queueFlags ); printl( "" );
+  }
+  print( "Using queue family " ); printInt( vk->queueFamily ); printl( "." );
+  printl( "\nDevice extensions:" );
+  for( u32 i = 0; i < vk->numDeviceExtensions; ++i ){
+    printInt( i ); print( ": " );
+    printl( vk->deviceExtensions[ i ].extensionName );
+  }
+  printl( "\nSurface formats:" );
+  for( u32 i = 0; i < vk->numSurfaceFormats; ++i ){
+    printInt( i ); printl( ": " );
+    print( "       format: " );
+    printInt( vk->surfaceFormats[ i ].format ); endl();
+    print( "  color space: " );
+    printInt( vk->surfaceFormats[ i ].colorSpace ); endl();
+  }
+  printl( "\nSurface presentations:" );
+  for( u32 i = 0; i < vk->numSurfacePresentations; ++i ){
+    printInt( i ); print( ": " );
+    printInt( vk->surfacePresentations[ i ] ); endl();
+  }
+
+}
+#endif  
+
+void plvkPrintGPUs( void ){
+  plvkState* vk = state.vk;
+  printl( "GPUs:" );
+  u32 best = 0;
+  u32 bestScore = 0;
+  for( u32 i = 0; i < vk->numGPUs; ++i ){
+    u64 score = scoreGPU( vk->gpuProperties + i );
+    if( score > bestScore ){
+      best = i;
+      bestScore = score;
+    }
+    print( "GPU " );
+    printInt( i );
+    print( ": " );
+    print( vk->gpuProperties[ i ].deviceName );
+    print( " (score " );
+    printInt( score );
+    printl( ")" );
+  }
+  print( "Using GPU " ); printInt( vk->gpuIndex ); print( ": " );
+  print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
+}
+
+void plvkEnd( plvkStatep vkp ){
+  plvkState* vk = vkp;
+#ifdef DEBUG
+  vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
+#endif
+  vkDestroyPipelineLayout( vk->device, vk->pipelineLayout, NULL );
+  for( u32 i = 0; i < vk->numImages; ++i )
+    vkDestroyImageView( vk->device, vk->imageViews[ i ], NULL );
+  vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
+  vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
+  vkDestroyDevice( vk->device, NULL);
+  vkDestroyInstance( vk->instance, NULL );
+  if( vk->imageViews )
+    memfree( vk->imageViews );
+  if( vk->images )
+    memfree( vk->images );
+  if( vk->gpus )
+    memfree( vk->gpus );
+  if( vk->gpuProperties )
+    memfree( vk->gpuProperties );
+  if( vk->extensions )
+    memfree( vk->extensions );
+  if( vk->deviceExtensions )
+    memfree( vk->deviceExtensions );
+  if( vk->layers )
+    memfree( vk->layers );
+  if( vk->queueFamilies )
+    memfree( vk->queueFamilies );
+  if( vk->surfaceFormats )
+    memfree( vk->surfaceFormats );
+  if( vk->surfacePresentations )
+    memfree( vk->surfacePresentations );
+  memfree( vk );
+}
+
+
 
 void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   new( vk, plvkState );
@@ -368,14 +482,14 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
     die( "Double buffering not supported." );
   VkSurfaceFormatKHR sf = vk->surfaceFormats[ 0 ];
   VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR;
-  VkExtent2D extent = getExtent( &vk->surfaceCapabilities, gui );
+  vk->extent = getExtent( &vk->surfaceCapabilities, gui );
   VkSwapchainCreateInfoKHR scci = {};
   scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
   scci.surface = vk->surface;
   scci.minImageCount = 2;
   scci.imageFormat = sf.format;
   scci.imageColorSpace = sf.colorSpace;
-  scci.imageExtent = extent;
+  scci.imageExtent = vk->extent;
   scci.imageArrayLayers = 1;
   scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -412,103 +526,106 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
 					 &vk->imageViews[ i ] ) )
       die( "Failed to create image view." );
   }
+
+  // Shaders
+  VkShaderModule displayVertexShader;
+  VkShaderModule displayFragmentShader;
+  {
+    u32 ssize;
+    const char* shade = loadBuiltin( "frag", &ssize );
+    displayFragmentShader = createModule( vk->device, shade, ssize );
+    shade = loadBuiltin( "vert", &ssize );
+    displayVertexShader = createModule( vk->device, shade, ssize );
+
+  }
+
+  // Pipeline
+  {
+    VkPipelineShaderStageCreateInfo vci[ 2 ];
+    vci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vci[ 0 ].pNext = NULL;
+    vci[ 0 ].flags = 0;
+    vci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vci[ 0 ].module = displayVertexShader;
+    vci[ 0 ].pName = "main";
+    vci[ 0 ].pSpecializationInfo = NULL;
+    vci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vci[ 1 ].pNext = NULL;
+    vci[ 1 ].flags = 0;
+    vci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vci[ 1 ].module = displayFragmentShader;
+    vci[ 1 ].pName = "main";
+    vci[ 1 ].pSpecializationInfo = NULL;
+
+
+    VkPipelineVertexInputStateCreateInfo pvici = {};
+    pvici.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    VkPipelineInputAssemblyStateCreateInfo piasci = {};
+    piasci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    piasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    piasci.primitiveRestartEnable = VK_FALSE;
+
+    VkViewport viewport = {};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float) vk->extent.width;
+    viewport.height = (float) vk->extent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor = {};
+    scissor.extent = vk->extent;
+
+    VkPipelineViewportStateCreateInfo pvsci = {};
+    pvsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    pvsci.viewportCount = 1;
+    pvsci.pViewports = &viewport;
+    pvsci.scissorCount = 1;
+    pvsci.pScissors = &scissor;
+    
+    VkPipelineRasterizationStateCreateInfo prsci = {};
+    prsci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    prsci.depthClampEnable = VK_FALSE;
+    prsci.rasterizerDiscardEnable = VK_FALSE;
+    prsci.polygonMode = VK_POLYGON_MODE_FILL;
+    prsci.lineWidth = 1.0f;
+    prsci.cullMode = VK_CULL_MODE_BACK_BIT;
+    prsci.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    prsci.depthBiasEnable = VK_FALSE;
+
+    VkPipelineMultisampleStateCreateInfo pmsci = {};
+    pmsci.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    pmsci.sampleShadingEnable = VK_FALSE;
+    pmsci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    pmsci.minSampleShading = 1.0f;
+    pmsci.pSampleMask = NULL;
+    pmsci.alphaToCoverageEnable = VK_FALSE;
+    pmsci.alphaToOneEnable = VK_FALSE;
+
+    VkPipelineColorBlendAttachmentState cba = {};
+    cba.colorWriteMask =
+      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    cba.blendEnable = VK_FALSE;
+    
+
+    VkPipelineColorBlendStateCreateInfo pcbsci = {};
+    pcbsci.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    pcbsci.logicOpEnable = VK_FALSE;
+    pcbsci.attachmentCount = 1;
+    pcbsci.pAttachments = &cba;
+
+    VkPipelineLayoutCreateInfo plci = {};
+    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    if( VK_SUCCESS !=
+	vkCreatePipelineLayout( vk->device, &plci,
+				NULL, &vk->pipelineLayout ) )
+      die( "Pipeline creation failed." );
+
+    vkDestroyShaderModule( vk->device, displayFragmentShader, NULL );
+    vkDestroyShaderModule( vk->device, displayVertexShader, NULL );
+  }
 }
-
-
-#ifdef DEBUG
-  void plvkPrintInitInfo( void ){
-    plvkState* vk = state.vk;
-    printl( "\nInstance extensions:" );
-    for( u32 i = 0; i < vk->numExtensions; ++i ){
-      printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
-    }
-    printl( "\nLayers:" );
-    for( u32 i = 0; i < vk->numLayers; ++i ){
-      print( vk->layers[ i ].layerName ); print( ": " );
-      printl( vk->layers[ i ].description );
-    }
-    printl( "\nQueue families:" );
-    for( u32 i = 0; i < vk->numQueues; ++i ){
-      printInt( i );  print( ": " );
-      printInt( vk->queueFamilies[ i ].queueFlags ); printl( "" );
-    }
-    print( "Using queue family " ); printInt( vk->queueFamily ); printl( "." );
-    printl( "\nDevice extensions:" );
-    for( u32 i = 0; i < vk->numDeviceExtensions; ++i ){
-      printInt( i ); print( ": " );
-      printl( vk->deviceExtensions[ i ].extensionName );
-    }
-    printl( "\nSurface formats:" );
-    for( u32 i = 0; i < vk->numSurfaceFormats; ++i ){
-      printInt( i ); printl( ": " );
-      print( "       format: " );
-      printInt( vk->surfaceFormats[ i ].format ); endl();
-      print( "  color space: " );
-      printInt( vk->surfaceFormats[ i ].colorSpace ); endl();
-    }
-    printl( "\nSurface presentations:" );
-    for( u32 i = 0; i < vk->numSurfacePresentations; ++i ){
-      printInt( i ); print( ": " );
-      printInt( vk->surfacePresentations[ i ] ); endl();
-    }
-
-  }
-#endif  
-
-  void plvkPrintGPUs( void ){
-    plvkState* vk = state.vk;
-    printl( "GPUs:" );
-    u32 best = 0;
-    u32 bestScore = 0;
-    for( u32 i = 0; i < vk->numGPUs; ++i ){
-      u64 score = scoreGPU( vk->gpuProperties + i );
-      if( score > bestScore ){
-	best = i;
-	bestScore = score;
-      }
-      print( "GPU " );
-      printInt( i );
-      print( ": " );
-      print( vk->gpuProperties[ i ].deviceName );
-      print( " (score " );
-      printInt( score );
-      printl( ")" );
-    }
-    print( "Using GPU " ); printInt( vk->gpuIndex ); print( ": " );
-    print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
-  }
-
-  void plvkEnd( plvkStatep vkp ){
-    plvkState* vk = vkp;
-#ifdef DEBUG
-    vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
-#endif
-    for( u32 i = 0; i < vk->numImages; ++i )
-      vkDestroyImageView( vk->device, vk->imageViews[ i ], NULL );
-    vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
-    vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
-    vkDestroyDevice( vk->device, NULL);
-    vkDestroyInstance( vk->instance, NULL );
-    if( vk->imageViews )
-      memfree( vk->imageViews );
-    if( vk->images )
-      memfree( vk->images );
-    if( vk->gpus )
-      memfree( vk->gpus );
-    if( vk->gpuProperties )
-      memfree( vk->gpuProperties );
-    if( vk->extensions )
-      memfree( vk->extensions );
-    if( vk->deviceExtensions )
-      memfree( vk->deviceExtensions );
-    if( vk->layers )
-      memfree( vk->layers );
-    if( vk->queueFamilies )
-      memfree( vk->queueFamilies );
-    if( vk->surfaceFormats )
-      memfree( vk->surfaceFormats );
-    if( vk->surfacePresentations )
-      memfree( vk->surfacePresentations );
-    memfree( vk );
-  }
-

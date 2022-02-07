@@ -3,7 +3,7 @@
 //                                                                            //
 // This program is free software: you can redistribute it and/or modify       //
 // it under the terms of the GNU Affero General Public License as published   //
-// by the Free Software Foundation, either version 3 of the License, or       // 
+// by the Free Software Foundation, either version 3 of the License, or       //
 // (at your option) any later version.                                        //
 //                                                                            //
 // This program is distributed in the hope that it will be useful,            //
@@ -204,7 +204,6 @@ const char* loadBuiltin( const char* name, u32* size ){
   if( NULL == size )
     die( "Null pointer passed to loadBuiltin." );
   *size = SizeofResource( NULL, r );
-  printInt( *size );
   if( !(*size) )
     die( "Zero size resource." );
   if( NULL == res )

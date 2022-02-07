@@ -20,7 +20,7 @@
 
 
 101 ICON "pl.ico"
-vert PLCUSTOM "mainVert.vert"
+vert PLCUSTOM "mainVert.spv"
 frag PLCUSTOM "mainFrag.spv"
 
 
