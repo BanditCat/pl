@@ -102,7 +102,7 @@ clean: cleanobjs
 	rm -f ./$(TARGET) ./$(DBGTARGET)
 
 .PHONY: backup
-backup: clean release
+backup: release
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
