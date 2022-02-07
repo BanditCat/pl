@@ -111,7 +111,7 @@ clean:
 
 
 .PHONY: backup
-backup: clean $(RES) release releasedebug
+backup: release releasedebug
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
