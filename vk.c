@@ -3,7 +3,7 @@
 //                                                                            //
 // This program is free software: you can redistribute it and/or modify       //
 // it under the terms of the GNU Affero General Public License as published   //
-// by the Free Software Foundation, either version 3 of the License, or       // 
+// by the Free Software Foundation, either version 3 of the License, or       //
 // (at your option) any later version.                                        //
 //                                                                            //
 // This program is distributed in the hope that it will be useful,            //
@@ -27,7 +27,9 @@
 
 // Requirements
 #ifdef DEBUG
-const char* requiredExtensions[] = { "VK_KHR_surface", "VK_KHR_win32_surface", VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+const char* requiredExtensions[] =
+  { "VK_KHR_surface", "VK_KHR_win32_surface",
+    VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
 #else
 const char* requiredExtensions[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
 #endif
@@ -36,8 +38,12 @@ const char* requiredLayers[] = { "VK_LAYER_KHRONOS_validation" };
 #else
 const char* requiredLayers[] = {};
 #endif
-const u32 numRequiredExtensions = sizeof( requiredExtensions ) / sizeof( char* );
+const char* requiredDeviceExtensions[] = { "VK_KHR_swapchain" };
+const u32 numRequiredExtensions =
+  sizeof( requiredExtensions ) / sizeof( char* );
 const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
+const u32 numRequiredDeviceExtensions =
+  sizeof( requiredDeviceExtensions ) / sizeof( char* );
 
 
 // Instance wide state.
@@ -51,16 +57,25 @@ typedef struct {
   u32 numLayers;
   VkLayerProperties* layers;
   u32 numQueues;
+  VkQueue queue;
   VkQueueFamilyProperties* queueFamilies;
   VkSurfaceKHR surface;
+
   u32 gpuIndex;
   VkPhysicalDevice gpu;
-  VkQueue queue;
   VkPhysicalDeviceProperties* selectedGpuProperties;
+  VkPhysicalDeviceFeatures selectedGpuFeatures;
+  u32 numDeviceExtensions;
+  VkExtensionProperties* deviceExtensions;
   u32 queueFamily;
   VkDevice device;
   u32 debugLevel;
-  
+
+  VkSurfaceCapabilitiesKHR surfaceCapabilities;
+  u32 numSurfaceFormats;
+  VkSurfaceFormatKHR* surfaceFormats;
+  u32 numSurfacePresentations;
+  VkPresentModeKHR* surfacePresentations;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -84,10 +99,11 @@ void getFuncPointers( plvkState* vk ){
 
 // Validation layer callback.
 #ifdef DEBUG
-VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb( VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-					    VkDebugUtilsMessageTypeFlagsEXT type,
-					    const VkDebugUtilsMessengerCallbackDataEXT* callback,
-					    void* user ) {
+VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb
+( VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+  VkDebugUtilsMessageTypeFlagsEXT type,
+  const VkDebugUtilsMessengerCallbackDataEXT* callback,
+  void* user ) {
   (void)user;
   if( (u32)severity >= ((plvkState*)state.vk)->debugLevel ){
     print( "validation " );
@@ -137,15 +153,17 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   // Get extensions.
   vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, NULL );
   vk->extensions = newae( VkExtensionProperties, vk->numExtensions );
-  vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, vk->extensions );
+  vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions,
+					  vk->extensions );
   for( u32 i = 0; i < numRequiredExtensions; ++i ){
     bool has = 0;
     for( u32 j = 0; j < vk->numExtensions; j++ ){
-      if( !strcomp( requiredExtensions[ i ], vk->extensions[ j ].extensionName ) )
+      if( !strcomp( requiredExtensions[ i ],
+		    vk->extensions[ j ].extensionName ) )
 	has = 1;
     }
     if( !has )
-      die( "Required extension not found!" );
+      die( "Required instance extension not found!" );
   }
 
   // Get layers.
@@ -194,12 +212,14 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
 #endif
 
   // Enumerate GPUs and pick one.
-  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGPUs, NULL ) )
+  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance,
+						&vk->numGPUs, NULL ) )
     die( "Failed to count gpus." );
   if( !vk->numGPUs )
     die( "No GPUs found :(" );
   vk->gpus = newae( VkPhysicalDevice, vk->numGPUs );
-  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGPUs, vk->gpus ) )
+  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGPUs,
+						vk->gpus ) )
     die( "Failed to enumerate gpus." );
   vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGPUs );
   for( u32 i = 0; i < vk->numGPUs; ++i )
@@ -215,22 +235,44 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   }
   if( whichGPU != (u32)-1 ){
     if( whichGPU >= vk->numGPUs )
-      die( "Non-existent gpu selected." );
+      die( "Nonexistent gpu selected." );
     vk->gpuIndex = whichGPU;
   } else{
     vk->gpuIndex = best;
   }
+  // Get selected gpu information.
   vk->gpu = vk->gpus[ vk->gpuIndex ];
   vk->selectedGpuProperties = vk->gpuProperties + vk->gpuIndex;
+  vkGetPhysicalDeviceFeatures( vk->gpu, &vk->selectedGpuFeatures );
+  vkEnumerateDeviceExtensionProperties( vk->gpu, NULL,
+					&vk->numDeviceExtensions, NULL );
+  // Check device extensions.
+  vk->deviceExtensions = newae( VkExtensionProperties,
+				vk->numDeviceExtensions );
+  vkEnumerateDeviceExtensionProperties( vk->gpu, NULL,
+					&vk->numDeviceExtensions,
+					vk->deviceExtensions );
+  for( u32 i = 0; i < numRequiredDeviceExtensions; ++i ){
+    bool has = 0;
+    for( u32 j = 0; j < vk->numDeviceExtensions; j++ ){
+      if( !strcomp( requiredDeviceExtensions[ i ],
+		    vk->deviceExtensions[ j ].extensionName ) )
+	has = 1;
+    }
+    if( !has )
+      die( "Required device extension not found!" );
+  }
 
   // Get queue families
   vk->numQueues = 0;
   vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues, NULL );
   vk->queueFamilies = newae( VkQueueFamilyProperties, vk->numQueues );
-  vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues, vk->queueFamilies );
+  vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues,
+					    vk->queueFamilies );
   bool found = 0;
   for( u32 i = 0; i < vk->numQueues; ++i ){
-    if( !found && ( vk->queueFamilies[ i ].queueFlags & VK_QUEUE_GRAPHICS_BIT ) ){
+    if( !found &&
+	( vk->queueFamilies[ i ].queueFlags & VK_QUEUE_GRAPHICS_BIT ) ){
       found = 1;
       vk->queueFamily = i;
     }
@@ -244,7 +286,8 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   sci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
   sci.hwnd = gui->gui->hWnd;
   sci.hinstance = GetModuleHandle( NULL ); 
-  if( VK_SUCCESS != vkCreateWin32SurfaceKHR( vk->instance, &sci, NULL, &vk->surface ) != VK_SUCCESS )
+  if( VK_SUCCESS != vkCreateWin32SurfaceKHR( vk->instance, &sci, NULL,
+					     &vk->surface ) )
     die( "Win32 surface creation failed." );
   VkBool32 supported = 0;
   vkGetPhysicalDeviceSurfaceSupportKHR( vk->gpu, 0, vk->surface, &supported );
@@ -265,28 +308,59 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   dci.pQueueCreateInfos = &qci;
   dci.queueCreateInfoCount = 1;
   dci.pEnabledFeatures = &deviceFeatures;
+  dci.enabledExtensionCount = numRequiredDeviceExtensions;
+  dci.ppEnabledExtensionNames = requiredDeviceExtensions;
+  
   vk->device = NULL;
-  if( VK_SUCCESS != vkCreateDevice( vk->gpu, &dci, NULL, &vk->device ) != VK_SUCCESS )
+  if( VK_SUCCESS != vkCreateDevice( vk->gpu, &dci, NULL, &vk->device ) )
     die( "Device creation failed." );
   vkGetDeviceQueue( vk->device, vk->queueFamily, 0, &vk->queue );
 
+  // Get device surface capabilities.
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
+					     &vk->surfaceCapabilities );
+  vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu,
+					vk->surface,
+					&vk->numSurfaceFormats, NULL );
+  vk->surfaceFormats = newae( VkSurfaceFormatKHR, vk->numSurfaceFormats );
+  vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu, vk->surface,
+					&vk->numSurfaceFormats,
+					vk->surfaceFormats );
+ 
 }
+
 #ifdef DEBUG
 void plvkPrintInitInfo( void ){
   plvkState* vk = state.vk;
-  printl( "Extensions:" );
+  printl( "\nInstance extensions:" );
   for( u32 i = 0; i < vk->numExtensions; ++i ){
     printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
   }
-  printl( "Layers:" );
+  printl( "\nLayers:" );
   for( u32 i = 0; i < vk->numLayers; ++i ){
-    print( vk->layers[ i ].layerName ); print( ": " ); printl( vk->layers[ i ].description );
+    print( vk->layers[ i ].layerName ); print( ": " );
+    printl( vk->layers[ i ].description );
   }
-  printl( "Queue families:" );
+  printl( "\nQueue families:" );
   for( u32 i = 0; i < vk->numQueues; ++i ){
-    printInt( i );  print( ": " ); printInt( vk->queueFamilies[ i ].queueFlags ); printl( "" );
+    printInt( i );  print( ": " );
+    printInt( vk->queueFamilies[ i ].queueFlags ); printl( "" );
   }
   print( "Using queue family " ); printInt( vk->queueFamily ); printl( "." );
+  printl( "\nDevice extensions:" );
+  for( u32 i = 0; i < vk->numDeviceExtensions; ++i ){
+    printInt( i ); print( ": " );
+    printl( vk->deviceExtensions[ i ].extensionName );
+  }
+  printl( "\nSurface formats:" );
+  for( u32 i = 0; i < vk->numSurfaceFormats; ++i ){
+    printInt( i ); printl( ": " );
+    print( "       format: " );
+    printInt( vk->surfaceFormats[ i ].format ); endl();
+    print( "  color space: " );
+    printInt( vk->surfaceFormats[ i ].colorSpace ); endl();
+  }
+
 }
 #endif  
 
@@ -325,10 +399,14 @@ void plvkEnd( plvkStatep vkp ){
     memfree( vk->gpuProperties );
   if( vk->extensions )
     memfree( vk->extensions );
+  if( vk->deviceExtensions )
+    memfree( vk->deviceExtensions );
   if( vk->layers )
     memfree( vk->layers );
   if( vk->queueFamilies )
     memfree( vk->queueFamilies );
+  if( vk->surfaceFormats )
+    memfree( vk->surfaceFormats );
   vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
   vkDestroyDevice( vk->device, NULL);
   vkDestroyInstance( vk->instance, NULL );
