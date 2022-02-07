@@ -33,7 +33,7 @@
  '(shell-file-name "C:\\Program Files\\Git\\bin\\bash.exe")
  '(show-paren-mode t)
  '(tab-bar-mode nil)
- '(tab-line-close-button-show nil)
+ '(tab-line-close-button-show t)
  '(tab-line-new-button-show nil)
  '(tab-line-tabs-function 'tab-line-tabs-window-buffers))
 (custom-set-faces
@@ -47,12 +47,15 @@
  '(tab-line-tab-current ((t (:inherit tab-line-tab :background "medium blue"))))
  '(tab-line-tab-inactive ((t (:inherit tab-line-tab :background "black")))))
 
+(set-face-attribute 'default nil :height 107)
+
 (defun bandit-run (&optional arg) (interactive)
        (bandit-save)
        (cond
 	((eq major-mode 'emacs-lisp-mode) (eval-buffer) (message "ran"))
-	((eq major-mode 'c-mode) (compile (concat "make " arg)))
-	((eq major-mode 'makefile-gmake-mode) (compile (concat "make " arg)))
+	((eq major-mode 'c-mode) (compile (concat "make -j 24 " arg)))
+	((eq major-mode 'makefile-gmake-mode)
+	 (compile (concat "make -j 24 " arg)))
 	(t (message "Unsupported language"))))
 
 (defun bandit-copypaste () (interactive)
@@ -117,10 +120,10 @@
 (global-set-key (kbd "<f10>") (lambda () (interactive) (uncomment-region (mark) (point))))
 
 (global-set-key (kbd "C-a") 'mark-whole-buffer)
-(global-set-key (kbd "C-f") 'isearch-forward)
+(global-set-key (kbd "C-f") 'isearch-forward-regexp)
 (define-key isearch-mode-map "\C-f" 'isearch-repeat-forward)
 (global-set-key (kbd "C-S-f") (lambda () (interactive) (multi-occur-in-matching-buffers ".*" (read-string "Regexp:"))))
-(global-set-key (kbd "C-S-r") 'query-replace)
+(global-set-key (kbd "C-S-r") 'query-replace-regexp)
 
 
 (add-to-list 'exec-path "C:/root/bin/")
@@ -138,3 +141,5 @@
 
 (setq backup-directory-alist
       `((".*" . "~/backups" )))
+
+(load-library "glsl-mode")
