@@ -15,26 +15,17 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Utilities.                                                                 //
+// Display vertex shader.                                                     //
 ////////////////////////////////////////////////////////////////////////////////
 
+#version 460
 
-#define memcopy( d, s, t, c ) memcpy( d, s, sizeof( t ) * c )
 
-// String functions.
-void strcopy( void* dst, const void* src );
-// -1 if x < y, 1 if x > y, 0 if x == y.
-int strcomp( const char* x, const char* y );
-// True iff str starts with init.
-bool strStartsWith( const char* init, const char* str );
-// Puts a number in a string, with a trailing nul character, writing at most count bytes.
-void intToString( char* s, u64 n, u64 count );
-void strreverse( char* s );
-// Parses at most 17 digits and returns the corresping integer. The provided pointer is moved to the first non-digit char.
-u64 parseInt( const char** s );
-
-// Printing functions.
-void printInt( u64 n );
-void printIntWithPrefix( u64 n, u32 minWidth );
-void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth );
-void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr );
+vec2 positions[3] = vec2[](
+			   vec2(0.0, -0.5),
+			   vec2(0.5, 0.5),
+			   vec2(-0.5, 0.5)
+			   );
+void main() {
+  gl_Position = vec4( positions[ gl_VertexIndex ], 0.0, 1.0 );
+}

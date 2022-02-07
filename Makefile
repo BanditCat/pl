@@ -3,7 +3,7 @@
 ##                                                                            ##
 ## This program is free software: you can redistribute it and#or modify       ##
 ## it under the terms of the GNU Affero General Public License as published   ##
-## by the Free Software Foundation, either version 3 of the License, or       ## 
+## by the Free Software Foundation, either version 3 of the License, or       ##
 ## (at your option) any later version.                                        ##
 ##                                                                            ##
 ## This program is distributed in the hope that it will be useful,            ##
@@ -103,7 +103,6 @@ clean: cleanobjs
 
 .PHONY: backup
 backup: clean release
-	make cleanobjs releasedebug
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
@@ -113,9 +112,9 @@ depend:
 	clang $(CCINCFLAG) -MM $(CS) > ./deps.txt
 
 .PHONY: run
-run: 
+run: $(TARGET)
 	./$(TARGET)
 
 .PHONY: dbgrun
-dbgrun: 
+dbgrun: ./$(DBGTARGET)
 	./$(DBGTARGET)

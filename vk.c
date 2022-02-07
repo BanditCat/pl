@@ -78,6 +78,10 @@ typedef struct {
   VkPresentModeKHR* surfacePresentations;
 
   VkSwapchainKHR swap;
+  u32 numImages;
+  VkImage* images;
+  VkImageView* imageViews;
+  
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -366,7 +370,6 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR;
   VkExtent2D extent = getExtent( &vk->surfaceCapabilities, gui );
   VkSwapchainCreateInfoKHR scci = {};
-  printInt( vk->surfaceCapabilities.maxImageCount );printl("foo");
   scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
   scci.surface = vk->surface;
   scci.minImageCount = 2;
@@ -384,100 +387,128 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
   scci.clipped = VK_TRUE;
   scci.oldSwapchain = VK_NULL_HANDLE;
   if( VK_SUCCESS != vkCreateSwapchainKHR( vk->device, &scci, NULL, &vk->swap ) )
-    die( "Device creation failed." );
-
-
+    die( "Swapchain creation failed." );
+  vkGetSwapchainImagesKHR( vk->device, vk->swap, &vk->numImages, NULL );
+  vk->images = newae( VkImage, vk->numImages );
+  vkGetSwapchainImagesKHR( vk->device, vk->swap, &vk->numImages, vk->images );
+  // Image views.
+  vk->imageViews = newae( VkImageView, vk->numImages );
+  for( u32 i = 0; i < vk->numImages; ++i ){
+    VkImageViewCreateInfo ivci = {};
+    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    ivci.image = vk->images[ i ];
+    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    ivci.format = sf.format;
+    ivci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivci.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    ivci.subresourceRange.baseMipLevel = 0;
+    ivci.subresourceRange.levelCount = 1;
+    ivci.subresourceRange.baseArrayLayer = 0;
+    ivci.subresourceRange.layerCount = 1;
+    if( VK_SUCCESS != vkCreateImageView( vk->device, &ivci, NULL,
+					 &vk->imageViews[ i ] ) )
+      die( "Failed to create image view." );
+  }
 }
+
 
 #ifdef DEBUG
-void plvkPrintInitInfo( void ){
-  plvkState* vk = state.vk;
-  printl( "\nInstance extensions:" );
-  for( u32 i = 0; i < vk->numExtensions; ++i ){
-    printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
-  }
-  printl( "\nLayers:" );
-  for( u32 i = 0; i < vk->numLayers; ++i ){
-    print( vk->layers[ i ].layerName ); print( ": " );
-    printl( vk->layers[ i ].description );
-  }
-  printl( "\nQueue families:" );
-  for( u32 i = 0; i < vk->numQueues; ++i ){
-    printInt( i );  print( ": " );
-    printInt( vk->queueFamilies[ i ].queueFlags ); printl( "" );
-  }
-  print( "Using queue family " ); printInt( vk->queueFamily ); printl( "." );
-  printl( "\nDevice extensions:" );
-  for( u32 i = 0; i < vk->numDeviceExtensions; ++i ){
-    printInt( i ); print( ": " );
-    printl( vk->deviceExtensions[ i ].extensionName );
-  }
-  printl( "\nSurface formats:" );
-  for( u32 i = 0; i < vk->numSurfaceFormats; ++i ){
-    printInt( i ); printl( ": " );
-    print( "       format: " );
-    printInt( vk->surfaceFormats[ i ].format ); endl();
-    print( "  color space: " );
-    printInt( vk->surfaceFormats[ i ].colorSpace ); endl();
-  }
-  printl( "\nSurface presentations:" );
-  for( u32 i = 0; i < vk->numSurfacePresentations; ++i ){
-    printInt( i ); print( ": " );
-    printInt( vk->surfacePresentations[ i ] ); endl();
-  }
+  void plvkPrintInitInfo( void ){
+    plvkState* vk = state.vk;
+    printl( "\nInstance extensions:" );
+    for( u32 i = 0; i < vk->numExtensions; ++i ){
+      printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
+    }
+    printl( "\nLayers:" );
+    for( u32 i = 0; i < vk->numLayers; ++i ){
+      print( vk->layers[ i ].layerName ); print( ": " );
+      printl( vk->layers[ i ].description );
+    }
+    printl( "\nQueue families:" );
+    for( u32 i = 0; i < vk->numQueues; ++i ){
+      printInt( i );  print( ": " );
+      printInt( vk->queueFamilies[ i ].queueFlags ); printl( "" );
+    }
+    print( "Using queue family " ); printInt( vk->queueFamily ); printl( "." );
+    printl( "\nDevice extensions:" );
+    for( u32 i = 0; i < vk->numDeviceExtensions; ++i ){
+      printInt( i ); print( ": " );
+      printl( vk->deviceExtensions[ i ].extensionName );
+    }
+    printl( "\nSurface formats:" );
+    for( u32 i = 0; i < vk->numSurfaceFormats; ++i ){
+      printInt( i ); printl( ": " );
+      print( "       format: " );
+      printInt( vk->surfaceFormats[ i ].format ); endl();
+      print( "  color space: " );
+      printInt( vk->surfaceFormats[ i ].colorSpace ); endl();
+    }
+    printl( "\nSurface presentations:" );
+    for( u32 i = 0; i < vk->numSurfacePresentations; ++i ){
+      printInt( i ); print( ": " );
+      printInt( vk->surfacePresentations[ i ] ); endl();
+    }
 
-}
+  }
 #endif  
 
-void plvkPrintGPUs( void ){
-  plvkState* vk = state.vk;
-  printl( "GPUs:" );
-  u32 best = 0;
-  u32 bestScore = 0;
-  for( u32 i = 0; i < vk->numGPUs; ++i ){
-    u64 score = scoreGPU( vk->gpuProperties + i );
-    if( score > bestScore ){
-      best = i;
-      bestScore = score;
+  void plvkPrintGPUs( void ){
+    plvkState* vk = state.vk;
+    printl( "GPUs:" );
+    u32 best = 0;
+    u32 bestScore = 0;
+    for( u32 i = 0; i < vk->numGPUs; ++i ){
+      u64 score = scoreGPU( vk->gpuProperties + i );
+      if( score > bestScore ){
+	best = i;
+	bestScore = score;
+      }
+      print( "GPU " );
+      printInt( i );
+      print( ": " );
+      print( vk->gpuProperties[ i ].deviceName );
+      print( " (score " );
+      printInt( score );
+      printl( ")" );
     }
-    print( "GPU " );
-    printInt( i );
-    print( ": " );
-    print( vk->gpuProperties[ i ].deviceName );
-    print( " (score " );
-    printInt( score );
-    printl( ")" );
+    print( "Using GPU " ); printInt( vk->gpuIndex ); print( ": " );
+    print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
   }
-  print( "Using GPU " ); printInt( vk->gpuIndex ); print( ": " );
-  print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
-}
 
-void plvkEnd( plvkStatep vkp ){
-  plvkState* vk = vkp;
+  void plvkEnd( plvkStatep vkp ){
+    plvkState* vk = vkp;
 #ifdef DEBUG
-  vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
+    vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
-
-  vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
-  vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
-  vkDestroyDevice( vk->device, NULL);
-  vkDestroyInstance( vk->instance, NULL );
-  if( vk->gpus )
-    memfree( vk->gpus );
-  if( vk->gpuProperties )
-    memfree( vk->gpuProperties );
-  if( vk->extensions )
-    memfree( vk->extensions );
-  if( vk->deviceExtensions )
-    memfree( vk->deviceExtensions );
-  if( vk->layers )
-    memfree( vk->layers );
-  if( vk->queueFamilies )
-    memfree( vk->queueFamilies );
-  if( vk->surfaceFormats )
-    memfree( vk->surfaceFormats );
-  if( vk->surfacePresentations )
-    memfree( vk->surfacePresentations );
-  memfree( vk );
-}
+    for( u32 i = 0; i < vk->numImages; ++i )
+      vkDestroyImageView( vk->device, vk->imageViews[ i ], NULL );
+    vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
+    vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
+    vkDestroyDevice( vk->device, NULL);
+    vkDestroyInstance( vk->instance, NULL );
+    if( vk->imageViews )
+      memfree( vk->imageViews );
+    if( vk->images )
+      memfree( vk->images );
+    if( vk->gpus )
+      memfree( vk->gpus );
+    if( vk->gpuProperties )
+      memfree( vk->gpuProperties );
+    if( vk->extensions )
+      memfree( vk->extensions );
+    if( vk->deviceExtensions )
+      memfree( vk->deviceExtensions );
+    if( vk->layers )
+      memfree( vk->layers );
+    if( vk->queueFamilies )
+      memfree( vk->queueFamilies );
+    if( vk->surfaceFormats )
+      memfree( vk->surfaceFormats );
+    if( vk->surfacePresentations )
+      memfree( vk->surfacePresentations );
+    memfree( vk );
+  }
 
