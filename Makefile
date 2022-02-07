@@ -106,7 +106,6 @@ backup: release
 	git add -A
 	git commit -a -m "$(shell cat ./message.txt)" || true
 	git push -u origin master
-	touch ./Makefile
 
 .PHONY: depend
 depend:
