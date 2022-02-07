@@ -81,9 +81,15 @@ typedef struct {
   u32 numImages;
   VkImage* images;
   VkImageView* imageViews;
+  VkFramebuffer* framebuffers; 
 
   VkExtent2D extent;
   VkPipelineLayout pipelineLayout;
+  VkRenderPass renderPass;
+  VkPipeline pipeline;
+
+  VkCommandPool pool;
+  VkCommandBuffer* commandBuffers;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -252,13 +258,22 @@ void plvkEnd( plvkStatep vkp ){
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
+  vkDestroyCommandPool( vk->device, vk->pool, NULL );
+  vkDestroyPipeline( vk->device, vk->pipeline, NULL );
+  vkDestroyRenderPass( vk->device, vk->renderPass, NULL );
   vkDestroyPipelineLayout( vk->device, vk->pipelineLayout, NULL );
-  for( u32 i = 0; i < vk->numImages; ++i )
+  for( u32 i = 0; i < vk->numImages; ++i ){
+    vkDestroyFramebuffer( vk->device, vk->framebuffers[ i ], NULL );
     vkDestroyImageView( vk->device, vk->imageViews[ i ], NULL );
+  }
   vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
   vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
   vkDestroyDevice( vk->device, NULL);
   vkDestroyInstance( vk->instance, NULL );
+  if( vk->commandBuffers )
+    memfree( vk->commandBuffers );
+  if( vk->framebuffers )
+    memfree( vk->framebuffers );
   if( vk->imageViews )
     memfree( vk->imageViews );
   if( vk->images )
@@ -541,21 +556,21 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
 
   // Pipeline
   {
-    VkPipelineShaderStageCreateInfo vci[ 2 ];
-    vci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vci[ 0 ].pNext = NULL;
-    vci[ 0 ].flags = 0;
-    vci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vci[ 0 ].module = displayVertexShader;
-    vci[ 0 ].pName = "main";
-    vci[ 0 ].pSpecializationInfo = NULL;
-    vci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vci[ 1 ].pNext = NULL;
-    vci[ 1 ].flags = 0;
-    vci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    vci[ 1 ].module = displayFragmentShader;
-    vci[ 1 ].pName = "main";
-    vci[ 1 ].pSpecializationInfo = NULL;
+    VkPipelineShaderStageCreateInfo pssci[ 2 ];
+    pssci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pssci[ 0 ].pNext = NULL;
+    pssci[ 0 ].flags = 0;
+    pssci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    pssci[ 0 ].module = displayVertexShader;
+    pssci[ 0 ].pName = "main";
+    pssci[ 0 ].pSpecializationInfo = NULL;
+    pssci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pssci[ 1 ].pNext = NULL;
+    pssci[ 1 ].flags = 0;
+    pssci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pssci[ 1 ].module = displayFragmentShader;
+    pssci[ 1 ].pName = "main";
+    pssci[ 1 ].pSpecializationInfo = NULL;
 
 
     VkPipelineVertexInputStateCreateInfo pvici = {};
@@ -625,6 +640,86 @@ void plvkInit( u32 whichGPU, guiInfo* gui, u32 debugLevel ){
 				NULL, &vk->pipelineLayout ) )
       die( "Pipeline creation failed." );
 
+    VkAttachmentDescription colorAttachment = {};
+    colorAttachment.format = sf.format;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentRef = {};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+    
+    VkRenderPassCreateInfo rpci = {};
+    rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    rpci.attachmentCount = 1;
+    rpci.pAttachments = &colorAttachment;
+    rpci.subpassCount = 1;
+    rpci.pSubpasses = &subpass;
+
+    if( VK_SUCCESS != vkCreateRenderPass( vk->device, &rpci,
+					  NULL, &vk->renderPass ) ) 
+      die( "Render pass creation failed." );
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = pssci;
+    pipelineInfo.pVertexInputState = &pvici;
+    pipelineInfo.pInputAssemblyState = &piasci;
+    pipelineInfo.pViewportState = &pvsci;
+    pipelineInfo.pRasterizationState = &prsci;
+    pipelineInfo.pMultisampleState = &pmsci;
+    pipelineInfo.pColorBlendState = &pcbsci;
+    pipelineInfo.layout = vk->pipelineLayout;
+    pipelineInfo.renderPass = vk->renderPass;
+    pipelineInfo.subpass = 0;
+
+
+    if( VK_SUCCESS != vkCreateGraphicsPipelines( vk->device, VK_NULL_HANDLE,
+						 1, &pipelineInfo, NULL,
+						 &vk->pipeline ) )
+      die( "Pipeline creation failed." );
+
+    // Framebuffers
+    vk->framebuffers = newae( VkFramebuffer, vk->numImages );
+    for( u32 i = 0; i < vk->numImages; ++i ){
+      VkImageView attachments[ 1 ] = { vk->imageViews[ i ] };
+      VkFramebufferCreateInfo fbci = {};
+      fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+      fbci.renderPass = vk->renderPass;
+      fbci.attachmentCount = 1;
+      fbci.pAttachments = attachments;
+      fbci.width = vk->extent.width;
+      fbci.height = vk->extent.height;
+      fbci.layers = 1;
+      if( VK_SUCCESS != vkCreateFramebuffer( vk->device, &fbci,
+					     NULL, &vk->framebuffers[ i ] ) )
+	die( "Framebuffer creation failed." );
+    }
+
+    // Command pool.
+    {
+      VkCommandPoolCreateInfo poolInfo = {};
+      poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+      poolInfo.queueFamilyIndex = 0;
+      if( VK_SUCCESS != vkCreateCommandPool( vk->device, &poolInfo, NULL,
+					     &vk->pool ) )
+	die( "Command pool creation failed." );
+
+      vk->commandBuffers = newae( VkCommandBuffer, vk->numImages );
+    }
+    
+    // Cleanup
     vkDestroyShaderModule( vk->device, displayFragmentShader, NULL );
     vkDestroyShaderModule( vk->device, displayVertexShader, NULL );
   }
