@@ -711,14 +711,42 @@ void plvkInit( u32 whichGPU, void* vgui, u32 debugLevel ){
 
     // Command pool.
     {
-      VkCommandPoolCreateInfo poolInfo = {};
-      poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-      poolInfo.queueFamilyIndex = 0;
-      if( VK_SUCCESS != vkCreateCommandPool( vk->device, &poolInfo, NULL,
+      VkCommandPoolCreateInfo cpci = {};
+      cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+      cpci.queueFamilyIndex = 0;
+      if( VK_SUCCESS != vkCreateCommandPool( vk->device, &cpci, NULL,
 					     &vk->pool ) )
 	die( "Command pool creation failed." );
 
       vk->commandBuffers = newae( VkCommandBuffer, vk->numImages );
+
+      VkCommandBufferAllocateInfo cbai = {};
+      cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+      cbai.commandPool = vk->pool;
+      cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+      cbai.commandBufferCount = vk->numImages;
+      if( VK_SUCCESS != vkAllocateCommandBuffers( vk->device, &cbai,
+						  vk->commandBuffers ) )
+	die( "Command buffer creation failed." );
+    }
+
+    // Render passes.
+    for( u32 i = 0; i < vk->numImages; i++ ){
+      VkCommandBufferBeginInfo cbbi = {};
+      cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+      if( VK_SUCCESS != vkBeginCommandBuffer( vk->commandBuffers[ i ], &cbbi ) )
+	die( "Command buffer begining failed." );
+
+      VkRenderPassBeginInfo rpbi = {};
+      rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+      rpbi.renderPass = vk->renderPass;
+      rpbi.framebuffer = vk->framebuffers[ i ];
+      rpbi.renderArea.extent = vk->extent;
+
+      VkClearValue cc = {};
+      cc.color.float32[ 3 ] = 1.0f;
+      rpbi.clearValueCount = 1;
+      rpbi.pClearValues = &cc;
     }
     
     // Cleanup
