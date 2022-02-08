@@ -506,7 +506,7 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
       vk->surfaceCapabilities.minImageCount < 2 )
     die( "Double buffering not supported." );
   VkSurfaceFormatKHR sf = vk->surfaceFormats[ 0 ];
-  VkPresentModeKHR pm = VK_PRESENT_MODE_IMMEDIATE_KHR ;
+  VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR;
   vk->extent = getExtent( &vk->surfaceCapabilities );
   VkSwapchainCreateInfoKHR scci = {};
   scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
