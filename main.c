@@ -38,6 +38,9 @@ const char* clUsage =
   "-gpu=<G>                   Use the gpu "
   "specified by G, which is an integer.\n"
   "\n"
+  "-fps                       Print fps to "
+  "stdout every second.\n"
+  "\n"
 #ifdef DEBUG  
   "-debugLevel=<D>            Prevents val"
   "idation messages with severity less than\n"
