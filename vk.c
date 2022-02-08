@@ -50,6 +50,7 @@ const u32 numRequiredDeviceExtensions =
 // Instance wide state.
 typedef struct {
   VkInstance instance;
+  guiInfo* gui;
   u32 numGPUs;
   VkPhysicalDevice* gpus;
   VkPhysicalDeviceProperties* gpuProperties;
@@ -91,6 +92,9 @@ typedef struct {
 
   VkCommandPool pool;
   VkCommandBuffer* commandBuffers;
+
+  VkSemaphore imageComplete;
+  VkSemaphore renderComplete;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -125,7 +129,9 @@ VkShaderModule createModule( VkDevice vkd, const char* data, u32 size ){
 }
 
 // This function chooses the render size.
-VkExtent2D getExtent( const VkSurfaceCapabilitiesKHR* caps, const guiInfo* g ) {
+VkExtent2D getExtent( const VkSurfaceCapabilitiesKHR* caps ) {
+  plvkState* vk = state.vk;
+  const guiInfo* g = vk->gui;
   if( caps->currentExtent.width != UINT32_MAX ){
     return caps->currentExtent;
   } else {
@@ -259,6 +265,8 @@ void plvkEnd( plvkStatep vkp ){
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
+  vkDestroySemaphore( vk->device, vk->imageComplete, NULL );
+  vkDestroySemaphore( vk->device, vk->renderComplete, NULL );
   vkDestroyCommandPool( vk->device, vk->pool, NULL );
   vkDestroyPipeline( vk->device, vk->pipeline, NULL );
   vkDestroyRenderPass( vk->device, vk->renderPass, NULL );
@@ -300,9 +308,9 @@ void plvkEnd( plvkStatep vkp ){
 
 
 
-void plvkInit( u32 whichGPU, void* vgui, u32 debugLevel ){
-  guiInfo* gui = (guiInfo*)vgui;
+void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
   new( vk, plvkState );
+  vk->gui = (guiInfo*)vgui;
   state.vk = vk;
   vk->debugLevel = debugLevel;
 
@@ -390,8 +398,8 @@ void plvkInit( u32 whichGPU, void* vgui, u32 debugLevel ){
       bestScore = score;
     }
   }
-  if( whichGPU != (u32)-1 ){
-    if( whichGPU >= vk->numGPUs )
+  if( whichGPU != -1 ){
+    if( (u32)whichGPU >= vk->numGPUs )
       die( "Nonexistent gpu selected." );
     vk->gpuIndex = whichGPU;
   } else{
@@ -441,7 +449,7 @@ void plvkInit( u32 whichGPU, void* vgui, u32 debugLevel ){
   // Create surface
   VkWin32SurfaceCreateInfoKHR sci = {};
   sci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-  sci.hwnd = gui->handle;
+  sci.hwnd = vk->gui->handle;
   sci.hinstance = GetModuleHandle( NULL ); 
   if( VK_SUCCESS != vkCreateWin32SurfaceKHR( vk->instance, &sci, NULL,
 					     &vk->surface ) )
@@ -499,7 +507,7 @@ void plvkInit( u32 whichGPU, void* vgui, u32 debugLevel ){
     die( "Double buffering not supported." );
   VkSurfaceFormatKHR sf = vk->surfaceFormats[ 0 ];
   VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR;
-  vk->extent = getExtent( &vk->surfaceCapabilities, gui );
+  vk->extent = getExtent( &vk->surfaceCapabilities );
   VkSwapchainCreateInfoKHR scci = {};
   scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
   scci.surface = vk->surface;
@@ -660,14 +668,23 @@ void plvkInit( u32 whichGPU, void* vgui, u32 debugLevel ){
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
-    
+
+    // Render pass creation.
     VkRenderPassCreateInfo rpci = {};
     rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     rpci.attachmentCount = 1;
     rpci.pAttachments = &colorAttachment;
     rpci.subpassCount = 1;
     rpci.pSubpasses = &subpass;
-
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    rpci.dependencyCount = 1;
+    rpci.pDependencies = &dependency;
     if( VK_SUCCESS != vkCreateRenderPass( vk->device, &rpci,
 					  NULL, &vk->renderPass ) ) 
       die( "Render pass creation failed." );
@@ -747,10 +764,65 @@ void plvkInit( u32 whichGPU, void* vgui, u32 debugLevel ){
       cc.color.float32[ 3 ] = 1.0f;
       rpbi.clearValueCount = 1;
       rpbi.pClearValues = &cc;
+
+      vkCmdBeginRenderPass( vk->commandBuffers[ i ], &rpbi,
+			    VK_SUBPASS_CONTENTS_INLINE );
+      vkCmdBindPipeline( vk->commandBuffers[ i ],
+			 VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipeline );
+      vkCmdDraw( vk->commandBuffers[ i ], 3, 1, 0, 0 );
+      vkCmdEndRenderPass( vk->commandBuffers[ i ] );
+      if( VK_SUCCESS != vkEndCommandBuffer( vk->commandBuffers[ i ] ) )
+	die( "Command buffer recording failed." );
+
     }
-    
-    // Cleanup
+
+
+    VkSemaphoreCreateInfo sci = {};
+    sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    if( VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
+					 &vk->imageComplete ) ||
+	VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
+					 &vk->renderComplete ) )
+      die( "Semaphore creation failed." );
+
+    // Cleanup    
     vkDestroyShaderModule( vk->device, displayFragmentShader, NULL );
     vkDestroyShaderModule( vk->device, displayVertexShader, NULL );
   }
+}
+
+void draw( void ){
+  plvkState* vk = state.vk;
+  uint32_t index;
+  vkAcquireNextImageKHR( vk->device, vk->swap, 1000000000,
+			 vk->imageComplete, VK_NULL_HANDLE, &index );
+
+  VkSubmitInfo submitInfo = {};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+  VkSemaphore semaphores[] = { vk->imageComplete };
+  VkPipelineStageFlags stages[] =
+    { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+  submitInfo.waitSemaphoreCount = 1;
+  submitInfo.pWaitSemaphores = semaphores;
+  submitInfo.pWaitDstStageMask = stages;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &vk->commandBuffers[ index ];
+  VkSemaphore finishedSemaphores[] = { vk->renderComplete };
+  submitInfo.signalSemaphoreCount = 1;
+  submitInfo.pSignalSemaphores = finishedSemaphores;
+    if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo,
+				     VK_NULL_HANDLE ) )
+      die( "Queue submition failed." );
+
+  VkPresentInfoKHR presentation = {};
+  presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+  presentation.waitSemaphoreCount = 1;
+  presentation.pWaitSemaphores = finishedSemaphores;
+  VkSwapchainKHR swaps[] = { vk->swap };
+  presentation.swapchainCount = 1;
+  presentation.pSwapchains = swaps;
+  presentation.pImageIndices = &index;
+  vkQueuePresentKHR( vk->queue, &presentation );
 }

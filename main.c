@@ -128,7 +128,7 @@ int main( int argc, const char** argv ){
   if( run ){
     guiShow( gui );
     while( weventLoop( gui ) )
-      ;
+      draw();
     testPrograms();
   }else
     plvkPrintGPUs();
