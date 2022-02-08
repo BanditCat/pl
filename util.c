@@ -20,6 +20,7 @@
 
 #include "pl.h"
 #include "os.h"
+#include "util.h"
 
 void strcopy( char* dst, const char* src ){
   u64 c = 0;
@@ -113,10 +114,29 @@ void printInt( u64 n ){
   intToString( s, n, 256 );
   print( s );
 }
-void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth ){
+void printFloat( f64 f ){
+  if( f < 0 ){
+    print( "-" );
+    f *= -1.0;
+  }
+  if( f < 0.00000000001 )
+    print( "0.0" );
+  else if( f > 9223372036854775806.0 )
+    print( "<large>" );
+  else{
+    u64 integerPart = f;
+    f = f - integerPart;
+    f *= 100000000000;
+    u64 fractionalPart = f;
+    printInt( integerPart );
+    print( "." );
+    printIntWithPrefix( fractionalPart, 11, '0' );
+  }
+}
+void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth, char pad ){
   intToString( s, n, count );
   u32 olen = slen( s );
-  if( olen < minWidth && ( 1 + minWidth - olen < count ) ){
+  if( olen < minWidth && ( 1 + minWidth - olen ) < count ){
     u32 shift = minWidth - olen;
     for( s32 i = 0; i < (s32)minWidth; ++i ){
       s32 j = ( minWidth - i ) - 1;
@@ -124,13 +144,14 @@ void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth ){
       if( sj >= 0 )
 	s[ j ] = s[ sj ];
       else
-	s[ j ] = ' ';
+	s[ j ] = pad;
     }
+    s[ minWidth ] = 0;
   }
 }
-void printIntWithPrefix( u64 n, u32 minWidth ){
+void printIntWithPrefix( u64 n, u32 minWidth, char pad ){
   char s[ 256 ];
-  intToStringWithPrefix( s, n, 256, minWidth );
+  intToStringWithPrefix( s, n, 256, minWidth, pad );
   print( s );
 }
 void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
@@ -149,7 +170,7 @@ void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
       if( r == numsPerRow )
 	r = 0;
     }
-    printIntWithPrefix( arr[ i ], 10 );
+    printIntWithPrefix( arr[ i ], 10, ' ' );
     ++i;
     
   }

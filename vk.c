@@ -792,6 +792,25 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
 }
 
 void draw( void ){
+  static u64 lasttime = 0;
+  static u64 frameCount = 0;
+
+  if( state.fps ){
+    if( 0 == lasttime  )
+      lasttime = tickCount();
+    else{
+      u64 now = tickCount();
+      f64 elapsed = (f64)( now - lasttime ) / tickFrequency();
+      if( elapsed > 1.0 ){
+	print( "FPS: " );
+	printFloat( (f64)frameCount / elapsed );
+	endl();
+	lasttime = now;
+		frameCount = 0;
+      }
+    }
+    ++frameCount;
+  }
   plvkState* vk = state.vk;
   uint32_t index;
   vkAcquireNextImageKHR( vk->device, vk->swap, 1000000000,
@@ -811,9 +830,9 @@ void draw( void ){
   VkSemaphore finishedSemaphores[] = { vk->renderComplete };
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = finishedSemaphores;
-    if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo,
-				     VK_NULL_HANDLE ) )
-      die( "Queue submition failed." );
+  if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo,
+				   VK_NULL_HANDLE ) )
+    die( "Queue submition failed." );
 
   VkPresentInfoKHR presentation = {};
   presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;

@@ -92,6 +92,8 @@ typedef struct {
   u64 allocCount;
   const char** argv;
   int argc;
+  // Print fps every second.
+  bool fps;  
   plvkStatep vk;
 } states;
 extern states state;

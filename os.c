@@ -64,6 +64,11 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
     state.argc = 1;
   }
   state.vk = NULL;
+#ifdef DEBUG
+  state.fps = 1;
+#else
+  state.fps = 0;
+#endif
   end( main( state.argc, state.argv ) );
 }
 
@@ -166,9 +171,12 @@ int memcmp( const void* ptr1, const void *ptr2, size_t num ){
 
 // Timing functions.
 u64 tickFrequency( void ){
-  LARGE_INTEGER ret;
-  if( !QueryPerformanceFrequency( &ret ) )
-    die( "QueryPerformanceFrequency failed." );
+  static LARGE_INTEGER ret;
+  ret.QuadPart = 0;
+  if( !ret.QuadPart ){
+    if( !QueryPerformanceFrequency( &ret ) )
+      die( "QueryPerformanceFrequency failed." );
+  }
   return ret.QuadPart;
 }
 u64 tickCount( void ){

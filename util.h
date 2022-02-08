@@ -22,7 +22,7 @@
 #define memcopy( d, s, t, c ) memcpy( d, s, sizeof( t ) * c )
 
 // String functions.
-void strcopy( void* dst, const void* src );
+void strcopy( char* dst, const char* src );
 // -1 if x < y, 1 if x > y, 0 if x == y.
 int strcomp( const char* x, const char* y );
 // True iff str starts with init.
@@ -35,6 +35,7 @@ u64 parseInt( const char** s );
 
 // Printing functions.
 void printInt( u64 n );
-void printIntWithPrefix( u64 n, u32 minWidth );
-void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth );
+void printFloat( f64 );
+void printIntWithPrefix( u64 n, u32 minWidth, char pad );
+void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth, char pad );
 void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr );
