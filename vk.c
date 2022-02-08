@@ -825,4 +825,5 @@ void draw( void ){
   presentation.pSwapchains = swaps;
   presentation.pImageIndices = &index;
   vkQueuePresentKHR( vk->queue, &presentation );
+  vkQueueWaitIdle( vk->queue );
 }
