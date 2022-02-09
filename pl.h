@@ -18,11 +18,22 @@
 // Project wide header.                                                       //
 ////////////////////////////////////////////////////////////////////////////////
 
+
 // Defines.
 #define NAME "Pseudoluminal😄"
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #define AT __FILE__ ":" TOSTRING(__LINE__)
+#define die( x ) { eprint( "!!!!!!!!DEAD!!!!!!!! " AT "\n" );\
+    eprint( x ); endl(); end( 1 ); }
+
+//#define MARKERS 1
+
+#ifdef MARKERS
+#define m { eprintl( "Marker " AT ); }
+#else
+#define m
+#endif
 
 #include <limits.h>
 
@@ -89,11 +100,22 @@ inline u64 slen( const char* str ){
 // Global state.
 typedef struct {
   void* heap;
-  u64 allocCount;
   const char** argv;
   int argc;
   // Print fps every second.
-  bool fps;  
+  bool fps;
+  u32 frameCount;
   plvkStatep vk;
+
+  // Memory instrumentation.
+#ifdef DEBUG
+  u64 memallocCount;
+  u64 memnextFree;
+  u64 memindicesAllocated;
+  u64* memindices;
+  char** memallocd;
+#endif
+
 } states;
 extern states state;
+

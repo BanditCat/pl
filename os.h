@@ -33,8 +33,6 @@ void message( const char* str );
 void emessage( const char* str );
 void end( int ecode );
 
-// Generates exception if out of memory. Memory is zerod. Automatically freed at end.
-void* mem( u64 size );
 
 // Convienience macros.
 #define new( x, y ) y* x = (y*)( mem( sizeof( y ) ) )
@@ -42,11 +40,23 @@ void* mem( u64 size );
 #define newa( x, y, s ) y* x = (y*)( mem( sizeof( y ) * s ) )
 #define newae( y, s ) ( (y*)( mem( sizeof( y )  * s ) ) )
 
-// Same, but doesnt increment the alloc count. This allocates memory that is freed at end.
+// Allocate permanent memory. The memory that is freed at end.
 void* memperm( u64 size );
-void memfree( void* p );
+void* memSimple( u64 size );
+void memfreeSimple( void* p );
 
-#define die( x ) { emessage( AT "\n\n" x ); eprint( AT "\n" x "\n" ); end( 1 ); }
+
+// Generates exceptions, memory is zerod.
+#ifdef DEBUG
+void* memDebug( u64 size, const char* tag );
+void memfreeDebug( void* p, const char* tag );
+#define mem( s ) memDebug( s, AT )
+#define memfree( s ) memfreeDebug( s, "Bad free " AT )
+#else
+#define mem memSimple
+#define memfree memfreeSimple
+#endif
+
 
 // Allocates the returned value, which should be freed. NUL terminated strings only.
 u16* utf8to16( const char* str );

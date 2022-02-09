@@ -18,6 +18,7 @@
 // OS logic.                                                                  //
 ////////////////////////////////////////////////////////////////////////////////
 
+
 #define UNICODE
 #include <windows.h>
 
@@ -25,6 +26,16 @@
 #include "os.h"
 #include "util.h"
 #include "vk.h"
+
+#define MEMCONST1 0x12FEEDFACEC0FFEE
+#define MEMCONST2 0xDEADBEEFDEADBEEF
+#ifdef DEBUG
+typedef struct{
+  const char* tag;
+  u64 index;
+  u64 check;
+} memtag;
+#endif
 
 states state;
 
@@ -36,7 +47,17 @@ u32 _fltused = 1;
 void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
   (void)hInstance; (void)hPrevInstance; (void)pCmdLine; (void)nCmdShow;
   state.heap = HeapCreate( HEAP_GENERATE_EXCEPTIONS, 0, 0 );
-  state.allocCount = 0;
+
+#ifdef DEBUG
+  state.memallocCount = 0;
+  state.memnextFree = 0;
+  state.memindices = memperm( sizeof( u64 ) * 256 );
+  state.memallocd = memperm( sizeof( char* ) * 256 );
+  state.memindicesAllocated = 256;
+  for( u64 i = 0; i < state.memindicesAllocated; ++i )
+    state.memindices[ i ] = i + 1;
+#endif
+  
   AttachConsole( ATTACH_PARENT_PROCESS );
   SetConsoleOutputCP( CP_UTF8 );
 
@@ -69,7 +90,10 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
 #else
   state.fps = 0;
 #endif
+  state.frameCount = 2;
+  m;
   end( main( state.argc, state.argv ) );
+  m;
 }
 
 void print( const char* str ){
@@ -107,31 +131,104 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
+  m;
   if( state.vk )
     plvkEnd( state.vk );
 #ifdef DEBUG
-  print( "Ending with " );
-  printInt( state.allocCount );
-  print( " unfreed allocs.\n" );
+  if( !state.memallocCount ){
+    print( "Memory consistency test indicates success." );
+  }else{
+      
+    print( "Ending with " );
+    printInt( state.memallocCount );
+    print( " unfreed allocs.\n" );
+    for( u64 i = 0; i < state.memindicesAllocated; i++ ){
+      if( state.memallocd[ i ] ){
+	memtag* mt = (memtag*)state.memallocd[ i ];
+	printInt( i );
+	print( ": " );
+	if( MEMCONST1 == ( mt->check ^ mt->index ) ){
+	  print( "good " ); print( mt->tag );
+	}else
+	  print( "bad" );
+	endl();
+      }
+    }
+  }
 #endif
   FreeConsole();
   HeapDestroy( state.heap );
   ExitProcess( ecode );
 }
 
-// Generates exception if out of memory. Memory is zerod. Automatically freed at end.
-void* mem( u64 size ){
-  ++state.allocCount;
-  return HeapAlloc( state.heap, HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY, size );
+#ifdef DEBUG
+void* memDebug( u64 size, const char* tag ){
+  // Make room if necessary.
+  if( state.memnextFree >= state.memindicesAllocated ){
+    u64 tc = state.memindicesAllocated;
+    state.memindicesAllocated *= 2;
+    u64* t = memperm( sizeof( u64 ) * state.memindicesAllocated );
+    for( u64 i = 0; i < state.memindicesAllocated; ++ i )
+      if( i < tc )
+	t[ i ] = state.memindices[ i ];
+      else
+	t[ i ] = i + 1;
+    memfreeSimple( state.memindices );
+    state.memindices = t;
+    char** ta = memperm( sizeof( char* ) * state.memindicesAllocated );
+    memcopy( ta, state.memallocd, char*, tc );
+    memfreeSimple( state.memallocd );
+    state.memallocd = ta;
+  }    
+    
+  char* mem = HeapAlloc( state.heap,
+			 HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY,
+			 size + sizeof( memtag ) );
+
+  memtag* mt = (memtag*)mem;
+  mt->tag = tag;
+  mt->index = state.memnextFree;
+  state.memallocd[ mt->index ] = (char*)mt;
+  state.memnextFree = state.memindices[ state.memnextFree ];
+  mt->check = MEMCONST1 ^ mt->index;
+  
+  ++state.memallocCount;
+  return mem + sizeof( memtag );
 }
-// Same, but doesnt increment the alloc count. This allocates memory that is freed at end.
-void* memperm( u64 size ){
-  return HeapAlloc( state.heap, HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY, size );
-}
-void memfree( void* p ){
-  --state.allocCount;
+void memfreeDebug( void* vp, const char* tag ){
+  char* p = ((char*)vp) - sizeof( memtag );
+  memtag* mt = (memtag*)p;
+  mt->check ^= mt->index;
+  if( mt->check != MEMCONST1 )
+    die( tag );
+  u64 t = state.memnextFree;
+  state.memallocd[ mt->index ] = NULL;
+  state.memnextFree = mt->index;
+  state.memindices[ mt->index ] = t;
+  
+  mt->check = MEMCONST2 ^ mt->index;
+  mt->index = 0xFFFFFFFFFFFFFFFF;
+  
+  
+  --state.memallocCount;
   HeapFree( state.heap, 0, p );
 }
+
+#endif
+void* memSimple( u64 size ){
+  return HeapAlloc( state.heap, HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY,
+		    size );
+}
+void memfreeSimple( void* p ){
+  HeapFree( state.heap, 0, p );
+}
+
+void* memperm( u64 size ){
+  return HeapAlloc( state.heap, HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY,
+		    size );
+}
+
+
 
 void* memcpy( void* dst, void const* src, size_t size ){
   for( u64 i = 0; i < size; ++i )

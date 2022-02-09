@@ -261,30 +261,46 @@ void plvkPrintGPUs( void ){
 }
 
 void plvkEnd( plvkStatep vkp ){
+  m;
   plvkState* vk = vkp;
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
-  vkDestroySemaphore( vk->device, vk->imageComplete, NULL );
-  vkDestroySemaphore( vk->device, vk->renderComplete, NULL );
-  vkDestroyCommandPool( vk->device, vk->pool, NULL );
-  vkDestroyPipeline( vk->device, vk->pipeline, NULL );
-  vkDestroyRenderPass( vk->device, vk->renderPass, NULL );
-  vkDestroyPipelineLayout( vk->device, vk->pipelineLayout, NULL );
+  if( vk->imageComplete )
+    vkDestroySemaphore( vk->device, vk->imageComplete, NULL );
+  if( vk->renderComplete )
+    vkDestroySemaphore( vk->device, vk->renderComplete, NULL );
+  if( vk->pool )
+    vkDestroyCommandPool( vk->device, vk->pool, NULL );
+  if( vk->pipeline )
+    vkDestroyPipeline( vk->device, vk->pipeline, NULL );
+  if( vk->renderPass )
+    vkDestroyRenderPass( vk->device, vk->renderPass, NULL );
+  if( vk->pipelineLayout )
+    vkDestroyPipelineLayout( vk->device, vk->pipelineLayout, NULL );
+  m;
   for( u32 i = 0; i < vk->numImages; ++i ){
     vkDestroyFramebuffer( vk->device, vk->framebuffers[ i ], NULL );
     vkDestroyImageView( vk->device, vk->imageViews[ i ], NULL );
   }
-  vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
-  vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
-  vkDestroyDevice( vk->device, NULL);
-  vkDestroyInstance( vk->instance, NULL );
+  m;
+  if( vk->swap )
+    vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
+  if( vk->surface )
+    vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
+  if( vk->device )
+    vkDestroyDevice( vk->device, NULL);
+  if( vk->instance )
+    vkDestroyInstance( vk->instance, NULL );
+  m;
   if( vk->commandBuffers )
     memfree( vk->commandBuffers );
+  m;
   if( vk->framebuffers )
     memfree( vk->framebuffers );
   if( vk->imageViews )
     memfree( vk->imageViews );
+  m;
   if( vk->images )
     memfree( vk->images );
   if( vk->gpus )
@@ -303,7 +319,11 @@ void plvkEnd( plvkStatep vkp ){
     memfree( vk->surfaceFormats );
   if( vk->surfacePresentations )
     memfree( vk->surfacePresentations );
+  m;
+  if( vk->gui )
+    wend( vk->gui );
   memfree( vk );
+  m;
 }
 
 
@@ -505,13 +525,15 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
   if( vk->surfaceCapabilities.maxImageCount < 2 &&
       vk->surfaceCapabilities.minImageCount < 2 )
     die( "Double buffering not supported." );
+  if( state.frameCount > vk->surfaceCapabilities.maxImageCount )
+    die( "The requested number of frames is not supported." );
   VkSurfaceFormatKHR sf = vk->surfaceFormats[ 0 ];
   VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR;
   vk->extent = getExtent( &vk->surfaceCapabilities );
   VkSwapchainCreateInfoKHR scci = {};
   scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
   scci.surface = vk->surface;
-  scci.minImageCount = 2;
+  scci.minImageCount = state.frameCount;
   scci.imageFormat = sf.format;
   scci.imageColorSpace = sf.colorSpace;
   scci.imageExtent = vk->extent;
@@ -788,6 +810,7 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
     // Cleanup    
     vkDestroyShaderModule( vk->device, displayFragmentShader, NULL );
     vkDestroyShaderModule( vk->device, displayVertexShader, NULL );
+    m;
   }
 }
 
@@ -806,7 +829,7 @@ void draw( void ){
 	printFloat( (f64)frameCount / elapsed );
 	endl();
 	lasttime = now;
-		frameCount = 0;
+	frameCount = 0;
       }
     }
     ++frameCount;

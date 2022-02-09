@@ -38,6 +38,9 @@ const char* clUsage =
   "-gpu=<G>                   Use the gpu "
   "specified by G, which is an integer.\n"
   "\n"
+  "-frameCount=<N>            Use n frames"
+  "for rendering, aka pre rendering.\n"
+  "\n"
   "-fps                       Print fps to "
   "stdout every second.\n"
   "\n"
@@ -99,6 +102,14 @@ int main( int argc, const char** argv ){
 	die( "Malformed -gpu= command line option." );
       continue;
     }
+    if( strStartsWith( "-frameCount=", argv[ i ] ) ){
+      const char* opt = argv[ i ] + slen( "-frameCount=" );
+      const char* trackOpt = opt;
+      state.frameCount = parseInt( &opt );
+      if( opt == trackOpt || *opt )
+	die( "Malformed -frameCount= command line option." );
+      continue;
+    }
 #ifdef DEBUG    
     if( strStartsWith( "-debugLevel=", argv[ i ] ) ){
       const char* opt = argv[ i ] + slen( "-debugLevel=" );
@@ -131,14 +142,17 @@ int main( int argc, const char** argv ){
   plvkPrintInitInfo();
 #endif
   // Main loop.
+  m;
   if( run ){
     guiShow( gui );
     while( weventLoop( gui ) )
       draw();
+    m;
     testPrograms();
+    m;
   }else
     plvkPrintGPUs();
-  wend( gui );
+  m;
   return 0;
 }
 
