@@ -90,7 +90,7 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
 #else
   state.fps = 0;
 #endif
-  state.frameCount = 2;
+  *((u32*)&state.frameCount) = 2;
   m;
   end( main( state.argc, state.argv ) );
   m;

@@ -105,7 +105,7 @@ int main( int argc, const char** argv ){
     if( strStartsWith( "-frameCount=", argv[ i ] ) ){
       const char* opt = argv[ i ] + slen( "-frameCount=" );
       const char* trackOpt = opt;
-      state.frameCount = parseInt( &opt );
+      *((u32*)&state.frameCount) = parseInt( &opt );
       if( opt == trackOpt || *opt )
 	die( "Malformed -frameCount= command line option." );
       continue;

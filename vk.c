@@ -93,8 +93,11 @@ typedef struct {
   VkCommandPool pool;
   VkCommandBuffer* commandBuffers;
 
-  VkSemaphore imageComplete;
-  VkSemaphore renderComplete;
+  VkSemaphore* imageAvailables;
+  VkSemaphore* renderCompletes;
+  VkFence* fences;
+  VkFence* fenceSyncs;
+  u32 currentImage;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -263,13 +266,16 @@ void plvkPrintGPUs( void ){
 void plvkEnd( plvkStatep vkp ){
   m;
   plvkState* vk = vkp;
+  vkDeviceWaitIdle( vk->device );
+  m;
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
-  if( vk->imageComplete )
-    vkDestroySemaphore( vk->device, vk->imageComplete, NULL );
-  if( vk->renderComplete )
-    vkDestroySemaphore( vk->device, vk->renderComplete, NULL );
+  for( u32 i = 0; i < vk->numImages; ++i ){
+    vkDestroySemaphore( vk->device, vk->imageAvailables[ i ], NULL );
+    vkDestroySemaphore( vk->device, vk->renderCompletes[ i ], NULL );
+    vkDestroyFence( vk->device, vk->fences[ i ], NULL );
+  }
   if( vk->pool )
     vkDestroyCommandPool( vk->device, vk->pool, NULL );
   if( vk->pipeline )
@@ -284,6 +290,14 @@ void plvkEnd( plvkStatep vkp ){
     vkDestroyImageView( vk->device, vk->imageViews[ i ], NULL );
   }
   m;
+  if( vk->imageAvailables )
+    memfree( vk->imageAvailables );
+  if( vk->renderCompletes )
+    memfree( vk->renderCompletes );
+  if( vk->fences )
+    memfree( vk->fences );
+  if( vk->fenceSyncs )
+    memfree( vk->fenceSyncs );
   if( vk->swap )
     vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
   if( vk->surface )
@@ -798,14 +812,28 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
 
     }
 
-
+    // Semaphores and fences.
+    vk->imageAvailables = newae( VkSemaphore, vk->numImages );
+    vk->renderCompletes = newae( VkSemaphore, vk->numImages );
+    vk->fences = newae( VkFence, vk->numImages );
+    vk->fenceSyncs = newae( VkFence, vk->numImages );
+    for( u32 i = 0; i < vk->numImages; ++i )
+      vk->fenceSyncs[ i ] = VK_NULL_HANDLE;
     VkSemaphoreCreateInfo sci = {};
     sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    if( VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
-					 &vk->imageComplete ) ||
-	VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
-					 &vk->renderComplete ) )
-      die( "Semaphore creation failed." );
+    VkFenceCreateInfo fci = {};
+    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    for( u32 i = 0; i < vk->numImages; ++i ){
+      if( VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
+					   &vk->imageAvailables[ i ] ) ||
+	  VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
+					   &vk->renderCompletes[ i ] ) )
+	die( "Semaphore creation failed." );
+      if( VK_SUCCESS != vkCreateFence( vk->device, &fci, NULL,
+				       &vk->fences[ i ] ) )
+	die( "Fence creation failed." );
+    }
 
     // Cleanup    
     vkDestroyShaderModule( vk->device, displayFragmentShader, NULL );
@@ -817,7 +845,49 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
 void draw( void ){
   static u64 lasttime = 0;
   static u64 frameCount = 0;
+  plvkState* vk = state.vk;
 
+  vkWaitForFences( vk->device, 1, &vk->fences[ vk->currentImage ], VK_TRUE,
+		   UINT64_MAX );
+
+  uint32_t index = 0;
+  vkAcquireNextImageKHR( vk->device, vk->swap, 1000000000,
+			 vk->imageAvailables[ vk->currentImage ],
+			 VK_NULL_HANDLE, &index );
+  if( vk->fenceSyncs[ index ] != VK_NULL_HANDLE )
+    vkWaitForFences( vk->device, 1, &vk->fenceSyncs[ index ], VK_TRUE,
+		     UINT64_MAX );
+  vk->fenceSyncs[ index ] = vk->fences[ vk->currentImage ];
+
+  VkSubmitInfo submitInfo = {};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+  VkSemaphore semaphores[] = { vk->imageAvailables[ vk->currentImage ] };
+  VkPipelineStageFlags stages[] =
+    { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+  submitInfo.waitSemaphoreCount = 1;
+  submitInfo.pWaitSemaphores = semaphores;
+  submitInfo.pWaitDstStageMask = stages;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &vk->commandBuffers[ index ];
+  VkSemaphore finishedSemaphores[] = { vk->renderCompletes[ vk->currentImage ] };
+  submitInfo.signalSemaphoreCount = 1;
+  submitInfo.pSignalSemaphores = finishedSemaphores;
+  vkResetFences( vk->device, 1, &vk->fences[ vk->currentImage ] );
+  if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo,
+				   vk->fences[ vk->currentImage ] ) )
+    die( "Queue submition failed." );
+
+  VkPresentInfoKHR presentation = {};
+  presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+  presentation.waitSemaphoreCount = 1;
+  presentation.pWaitSemaphores = finishedSemaphores;
+  VkSwapchainKHR swaps[] = { vk->swap };
+  presentation.swapchainCount = 1;
+  presentation.pSwapchains = swaps;
+  presentation.pImageIndices = &index;
+  vkQueuePresentKHR( vk->queue, &presentation );
   if( state.fps ){
     if( 0 == lasttime  )
       lasttime = tickCount();
@@ -834,38 +904,6 @@ void draw( void ){
     }
     ++frameCount;
   }
-  plvkState* vk = state.vk;
-  uint32_t index;
-  vkAcquireNextImageKHR( vk->device, vk->swap, 1000000000,
-			 vk->imageComplete, VK_NULL_HANDLE, &index );
-
-  VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-  VkSemaphore semaphores[] = { vk->imageComplete };
-  VkPipelineStageFlags stages[] =
-    { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-  submitInfo.waitSemaphoreCount = 1;
-  submitInfo.pWaitSemaphores = semaphores;
-  submitInfo.pWaitDstStageMask = stages;
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &vk->commandBuffers[ index ];
-  VkSemaphore finishedSemaphores[] = { vk->renderComplete };
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = finishedSemaphores;
-  if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo,
-				   VK_NULL_HANDLE ) )
-    die( "Queue submition failed." );
-
-  VkPresentInfoKHR presentation = {};
-  presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-  presentation.waitSemaphoreCount = 1;
-  presentation.pWaitSemaphores = finishedSemaphores;
-  VkSwapchainKHR swaps[] = { vk->swap };
-  presentation.swapchainCount = 1;
-  presentation.pSwapchains = swaps;
-  presentation.pImageIndices = &index;
-  vkQueuePresentKHR( vk->queue, &presentation );
-  vkQueueWaitIdle( vk->queue );
+  ++vk->currentImage;
+  vk->currentImage %= vk->numImages;
 }

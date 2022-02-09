@@ -104,7 +104,7 @@ typedef struct {
   int argc;
   // Print fps every second.
   bool fps;
-  u32 frameCount;
+  const u32 frameCount;
   plvkStatep vk;
 
   // Memory instrumentation.
