@@ -76,8 +76,11 @@ guiInfo* wsetup( char* title, int x, int y, int width, int height ){
   RegisterClassW( &gui->wc );
   
   gui->title = utf8to16( title );
-  ret->handle = CreateWindowExW( WS_EX_WINDOWEDGE, className, gui->title, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
-			       x, y, width, height, NULL, NULL, gui->instance, NULL );
+  ret->handle = CreateWindowExW( WS_EX_WINDOWEDGE, className, gui->title,
+				 WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS |
+				 WS_CLIPCHILDREN,
+			       x, y, width, height, NULL, NULL,
+				 gui->instance, NULL );
   SetWindowLongPtr( ret->handle, 0, (LONG_PTR)ret );
   gui->hDC = GetDC( ret->handle );
 
@@ -124,7 +127,8 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
     r.top = p->y;
     r.right = r.left + p->width;
     r.bottom = r.top + p->height;
-    AdjustWindowRect( &r, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, FALSE );
+    AdjustWindowRect( &r, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS
+		      | WS_CLIPCHILDREN, FALSE );
     p->width = r.right - r.left;
     p->height = r.bottom - r.top;
     return 0;
@@ -136,7 +140,8 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
     r.top = p->y;
     r.right = r.left + p->width;
     r.bottom = r.top + p->height;
-    AdjustWindowRect( &r, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, FALSE );
+    AdjustWindowRect( &r, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS
+		      | WS_CLIPCHILDREN, FALSE );
     p->x = r.left;
     p->y = r.top;
     return 0;
