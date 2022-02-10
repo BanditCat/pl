@@ -3,7 +3,7 @@
 //                                                                            //
 // This program is free software: you can redistribute it and/or modify       //
 // it under the terms of the GNU Affero General Public License as published   //
-// by the Free Software Foundation, either version 3 of the License, or       // 
+// by the Free Software Foundation, either version 3 of the License, or       //
 // (at your option) any later version.                                        //
 //                                                                            //
 // This program is distributed in the hope that it will be useful,            //
@@ -58,7 +58,8 @@ void memfreeDebug( void* p, const char* tag );
 #endif
 
 
-// Allocates the returned value, which should be freed. NUL terminated strings only.
+// Allocates the returned value, which should be freed.
+// NUL terminated strings only.
 u16* utf8to16( const char* str );
 char* utf16to8( const u16* str );
 char* utf16to8perm( const u16* str );

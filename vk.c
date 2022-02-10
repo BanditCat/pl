@@ -46,6 +46,9 @@ const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
 const u32 numRequiredDeviceExtensions =
   sizeof( requiredDeviceExtensions ) / sizeof( char* );
 
+typedef struct {
+  f32 time;
+} gpuState;
 
 // Instance wide state.
 typedef struct {
@@ -101,6 +104,13 @@ typedef struct {
   u32 currentImage;
 
   bool rendering;
+
+  VkDescriptorSetLayout bufferLayout;
+  VkBuffer* UBOs;
+  VkDeviceMemory* UBOmems;
+  gpuState UBOcpumem;
+  VkDescriptorPool descriptorPool;
+  VkDescriptorSet* descriptorSets;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -120,6 +130,76 @@ void getFuncPointers( plvkState* vk ){
   FPGET( vkCreateDebugUtilsMessengerEXT );
   FPGET( vkDestroyDebugUtilsMessengerEXT );
 #endif
+}
+void createDescriptorSets( plvkState* vk ){
+  newa( tl, VkDescriptorSetLayout, vk->numImages );
+  for( u32 i = 0; i < vk->numImages; ++i )
+    tl[ i ] = vk->bufferLayout;
+  VkDescriptorSetAllocateInfo dsai = {};
+  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  dsai.descriptorPool = vk->descriptorPool;
+  dsai.descriptorSetCount = vk->numImages;
+  dsai.pSetLayouts = tl;
+
+  
+  if( !vk->descriptorSets )
+    vk->descriptorSets = newae( VkDescriptorSet, vk->numImages );
+
+  if( VK_SUCCESS != vkAllocateDescriptorSets( vk->device, &dsai,
+					      vk->descriptorSets ) )
+    die( "Failed to allocate descriptor sets." );
+
+  for( u32 i = 0; i < vk->numImages; ++i ){
+    VkDescriptorBufferInfo bufferInfo = {};
+    bufferInfo.buffer = vk->UBOs[ i ];
+    bufferInfo.offset = 0;
+    bufferInfo.range = sizeof( gpuState );
+
+    VkWriteDescriptorSet descriptorWrite = {};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = vk->descriptorSets[ i ];
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+
+    vkUpdateDescriptorSets( vk->device, 1, &descriptorWrite, 0, NULL );
+  }
+  memfree( tl );
+}
+
+
+void createDescriptorPool( plvkState* vk ) {
+  VkDescriptorPoolSize dps = {};
+  dps.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dps.descriptorCount = vk->numImages;
+
+  VkDescriptorPoolCreateInfo dpci = {};
+  dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  dpci.poolSizeCount = 1;
+  dpci.pPoolSizes = &dps;
+  dpci.maxSets = vk->numImages;
+  if( VK_SUCCESS != vkCreateDescriptorPool( vk->device, &dpci, NULL,
+					    &vk->descriptorPool ) )
+    die( "Descriptor pool creation failed." );
+}
+
+// This function creates UBOs.
+void createUBOLayout( plvkState* vk ){
+  VkDescriptorSetLayoutBinding dslb = {};
+  dslb.binding = 0;
+  dslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dslb.descriptorCount = 1;
+  dslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+  VkDescriptorSetLayoutCreateInfo dslci = {};
+  dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  dslci.bindingCount = 1;
+  dslci.pBindings = &dslb;
+  if( VK_SUCCESS != vkCreateDescriptorSetLayout( vk->device, &dslci, NULL,
+						 &vk->bufferLayout ) ) 
+    die( "Descriptor layout creation failed." );
 }
 
 // This function creates shader modules.
@@ -202,7 +282,6 @@ u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
   return score;
 }
 
-
 #ifdef DEBUG
 void plvkPrintInitInfo( void ){
   plvkState* vk = state.vk;
@@ -265,9 +344,66 @@ void plvkPrintGPUs( void ){
   print( "Using GPU " ); printInt( vk->gpuIndex ); print( ": " );
   print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
 }
+void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
+		   VkMemoryPropertyFlags properties, VkBuffer* buffer,
+		   VkDeviceMemory* bufferMemory ){
+  VkBufferCreateInfo bci = {};
+  bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bci.size = size;
+  bci.usage = usage;
+  bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  if( VK_SUCCESS != vkCreateBuffer( vk->device, &bci,
+				    NULL, buffer ) )
+    die( "Buffer creation failed." );
 
-void createSwap( plvkStatep vkp ){
-  plvkState* vk = vkp;
+  VkMemoryRequirements mr;
+  vkGetBufferMemoryRequirements( vk->device, *buffer, &mr );
+
+  VkMemoryAllocateInfo mai = {};
+  mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  mai.allocationSize = mr.size;
+
+  VkPhysicalDeviceMemoryProperties pdmp;
+  vkGetPhysicalDeviceMemoryProperties( vk->gpu, &pdmp );
+  bool found = 0;
+  u32 memtype;
+  for( u32 i = 0; i < pdmp.memoryTypeCount; ++i )
+    if( mr.memoryTypeBits & ( 1 << i ) &&
+	( ( pdmp.memoryTypes[i].propertyFlags &
+	    properties ) == properties ) ){
+      memtype = i;
+      found = 1;
+    }
+  if( !found )
+    die( "No suitable GPU memory buffer found." );
+
+  mai.memoryTypeIndex = memtype;
+
+  if( VK_SUCCESS != vkAllocateMemory( vk->device, &mai, NULL,
+				      bufferMemory ) )
+    die( "GPU memory allocation failed." );
+
+  vkBindBufferMemory( vk->device, *buffer, *bufferMemory, 0 );
+}
+void createUBOs( plvkState* vk ){
+  VkDeviceSize size = sizeof( gpuState );
+  if( !vk->UBOs )
+    vk->UBOs = newae( VkBuffer, vk->numImages );
+  if( !vk->UBOmems )
+    vk->UBOmems = newae( VkDeviceMemory, vk->numImages );
+  for( size_t i = 0; i < vk->numImages; i++ )
+    createBuffer( vk, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		  &vk->UBOs[ i ], &vk->UBOmems[ i ] );
+}
+void destroyUBOs( plvkState* vk ){
+  for( u32 i = 0; i < vk->numImages; ++i ){
+    vkDestroyBuffer( vk->device, vk->UBOs[ i ], NULL );
+    vkFreeMemory( vk->device, vk->UBOmems[ i ], NULL );
+  }
+}
+void createSwap( plvkState* vk ){
   vkDeviceWaitIdle( vk->device );
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
 					     &vk->surfaceCapabilities );
@@ -416,6 +552,8 @@ void createSwap( plvkStatep vkp ){
 
       VkPipelineLayoutCreateInfo plci = {};
       plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+      plci.setLayoutCount = 1;
+      plci.pSetLayouts = &vk->bufferLayout;
       if( VK_SUCCESS !=
 	  vkCreatePipelineLayout( vk->device, &plci,
 				  NULL, &vk->pipelineLayout ) )
@@ -511,7 +649,10 @@ void createSwap( plvkStatep vkp ){
 						vk->commandBuffers ) )
       die( "Command buffer creation failed." );
 
-
+    createUBOs( vk );
+    createDescriptorPool( vk );
+    createDescriptorSets( vk );
+    
     // Command buffers and render passes.
     for( u32 i = 0; i < vk->numImages; i++ ){
       VkCommandBufferBeginInfo cbbi = {};
@@ -534,6 +675,10 @@ void createSwap( plvkStatep vkp ){
 			    VK_SUBPASS_CONTENTS_INLINE );
       vkCmdBindPipeline( vk->commandBuffers[ i ],
 			 VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipeline );
+      vkCmdBindDescriptorSets( vk->commandBuffers[ i ],
+			       VK_PIPELINE_BIND_POINT_GRAPHICS,
+			       vk->pipelineLayout, 0, 1,
+			       &vk->descriptorSets[ i ], 0, NULL );
       vkCmdDraw( vk->commandBuffers[ i ], 3, 1, 0, 0 );
       vkCmdEndRenderPass( vk->commandBuffers[ i ] );
       if( VK_SUCCESS != vkEndCommandBuffer( vk->commandBuffers[ i ] ) )
@@ -552,6 +697,7 @@ void destroySwap( plvkStatep vkp ){
       vkDestroyFramebuffer( vk->device, vk->framebuffers[ i ], NULL );
       vkDestroyImageView( vk->device, vk->imageViews[ i ], NULL );
     }
+    vkDestroyDescriptorPool( vk->device, vk->descriptorPool, NULL );
     vkFreeCommandBuffers( vk->device, vk->pool, vk->numImages,
 			  vk->commandBuffers );
     if( vk->pipeline )
@@ -562,6 +708,7 @@ void destroySwap( plvkStatep vkp ){
       vkDestroyRenderPass( vk->device, vk->renderPass, NULL );
     if( vk->swap )
       vkDestroySwapchainKHR( vk->device, vk->swap, NULL );
+    destroyUBOs( vk );
   }
 }
 void plvkEnd( plvkStatep vkp ){
@@ -569,9 +716,6 @@ void plvkEnd( plvkStatep vkp ){
   plvkState* vk = vkp;
   vkDeviceWaitIdle( vk->device );
   m;
-#ifdef DEBUG
-  vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
-#endif
   for( u32 i = 0; i < vk->numImages; ++i ){
     vkDestroySemaphore( vk->device, vk->imageAvailables[ i ], NULL );
     vkDestroySemaphore( vk->device, vk->renderCompletes[ i ], NULL );
@@ -579,9 +723,15 @@ void plvkEnd( plvkStatep vkp ){
   }
   m;
   destroySwap( vkp );
+  if( vk->bufferLayout )
+    vkDestroyDescriptorSetLayout( vk->device, vk->bufferLayout, NULL );
   m;
   if( vk->pool )
     vkDestroyCommandPool( vk->device, vk->pool, NULL );
+  if( vk->UBOs )
+    memfree( vk->UBOs );
+  if( vk->UBOmems )
+    memfree( vk->UBOmems );
   if( vk->imageAvailables )
     memfree( vk->imageAvailables );
   if( vk->renderCompletes )
@@ -594,9 +744,16 @@ void plvkEnd( plvkStatep vkp ){
     vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
   if( vk->device )
     vkDestroyDevice( vk->device, NULL);
+  m;
+#ifdef DEBUG
+  vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
+#endif
   if( vk->instance )
     vkDestroyInstance( vk->instance, NULL );
   m;
+  // Free memory.
+  if( vk->descriptorSets )
+    memfree( vk->descriptorSets );
   if( vk->commandBuffers )
     memfree( vk->commandBuffers );
   m;
@@ -840,7 +997,9 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
     die( "Command pool creation failed." );
 
 
+  createUBOLayout( vk );
   createSwap( vk );
+  
   // Semaphores and fences.
   vk->imageAvailables = newae( VkSemaphore, vk->numImages );
   vk->renderCompletes = newae( VkSemaphore, vk->numImages );
@@ -867,8 +1026,18 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
   m;
   
 }
-
+void updateGPUstate( plvkState* vk, f32 time ){
+  vk->UBOcpumem.time = time;
+  void* data;
+  vkMapMemory( vk->device, vk->UBOmems[ vk->currentImage ], 0,
+	       sizeof( gpuState ), 0, &data );
+  memcpy( data, &vk->UBOcpumem, sizeof( gpuState ) );
+  vkUnmapMemory( vk->device, vk->UBOmems[ vk->currentImage ] );
+}
 void draw( void ){
+  static u64 firstDrawTime = 0;
+  if( !firstDrawTime )
+    firstDrawTime = tickCount();
   plvkState* vk = state.vk;
   bool recreate = 0;
   if( vk->rendering ){
@@ -890,6 +1059,9 @@ void draw( void ){
 			 UINT64_MAX );
       vk->fenceSyncs[ index ] = vk->fences[ vk->currentImage ];
 
+      updateGPUstate( vk, (f32)( tickCount() - firstDrawTime )
+		      / (f32)tickFrequency() );
+      
       VkSubmitInfo submitInfo = {};
       submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
