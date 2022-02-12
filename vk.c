@@ -19,12 +19,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define VK_USE_PLATFORM_WIN32_KHR
-#include "inc\vulkan\vulkan.h"
-#include "pl.h"
+#include "vkutil.h"
+#include "util.h"
 #include "os.h"
 #include "vk.h"
-#include "util.h"
-#include "gui.h"
 
 // Requirements
 #ifdef DEBUG
@@ -46,144 +44,7 @@ const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
 const u32 numRequiredDeviceExtensions =
   sizeof( requiredDeviceExtensions ) / sizeof( char* );
 
-typedef struct {
-  f32 time;
-} gpuState;
 
-// Instance wide state.
-typedef struct {
-  VkInstance instance;
-  guiInfo* gui;
-  u32 numGPUs;
-  VkPhysicalDevice* gpus;
-  VkPhysicalDeviceProperties* gpuProperties;
-  u32 numExtensions;
-  VkExtensionProperties* extensions;
-  u32 numLayers;
-  VkLayerProperties* layers;
-  u32 numQueues;
-  VkQueue queue;
-  VkQueueFamilyProperties* queueFamilies;
-  VkSurfaceKHR surface;
-
-  u32 gpuIndex;
-  VkPhysicalDevice gpu;
-  VkPhysicalDeviceProperties* selectedGpuProperties;
-  VkPhysicalDeviceFeatures selectedGpuFeatures;
-  u32 numDeviceExtensions;
-  VkExtensionProperties* deviceExtensions;
-  u32 queueFamily;
-  VkDevice device;
-  u32 debugLevel;
-
-  VkSurfaceCapabilitiesKHR surfaceCapabilities;
-  u32 numSurfaceFormats;
-  VkSurfaceFormatKHR* surfaceFormats;
-  VkSurfaceFormatKHR theSurfaceFormat;
-  u32 numSurfacePresentations;
-  VkPresentModeKHR* surfacePresentations;
-
-  VkSwapchainKHR swap;
-  u32 numImages;
-  VkImage* images;
-  VkImageView* imageViews;
-  VkFramebuffer* framebuffers; 
-
-  VkExtent2D extent;
-  VkPipelineLayout pipelineLayout;
-  VkRenderPass renderPass;
-  VkPipeline pipeline;
-
-  VkCommandPool pool;
-  VkCommandBuffer* commandBuffers;
-
-  VkSemaphore* imageAvailables;
-  VkSemaphore* renderCompletes;
-  VkFence* fences;
-  VkFence* fenceSyncs;
-  u32 currentImage;
-
-  bool rendering;
-
-  VkDescriptorSetLayout bufferLayout;
-  VkBuffer* UBOs;
-  VkDeviceMemory* UBOmems;
-  gpuState UBOcpumem;
-  VkDescriptorPool descriptorPool;
-  VkDescriptorSet* descriptorSets;
-  
-  // Function pointers.
-#define FPDEFINE( x ) PFN_##x x
-#ifdef DEBUG
-  FPDEFINE( vkCreateDebugUtilsMessengerEXT );
-  FPDEFINE( vkDestroyDebugUtilsMessengerEXT );
-  VkDebugUtilsMessengerEXT vkdbg;
-#endif
-} plvkState;
-
-
-// Function pointer helper function.
-#define FPGET( x ) vk->x = (PFN_##x) vkGetInstanceProcAddr( vk->instance, #x );
-void getFuncPointers( plvkState* vk ){
-  (void)vk;
-#ifdef DEBUG   
-  FPGET( vkCreateDebugUtilsMessengerEXT );
-  FPGET( vkDestroyDebugUtilsMessengerEXT );
-#endif
-}
-void createDescriptorSets( plvkState* vk ){
-  newa( tl, VkDescriptorSetLayout, vk->numImages );
-  for( u32 i = 0; i < vk->numImages; ++i )
-    tl[ i ] = vk->bufferLayout;
-  VkDescriptorSetAllocateInfo dsai = {};
-  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  dsai.descriptorPool = vk->descriptorPool;
-  dsai.descriptorSetCount = vk->numImages;
-  dsai.pSetLayouts = tl;
-
-  
-  if( !vk->descriptorSets )
-    vk->descriptorSets = newae( VkDescriptorSet, vk->numImages );
-
-  if( VK_SUCCESS != vkAllocateDescriptorSets( vk->device, &dsai,
-					      vk->descriptorSets ) )
-    die( "Failed to allocate descriptor sets." );
-
-  for( u32 i = 0; i < vk->numImages; ++i ){
-    VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = vk->UBOs[ i ];
-    bufferInfo.offset = 0;
-    bufferInfo.range = sizeof( gpuState );
-
-    VkWriteDescriptorSet descriptorWrite = {};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = vk->descriptorSets[ i ];
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
-
-    vkUpdateDescriptorSets( vk->device, 1, &descriptorWrite, 0, NULL );
-  }
-  memfree( tl );
-}
-
-
-void createDescriptorPool( plvkState* vk ) {
-  VkDescriptorPoolSize dps = {};
-  dps.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  dps.descriptorCount = vk->numImages;
-
-  VkDescriptorPoolCreateInfo dpci = {};
-  dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  dpci.poolSizeCount = 1;
-  dpci.pPoolSizes = &dps;
-  dpci.maxSets = vk->numImages;
-  if( VK_SUCCESS != vkCreateDescriptorPool( vk->device, &dpci, NULL,
-					    &vk->descriptorPool ) )
-    die( "Descriptor pool creation failed." );
-}
 
 // This function creates UBOs.
 void createUBOLayout( plvkState* vk ){

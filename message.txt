@@ -1,1 +1,1 @@
-resize
+cleanup
