@@ -230,3 +230,32 @@ plvkState* createInstance( void ){
   getFuncPointers( vk );
   return vk;
 }
+
+
+void getExtent( plvkState* vk ){
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
+					     &vk->surfaceCapabilities );
+  const guiInfo* g = vk->gui;
+  if( vk->surfaceCapabilities.currentExtent.width != UINT32_MAX ){
+    vk->extent = vk->surfaceCapabilities.currentExtent;
+  } else {
+    VkExtent2D  wh;
+    wh.width = g->clientWidth;
+    wh.height = g->clientHeight;
+    if( wh.width > vk->surfaceCapabilities.maxImageExtent.width )
+      wh.width = vk->surfaceCapabilities.maxImageExtent.width;
+    if( wh.width < vk->surfaceCapabilities.minImageExtent.width )
+      wh.width = vk->surfaceCapabilities.minImageExtent.width;
+    if( wh.height > vk->surfaceCapabilities.maxImageExtent.height )
+      wh.height = vk->surfaceCapabilities.maxImageExtent.height;
+    if( wh.height < vk->surfaceCapabilities.minImageExtent.height )
+      wh.height = vk->surfaceCapabilities.minImageExtent.height;
+    vk->extent = wh;
+  }
+  
+
+  if( !vk->extent.width || !vk->extent.height )
+    vk->rendering = 0;
+  else
+    vk->rendering = 1;
+}

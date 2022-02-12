@@ -106,3 +106,4 @@ void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
 		   VkDeviceMemory* bufferMemory );
 void destroyUBOs( plvkState* vk );
 void createUBOs( plvkState* vk );
+void getExtent( plvkState* vk );

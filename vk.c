@@ -60,27 +60,6 @@ VkShaderModule createModule( VkDevice vkd, const char* data, u32 size ){
   return ret;
 }
 
-// This function chooses the render size.
-VkExtent2D getExtent( const VkSurfaceCapabilitiesKHR* caps ) {
-  plvkState* vk = state.vk;
-  const guiInfo* g = vk->gui;
-  if( caps->currentExtent.width != UINT32_MAX ){
-    return caps->currentExtent;
-  } else {
-    VkExtent2D  wh;
-    wh.width = g->clientWidth;
-    wh.height = g->clientHeight;
-    if( wh.width > caps->maxImageExtent.width )
-      wh.width = caps->maxImageExtent.width;
-    if( wh.width < caps->minImageExtent.width )
-      wh.width = caps->minImageExtent.width;
-    if( wh.height > caps->maxImageExtent.height )
-      wh.height = caps->maxImageExtent.height;
-    if( wh.height < caps->minImageExtent.height )
-      wh.height = caps->minImageExtent.height;
-    return wh;
-  }
-}
 // Validation layer callback.
 #ifdef DEBUG
 VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb
@@ -193,290 +172,284 @@ void plvkPrintGPUs( void ){
 
 void createSwap( plvkState* vk ){
   vkDeviceWaitIdle( vk->device );
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
-					     &vk->surfaceCapabilities );
-  vk->extent = getExtent( &vk->surfaceCapabilities );
-  if( !vk->extent.width || !vk->extent.height )
-    vk->rendering = 0;
-  else{
-    vk->rendering = 1;
+  getExtent( vk );
   
-    VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR;
-    VkSwapchainCreateInfoKHR scci = {};
-    scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    scci.surface = vk->surface;
-    scci.minImageCount = state.frameCount;
-    scci.imageFormat = vk->theSurfaceFormat.format;
-    scci.imageColorSpace = vk->theSurfaceFormat.colorSpace;
-    scci.imageExtent = vk->extent;
-    scci.imageArrayLayers = 1;
-    scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    scci.queueFamilyIndexCount = 0;
-    scci.pQueueFamilyIndices = NULL;
-    scci.preTransform = vk->surfaceCapabilities.currentTransform;
-    scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    scci.presentMode = pm;
-    scci.clipped = VK_TRUE;
-    scci.oldSwapchain = VK_NULL_HANDLE;
-    if( VK_SUCCESS != vkCreateSwapchainKHR( vk->device, &scci, NULL, &vk->swap ) )
-      die( "Swapchain creation failed." );
-    if( !vk->numImages )
-      vkGetSwapchainImagesKHR( vk->device, vk->swap, &vk->numImages, NULL );
-    if( !vk->images )
-      vk->images = newae( VkImage, vk->numImages );
-    vkGetSwapchainImagesKHR( vk->device, vk->swap, &vk->numImages, vk->images );
-    // Image views.
-    if( !vk->imageViews )
-      vk->imageViews = newae( VkImageView, vk->numImages );
-    for( u32 i = 0; i < vk->numImages; ++i ){
-      VkImageViewCreateInfo ivci = {};
-      ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-      ivci.image = vk->images[ i ];
-      ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-      ivci.format = vk->theSurfaceFormat.format;
-      ivci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-      ivci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-      ivci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-      ivci.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-      ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-      ivci.subresourceRange.baseMipLevel = 0;
-      ivci.subresourceRange.levelCount = 1;
-      ivci.subresourceRange.baseArrayLayer = 0;
-      ivci.subresourceRange.layerCount = 1;
-      if( VK_SUCCESS != vkCreateImageView( vk->device, &ivci, NULL,
-					   &vk->imageViews[ i ] ) )
-	die( "Failed to create image view." );
-    }
-    // Shaders
-    VkShaderModule displayVertexShader;
-    VkShaderModule displayFragmentShader;
-    {
-      u32 ssize;
-      const char* shade = loadBuiltin( "frag", &ssize );
-      displayFragmentShader = createModule( vk->device, shade, ssize );
-      shade = loadBuiltin( "vert", &ssize );
-      displayVertexShader = createModule( vk->device, shade, ssize );
-    }
-
-    // Pipeline
-    {
-      VkPipelineShaderStageCreateInfo pssci[ 2 ];
-      pssci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-      pssci[ 0 ].pNext = NULL;
-      pssci[ 0 ].flags = 0;
-      pssci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
-      pssci[ 0 ].module = displayVertexShader;
-      pssci[ 0 ].pName = "main";
-      pssci[ 0 ].pSpecializationInfo = NULL;
-      pssci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-      pssci[ 1 ].pNext = NULL;
-      pssci[ 1 ].flags = 0;
-      pssci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-      pssci[ 1 ].module = displayFragmentShader;
-      pssci[ 1 ].pName = "main";
-      pssci[ 1 ].pSpecializationInfo = NULL;
-
-
-      VkPipelineVertexInputStateCreateInfo pvici = {};
-      pvici.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-      VkPipelineInputAssemblyStateCreateInfo piasci = {};
-      piasci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-      piasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-      piasci.primitiveRestartEnable = VK_FALSE;
-
-      VkViewport viewport = {};
-      viewport.x = 0.0f;
-      viewport.y = 0.0f;
-      viewport.width = (float) vk->extent.width;
-      viewport.height = (float) vk->extent.height;
-      viewport.minDepth = 0.0f;
-      viewport.maxDepth = 1.0f;
-
-      VkRect2D scissor = {};
-      scissor.extent = vk->extent;
-
-      VkPipelineViewportStateCreateInfo pvsci = {};
-      pvsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-      pvsci.viewportCount = 1;
-      pvsci.pViewports = &viewport;
-      pvsci.scissorCount = 1;
-      pvsci.pScissors = &scissor;
-    
-      VkPipelineRasterizationStateCreateInfo prsci = {};
-      prsci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-      prsci.depthClampEnable = VK_FALSE;
-      prsci.rasterizerDiscardEnable = VK_FALSE;
-      prsci.polygonMode = VK_POLYGON_MODE_FILL;
-      prsci.lineWidth = 1.0f;
-      prsci.cullMode = VK_CULL_MODE_BACK_BIT;
-      prsci.frontFace = VK_FRONT_FACE_CLOCKWISE;
-      prsci.depthBiasEnable = VK_FALSE;
-
-      VkPipelineMultisampleStateCreateInfo pmsci = {};
-      pmsci.sType =
-	VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-      pmsci.sampleShadingEnable = VK_FALSE;
-      pmsci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-      pmsci.minSampleShading = 1.0f;
-      pmsci.pSampleMask = NULL;
-      pmsci.alphaToCoverageEnable = VK_FALSE;
-      pmsci.alphaToOneEnable = VK_FALSE;
-
-      VkPipelineColorBlendAttachmentState cba = {};
-      cba.colorWriteMask =
-	VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-      cba.blendEnable = VK_FALSE;
-    
-
-      VkPipelineColorBlendStateCreateInfo pcbsci = {};
-      pcbsci.sType =
-	VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-      pcbsci.logicOpEnable = VK_FALSE;
-      pcbsci.attachmentCount = 1;
-      pcbsci.pAttachments = &cba;
-
-      VkPipelineLayoutCreateInfo plci = {};
-      plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-      plci.setLayoutCount = 1;
-      plci.pSetLayouts = &vk->bufferLayout;
-      if( VK_SUCCESS !=
-	  vkCreatePipelineLayout( vk->device, &plci,
-				  NULL, &vk->pipelineLayout ) )
-	die( "Pipeline creation failed." );
-
-      VkAttachmentDescription colorAttachment = {};
-      colorAttachment.format = vk->theSurfaceFormat.format;
-      colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-      colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-      colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-      colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-      VkAttachmentReference colorAttachmentRef = {};
-      colorAttachmentRef.attachment = 0;
-      colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-      VkSubpassDescription subpass = {};
-      subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-      subpass.colorAttachmentCount = 1;
-      subpass.pColorAttachments = &colorAttachmentRef;
-
-      // Render pass creation.
-      VkRenderPassCreateInfo rpci = {};
-      rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-      rpci.attachmentCount = 1;
-      rpci.pAttachments = &colorAttachment;
-      rpci.subpassCount = 1;
-      rpci.pSubpasses = &subpass;
-      VkSubpassDependency dependency = {};
-      dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-      dependency.dstSubpass = 0;
-      dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      dependency.srcAccessMask = 0;
-      dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      rpci.dependencyCount = 1;
-      rpci.pDependencies = &dependency;
-      if( VK_SUCCESS != vkCreateRenderPass( vk->device, &rpci,
-					    NULL, &vk->renderPass ) ) 
-	die( "Render pass creation failed." );
-
-      VkGraphicsPipelineCreateInfo pipelineInfo = {};
-      pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-      pipelineInfo.stageCount = 2;
-      pipelineInfo.pStages = pssci;
-      pipelineInfo.pVertexInputState = &pvici;
-      pipelineInfo.pInputAssemblyState = &piasci;
-      pipelineInfo.pViewportState = &pvsci;
-      pipelineInfo.pRasterizationState = &prsci;
-      pipelineInfo.pMultisampleState = &pmsci;
-      pipelineInfo.pColorBlendState = &pcbsci;
-      pipelineInfo.layout = vk->pipelineLayout;
-      pipelineInfo.renderPass = vk->renderPass;
-      pipelineInfo.subpass = 0;
-
-
-      if( VK_SUCCESS != vkCreateGraphicsPipelines( vk->device, VK_NULL_HANDLE,
-						   1, &pipelineInfo, NULL,
-						   &vk->pipeline ) )
-	die( "Pipeline creation failed." );
-    }
-    
-    // Framebuffers
-    if( !vk->framebuffers )
-      vk->framebuffers = newae( VkFramebuffer, vk->numImages );
-    for( u32 i = 0; i < vk->numImages; ++i ){
-      VkImageView attachments[ 1 ] = { vk->imageViews[ i ] };
-      VkFramebufferCreateInfo fbci = {};
-      fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-      fbci.renderPass = vk->renderPass;
-      fbci.attachmentCount = 1;
-      fbci.pAttachments = attachments;
-      fbci.width = vk->extent.width;
-      fbci.height = vk->extent.height;
-      fbci.layers = 1;
-      if( VK_SUCCESS != vkCreateFramebuffer( vk->device, &fbci,
-					     NULL, &vk->framebuffers[ i ] ) )
-	die( "Framebuffer creation failed." );
-    }
-
-    if( !vk->commandBuffers )
-      vk->commandBuffers = newae( VkCommandBuffer, vk->numImages );
-
-    VkCommandBufferAllocateInfo cbai = {};
-    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbai.commandPool = vk->pool;
-    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cbai.commandBufferCount = vk->numImages;
-    if( VK_SUCCESS != vkAllocateCommandBuffers( vk->device, &cbai,
-						vk->commandBuffers ) )
-      die( "Command buffer creation failed." );
-
-    createUBOs( vk );
-    createDescriptorPool( vk );
-    createDescriptorSets( vk );
-    
-    // Command buffers and render passes.
-    for( u32 i = 0; i < vk->numImages; i++ ){
-      VkCommandBufferBeginInfo cbbi = {};
-      cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-      if( VK_SUCCESS != vkBeginCommandBuffer( vk->commandBuffers[ i ], &cbbi ) )
-	die( "Command buffer begining failed." );
-
-      VkRenderPassBeginInfo rpbi = {};
-      rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-      rpbi.renderPass = vk->renderPass;
-      rpbi.framebuffer = vk->framebuffers[ i ];
-      rpbi.renderArea.extent = vk->extent;
-
-      VkClearValue cc = {};
-      cc.color.float32[ 3 ] = 1.0f;
-      rpbi.clearValueCount = 1;
-      rpbi.pClearValues = &cc;
-
-      vkCmdBeginRenderPass( vk->commandBuffers[ i ], &rpbi,
-			    VK_SUBPASS_CONTENTS_INLINE );
-      vkCmdBindPipeline( vk->commandBuffers[ i ],
-			 VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipeline );
-      vkCmdBindDescriptorSets( vk->commandBuffers[ i ],
-			       VK_PIPELINE_BIND_POINT_GRAPHICS,
-			       vk->pipelineLayout, 0, 1,
-			       &vk->descriptorSets[ i ], 0, NULL );
-      vkCmdDraw( vk->commandBuffers[ i ], 3, 1, 0, 0 );
-      vkCmdEndRenderPass( vk->commandBuffers[ i ] );
-      if( VK_SUCCESS != vkEndCommandBuffer( vk->commandBuffers[ i ] ) )
-	die( "Command buffer recording failed." );
-    }
-
-    vkDestroyShaderModule( vk->device, displayFragmentShader, NULL );
-    vkDestroyShaderModule( vk->device, displayVertexShader, NULL );
+  VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR;
+  VkSwapchainCreateInfoKHR scci = {};
+  scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+  scci.surface = vk->surface;
+  scci.minImageCount = state.frameCount;
+  scci.imageFormat = vk->theSurfaceFormat.format;
+  scci.imageColorSpace = vk->theSurfaceFormat.colorSpace;
+  scci.imageExtent = vk->extent;
+  scci.imageArrayLayers = 1;
+  scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  scci.queueFamilyIndexCount = 0;
+  scci.pQueueFamilyIndices = NULL;
+  scci.preTransform = vk->surfaceCapabilities.currentTransform;
+  scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+  scci.presentMode = pm;
+  scci.clipped = VK_TRUE;
+  scci.oldSwapchain = VK_NULL_HANDLE;
+  if( VK_SUCCESS != vkCreateSwapchainKHR( vk->device, &scci, NULL, &vk->swap ) )
+    die( "Swapchain creation failed." );
+  if( !vk->numImages )
+    vkGetSwapchainImagesKHR( vk->device, vk->swap, &vk->numImages, NULL );
+  if( !vk->images )
+    vk->images = newae( VkImage, vk->numImages );
+  vkGetSwapchainImagesKHR( vk->device, vk->swap, &vk->numImages, vk->images );
+  // Image views.
+  if( !vk->imageViews )
+    vk->imageViews = newae( VkImageView, vk->numImages );
+  for( u32 i = 0; i < vk->numImages; ++i ){
+    VkImageViewCreateInfo ivci = {};
+    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    ivci.image = vk->images[ i ];
+    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    ivci.format = vk->theSurfaceFormat.format;
+    ivci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivci.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    ivci.subresourceRange.baseMipLevel = 0;
+    ivci.subresourceRange.levelCount = 1;
+    ivci.subresourceRange.baseArrayLayer = 0;
+    ivci.subresourceRange.layerCount = 1;
+    if( VK_SUCCESS != vkCreateImageView( vk->device, &ivci, NULL,
+					 &vk->imageViews[ i ] ) )
+      die( "Failed to create image view." );
   }
+  // Shaders
+  VkShaderModule displayVertexShader;
+  VkShaderModule displayFragmentShader;
+  {
+    u32 ssize;
+    const char* shade = loadBuiltin( "frag", &ssize );
+    displayFragmentShader = createModule( vk->device, shade, ssize );
+    shade = loadBuiltin( "vert", &ssize );
+    displayVertexShader = createModule( vk->device, shade, ssize );
+  }
+
+  // Pipeline
+  {
+    VkPipelineShaderStageCreateInfo pssci[ 2 ];
+    pssci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pssci[ 0 ].pNext = NULL;
+    pssci[ 0 ].flags = 0;
+    pssci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
+    pssci[ 0 ].module = displayVertexShader;
+    pssci[ 0 ].pName = "main";
+    pssci[ 0 ].pSpecializationInfo = NULL;
+    pssci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pssci[ 1 ].pNext = NULL;
+    pssci[ 1 ].flags = 0;
+    pssci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pssci[ 1 ].module = displayFragmentShader;
+    pssci[ 1 ].pName = "main";
+    pssci[ 1 ].pSpecializationInfo = NULL;
+
+
+    VkPipelineVertexInputStateCreateInfo pvici = {};
+    pvici.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    VkPipelineInputAssemblyStateCreateInfo piasci = {};
+    piasci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    piasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    piasci.primitiveRestartEnable = VK_FALSE;
+
+    VkViewport viewport = {};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float) vk->extent.width;
+    viewport.height = (float) vk->extent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor = {};
+    scissor.extent = vk->extent;
+
+    VkPipelineViewportStateCreateInfo pvsci = {};
+    pvsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    pvsci.viewportCount = 1;
+    pvsci.pViewports = &viewport;
+    pvsci.scissorCount = 1;
+    pvsci.pScissors = &scissor;
+    
+    VkPipelineRasterizationStateCreateInfo prsci = {};
+    prsci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    prsci.depthClampEnable = VK_FALSE;
+    prsci.rasterizerDiscardEnable = VK_FALSE;
+    prsci.polygonMode = VK_POLYGON_MODE_FILL;
+    prsci.lineWidth = 1.0f;
+    prsci.cullMode = VK_CULL_MODE_BACK_BIT;
+    prsci.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    prsci.depthBiasEnable = VK_FALSE;
+
+    VkPipelineMultisampleStateCreateInfo pmsci = {};
+    pmsci.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    pmsci.sampleShadingEnable = VK_FALSE;
+    pmsci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    pmsci.minSampleShading = 1.0f;
+    pmsci.pSampleMask = NULL;
+    pmsci.alphaToCoverageEnable = VK_FALSE;
+    pmsci.alphaToOneEnable = VK_FALSE;
+
+    VkPipelineColorBlendAttachmentState cba = {};
+    cba.colorWriteMask =
+      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    cba.blendEnable = VK_FALSE;
+    
+
+    VkPipelineColorBlendStateCreateInfo pcbsci = {};
+    pcbsci.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    pcbsci.logicOpEnable = VK_FALSE;
+    pcbsci.attachmentCount = 1;
+    pcbsci.pAttachments = &cba;
+
+    VkPipelineLayoutCreateInfo plci = {};
+    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    plci.setLayoutCount = 1;
+    plci.pSetLayouts = &vk->bufferLayout;
+    if( VK_SUCCESS !=
+	vkCreatePipelineLayout( vk->device, &plci,
+				NULL, &vk->pipelineLayout ) )
+      die( "Pipeline creation failed." );
+
+    VkAttachmentDescription colorAttachment = {};
+    colorAttachment.format = vk->theSurfaceFormat.format;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentRef = {};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+
+    // Render pass creation.
+    VkRenderPassCreateInfo rpci = {};
+    rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    rpci.attachmentCount = 1;
+    rpci.pAttachments = &colorAttachment;
+    rpci.subpassCount = 1;
+    rpci.pSubpasses = &subpass;
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    rpci.dependencyCount = 1;
+    rpci.pDependencies = &dependency;
+    if( VK_SUCCESS != vkCreateRenderPass( vk->device, &rpci,
+					  NULL, &vk->renderPass ) ) 
+      die( "Render pass creation failed." );
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = pssci;
+    pipelineInfo.pVertexInputState = &pvici;
+    pipelineInfo.pInputAssemblyState = &piasci;
+    pipelineInfo.pViewportState = &pvsci;
+    pipelineInfo.pRasterizationState = &prsci;
+    pipelineInfo.pMultisampleState = &pmsci;
+    pipelineInfo.pColorBlendState = &pcbsci;
+    pipelineInfo.layout = vk->pipelineLayout;
+    pipelineInfo.renderPass = vk->renderPass;
+    pipelineInfo.subpass = 0;
+
+
+    if( VK_SUCCESS != vkCreateGraphicsPipelines( vk->device, VK_NULL_HANDLE,
+						 1, &pipelineInfo, NULL,
+						 &vk->pipeline ) )
+      die( "Pipeline creation failed." );
+  }
+    
+  // Framebuffers
+  if( !vk->framebuffers )
+    vk->framebuffers = newae( VkFramebuffer, vk->numImages );
+  for( u32 i = 0; i < vk->numImages; ++i ){
+    VkImageView attachments[ 1 ] = { vk->imageViews[ i ] };
+    VkFramebufferCreateInfo fbci = {};
+    fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fbci.renderPass = vk->renderPass;
+    fbci.attachmentCount = 1;
+    fbci.pAttachments = attachments;
+    fbci.width = vk->extent.width;
+    fbci.height = vk->extent.height;
+    fbci.layers = 1;
+    if( VK_SUCCESS != vkCreateFramebuffer( vk->device, &fbci,
+					   NULL, &vk->framebuffers[ i ] ) )
+      die( "Framebuffer creation failed." );
+  }
+
+  if( !vk->commandBuffers )
+    vk->commandBuffers = newae( VkCommandBuffer, vk->numImages );
+
+  VkCommandBufferAllocateInfo cbai = {};
+  cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  cbai.commandPool = vk->pool;
+  cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  cbai.commandBufferCount = vk->numImages;
+  if( VK_SUCCESS != vkAllocateCommandBuffers( vk->device, &cbai,
+					      vk->commandBuffers ) )
+    die( "Command buffer creation failed." );
+
+  createUBOs( vk );
+  createDescriptorPool( vk );
+  createDescriptorSets( vk );
+    
+  // Command buffers and render passes.
+  for( u32 i = 0; i < vk->numImages; i++ ){
+    VkCommandBufferBeginInfo cbbi = {};
+    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    if( VK_SUCCESS != vkBeginCommandBuffer( vk->commandBuffers[ i ], &cbbi ) )
+      die( "Command buffer begining failed." );
+
+    VkRenderPassBeginInfo rpbi = {};
+    rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpbi.renderPass = vk->renderPass;
+    rpbi.framebuffer = vk->framebuffers[ i ];
+    rpbi.renderArea.extent = vk->extent;
+
+    VkClearValue cc = {};
+    cc.color.float32[ 3 ] = 1.0f;
+    rpbi.clearValueCount = 1;
+    rpbi.pClearValues = &cc;
+
+    vkCmdBeginRenderPass( vk->commandBuffers[ i ], &rpbi,
+			  VK_SUBPASS_CONTENTS_INLINE );
+    vkCmdBindPipeline( vk->commandBuffers[ i ],
+		       VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipeline );
+    vkCmdBindDescriptorSets( vk->commandBuffers[ i ],
+			     VK_PIPELINE_BIND_POINT_GRAPHICS,
+			     vk->pipelineLayout, 0, 1,
+			     &vk->descriptorSets[ i ], 0, NULL );
+    vkCmdDraw( vk->commandBuffers[ i ], 3, 1, 0, 0 );
+    vkCmdEndRenderPass( vk->commandBuffers[ i ] );
+    if( VK_SUCCESS != vkEndCommandBuffer( vk->commandBuffers[ i ] ) )
+      die( "Command buffer recording failed." );
+  }
+
+  vkDestroyShaderModule( vk->device, displayFragmentShader, NULL );
+  vkDestroyShaderModule( vk->device, displayVertexShader, NULL );
 }
+
 void destroySwap( plvkStatep vkp ){
   plvkState* vk = vkp;
   if( vk->rendering ){
