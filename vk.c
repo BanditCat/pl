@@ -25,22 +25,7 @@
 #include "vk.h"
 
 // Requirements
-#ifdef DEBUG
-const char* requiredExtensions[] =
-  { "VK_KHR_surface", "VK_KHR_win32_surface",
-    VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
-#else
-const char* requiredExtensions[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
-#endif
-#ifdef DEBUG
-const char* requiredLayers[] = { "VK_LAYER_KHRONOS_validation" };
-#else
-const char* requiredLayers[] = {};
-#endif
 const char* requiredDeviceExtensions[] = { "VK_KHR_swapchain" };
-const u32 numRequiredExtensions =
-  sizeof( requiredExtensions ) / sizeof( char* );
-const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
 const u32 numRequiredDeviceExtensions =
   sizeof( requiredDeviceExtensions ) / sizeof( char* );
 
@@ -205,65 +190,7 @@ void plvkPrintGPUs( void ){
   print( "Using GPU " ); printInt( vk->gpuIndex ); print( ": " );
   print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
 }
-void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
-		   VkMemoryPropertyFlags properties, VkBuffer* buffer,
-		   VkDeviceMemory* bufferMemory ){
-  VkBufferCreateInfo bci = {};
-  bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  bci.size = size;
-  bci.usage = usage;
-  bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  if( VK_SUCCESS != vkCreateBuffer( vk->device, &bci,
-				    NULL, buffer ) )
-    die( "Buffer creation failed." );
 
-  VkMemoryRequirements mr;
-  vkGetBufferMemoryRequirements( vk->device, *buffer, &mr );
-
-  VkMemoryAllocateInfo mai = {};
-  mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-  mai.allocationSize = mr.size;
-
-  VkPhysicalDeviceMemoryProperties pdmp;
-  vkGetPhysicalDeviceMemoryProperties( vk->gpu, &pdmp );
-  bool found = 0;
-  u32 memtype;
-  for( u32 i = 0; i < pdmp.memoryTypeCount; ++i )
-    if( mr.memoryTypeBits & ( 1 << i ) &&
-	( ( pdmp.memoryTypes[i].propertyFlags &
-	    properties ) == properties ) ){
-      memtype = i;
-      found = 1;
-    }
-  if( !found )
-    die( "No suitable GPU memory buffer found." );
-
-  mai.memoryTypeIndex = memtype;
-
-  if( VK_SUCCESS != vkAllocateMemory( vk->device, &mai, NULL,
-				      bufferMemory ) )
-    die( "GPU memory allocation failed." );
-
-  vkBindBufferMemory( vk->device, *buffer, *bufferMemory, 0 );
-}
-void createUBOs( plvkState* vk ){
-  VkDeviceSize size = sizeof( gpuState );
-  if( !vk->UBOs )
-    vk->UBOs = newae( VkBuffer, vk->numImages );
-  if( !vk->UBOmems )
-    vk->UBOmems = newae( VkDeviceMemory, vk->numImages );
-  for( size_t i = 0; i < vk->numImages; i++ )
-    createBuffer( vk, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		  &vk->UBOs[ i ], &vk->UBOmems[ i ] );
-}
-void destroyUBOs( plvkState* vk ){
-  for( u32 i = 0; i < vk->numImages; ++i ){
-    vkDestroyBuffer( vk->device, vk->UBOs[ i ], NULL );
-    vkFreeMemory( vk->device, vk->UBOmems[ i ], NULL );
-  }
-}
 void createSwap( plvkState* vk ){
   vkDeviceWaitIdle( vk->device );
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
@@ -651,67 +578,10 @@ void plvkEnd( plvkStatep vkp ){
 
 
 void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
-  new( vk, plvkState );
-  vk->gui = (guiInfo*)vgui;
-  state.vk = vk;
-  vk->debugLevel = debugLevel;
-
-
-  // Get extensions.
-  vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, NULL );
-  vk->extensions = newae( VkExtensionProperties, vk->numExtensions );
-  vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions,
-					  vk->extensions );
-  for( u32 i = 0; i < numRequiredExtensions; ++i ){
-    bool has = 0;
-    for( u32 j = 0; j < vk->numExtensions; j++ ){
-      if( !strcomp( requiredExtensions[ i ],
-		    vk->extensions[ j ].extensionName ) )
-	has = 1;
-    }
-    if( !has )
-      die( "Required instance extension not found!" );
-  }
-
-  // Get layers.
-  vkEnumerateInstanceLayerProperties( &vk->numLayers, NULL );
-  vk->layers = newae( VkLayerProperties, vk->numLayers );
-  vkEnumerateInstanceLayerProperties( &vk->numLayers, vk->layers );
-  for( u32 i = 0; i < numRequiredLayers; ++i ){
-    bool has = 0;
-    for( u32 j = 0; j < vk->numLayers; j++ ){
-      if( !strcomp( requiredLayers[ i ], vk->layers[ j ].layerName ) )
-	has = 1;
-    }
-    if( !has )
-      die( "Required layer not found!" );
-  }
-
-  // Create vulkan instance.
-  VkApplicationInfo prog;
-  prog.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  prog.pApplicationName = TARGET;
-  prog.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
-  prog.pEngineName = TARGET;
-  prog.pNext = NULL;
-  prog.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-  prog.apiVersion = VK_API_VERSION_1_2;
-  VkInstanceCreateInfo create;
-  create.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  create.flags = 0;
-  create.pApplicationInfo = &prog;
-  create.enabledLayerCount = numRequiredLayers;
-  create.ppEnabledLayerNames = requiredLayers;
-  create.enabledExtensionCount = numRequiredExtensions;
-  create.ppEnabledExtensionNames = requiredExtensions;
-  create.pNext = NULL;
-
-  if( VK_SUCCESS != vkCreateInstance( &create, NULL, &vk->instance ) )
-    die( "Failed to create vulkan instance." );
-
-  // Get function pointers.
-  getFuncPointers( vk );
   // Set up validation layer callback.
+  plvkState* vk = createInstance();
+  vk->gui = vgui;
+  vk->debugLevel = debugLevel;
 #ifdef DEBUG
   VkDebugUtilsMessengerCreateInfoEXT ci;
   setupDebugCreateinfo( &ci );

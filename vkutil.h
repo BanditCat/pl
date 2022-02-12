@@ -97,7 +97,12 @@ typedef struct {
 #endif
 } plvkState;
 
-
-void createDescriptorPool( plvkState* p );
-void createDescriptorSets( plvkState* p );
+plvkState* createInstance( void );
+void createDescriptorPool( plvkState* vk );
+void createDescriptorSets( plvkState* vk );
 void getFuncPointers( plvkState* vk );
+void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
+		   VkMemoryPropertyFlags properties, VkBuffer* buffer,
+		   VkDeviceMemory* bufferMemory );
+void destroyUBOs( plvkState* vk );
+void createUBOs( plvkState* vk );
