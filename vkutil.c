@@ -22,6 +22,46 @@
 #include "util.h"
 #include "os.h"
 
+// Validation layer callback.
+#ifdef DEBUG
+VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb
+( VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+  VkDebugUtilsMessageTypeFlagsEXT type,
+  const VkDebugUtilsMessengerCallbackDataEXT* callback,
+  void* user ) {
+  (void)user;
+  if( (u32)severity >= ((plvkState*)state.vk)->debugLevel ){
+    print( "validation " );
+    printInt( type );
+    print( ", " );
+    printInt( severity );
+    print( ": " );
+    printl( callback->pMessage );
+  }
+
+  return VK_FALSE;
+}
+// Debug layer createinfo helper.
+void setupDebugCreateinfo( VkDebugUtilsMessengerCreateInfoEXT* ci ){
+  ci->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+  ci->pNext = NULL;
+  ci->flags = 0;
+  ci->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  ci->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT;
+  ci->pfnUserCallback = plvkDebugcb;
+  ci->pUserData = NULL;
+}
+#endif
+
+
+// Requirements
+const char* requiredDeviceExtensions[] = { "VK_KHR_swapchain" };
+const u32 numRequiredDeviceExtensions =
+  sizeof( requiredDeviceExtensions ) / sizeof( char* );
 #ifdef DEBUG
 const char* requiredExtensions[] =
   { "VK_KHR_surface", "VK_KHR_win32_surface",
@@ -38,6 +78,15 @@ const u32 numRequiredExtensions =
   sizeof( requiredExtensions ) / sizeof( char* );
 const u32 numRequiredLayers = sizeof( requiredLayers ) / sizeof( char* );
 
+
+// GPU scoring function
+u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
+  u64 score = 0;
+  if( gpu->deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU )
+    score += 1000000;
+  score += gpu->limits.maxImageDimension2D;
+  return score;
+}
 
 
 // Function pointer helper function.
@@ -169,10 +218,11 @@ void destroyUBOs( plvkState* vk ){
     vkFreeMemory( vk->device, vk->UBOmems[ i ], NULL );
   }
 }
-plvkState* createInstance( void ){
+plvkState* createDevice(  s32 whichGPU, void* vgui, u32 debugLevel ){
   new( vk, plvkState );
   state.vk = vk;
-
+  vk->gui = vgui;
+  vk->debugLevel = debugLevel;
 
   // Get extensions.
   vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, NULL );
@@ -228,6 +278,105 @@ plvkState* createInstance( void ){
 
   // Get function pointers.
   getFuncPointers( vk );
+
+  // Set up debugging.
+#ifdef DEBUG
+  VkDebugUtilsMessengerCreateInfoEXT ci;
+  setupDebugCreateinfo( &ci );
+  vk->vkCreateDebugUtilsMessengerEXT( vk->instance, &ci, NULL, &vk->vkdbg );
+#endif
+
+
+  // Enumerate GPUs and pick one.
+  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance,
+						&vk->numGPUs, NULL ) )
+    die( "Failed to count gpus." );
+  if( !vk->numGPUs )
+    die( "No GPUs found :(" );
+  vk->gpus = newae( VkPhysicalDevice, vk->numGPUs );
+  if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGPUs,
+						vk->gpus ) )
+    die( "Failed to enumerate gpus." );
+  vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGPUs );
+  for( u32 i = 0; i < vk->numGPUs; ++i )
+    vkGetPhysicalDeviceProperties( vk->gpus[ i ], vk->gpuProperties + i );
+  u32 best = 0;
+  u32 bestScore = 0;
+  for( u32 i = 0; i < vk->numGPUs; ++i ){
+    u64 score = scoreGPU( vk->gpuProperties + i );
+    if( score > bestScore ){
+      best = i;
+      bestScore = score;
+    }
+  }
+  if( whichGPU != -1 ){
+    if( (u32)whichGPU >= vk->numGPUs )
+      die( "Nonexistent gpu selected." );
+    vk->gpuIndex = whichGPU;
+  } else{
+    vk->gpuIndex = best;
+  }
+  // Get selected gpu information.
+  vk->gpu = vk->gpus[ vk->gpuIndex ];
+  vk->selectedGpuProperties = vk->gpuProperties + vk->gpuIndex;
+  vkGetPhysicalDeviceFeatures( vk->gpu, &vk->selectedGpuFeatures );
+  vkEnumerateDeviceExtensionProperties( vk->gpu, NULL,
+					&vk->numDeviceExtensions, NULL );
+  // Check device extensions.
+  vk->deviceExtensions = newae( VkExtensionProperties,
+				vk->numDeviceExtensions );
+  vkEnumerateDeviceExtensionProperties( vk->gpu, NULL,
+					&vk->numDeviceExtensions,
+					vk->deviceExtensions );
+  for( u32 i = 0; i < numRequiredDeviceExtensions; ++i ){
+    bool has = 0;
+    for( u32 j = 0; j < vk->numDeviceExtensions; j++ ){
+      if( !strcomp( requiredDeviceExtensions[ i ],
+		    vk->deviceExtensions[ j ].extensionName ) )
+	has = 1;
+    }
+    if( !has )
+      die( "Required device extension not found!" );
+  }
+
+  // Get queue families
+  vk->numQueues = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues, NULL );
+  vk->queueFamilies = newae( VkQueueFamilyProperties, vk->numQueues );
+  vkGetPhysicalDeviceQueueFamilyProperties( vk->gpu, &vk->numQueues,
+					    vk->queueFamilies );
+  bool found = 0;
+  for( u32 i = 0; i < vk->numQueues; ++i ){
+    if( !found &&
+	( vk->queueFamilies[ i ].queueFlags & VK_QUEUE_GRAPHICS_BIT ) ){
+      found = 1;
+      vk->queueFamily = i;
+    }
+  }
+  if( !found )
+    die( "No vulkan queue family found that has VK_QUEUE_GRAPHICS_BIT." );
+
+  // Create logical device and get queue handle for it.
+  VkDeviceQueueCreateInfo qci = {};
+  qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+  qci.queueFamilyIndex = vk->queueFamily;
+  qci.queueCount = 1;
+  float qpriority = 1.0f;
+  qci.pQueuePriorities = &qpriority;
+  VkPhysicalDeviceFeatures deviceFeatures = {};
+  VkDeviceCreateInfo dci = {};
+  dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  dci.pQueueCreateInfos = &qci;
+  dci.queueCreateInfoCount = 1;
+  dci.pEnabledFeatures = &deviceFeatures;
+  dci.enabledExtensionCount = numRequiredDeviceExtensions;
+  dci.ppEnabledExtensionNames = requiredDeviceExtensions;
+  
+  vk->device = NULL;
+  if( VK_SUCCESS != vkCreateDevice( vk->gpu, &dci, NULL, &vk->device ) )
+    die( "Device creation failed." );
+  vkGetDeviceQueue( vk->device, vk->queueFamily, 0, &vk->queue );
+
   return vk;
 }
 
@@ -258,4 +407,33 @@ void getExtent( plvkState* vk ){
     vk->rendering = 0;
   else
     vk->rendering = 1;
+}
+
+
+VkShaderModule createModule( VkDevice vkd, const char* data, u32 size ){
+  VkShaderModuleCreateInfo ci = {};
+  ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  ci.codeSize = size;
+  ci.pCode = (const u32*)data;
+  VkShaderModule ret;
+  if( VK_SUCCESS != vkCreateShaderModule( vkd, &ci, NULL, &ret ) )
+    die( "Module creation failed." );
+  return ret;
+}
+
+
+void createUBOLayout( plvkState* vk ){
+  VkDescriptorSetLayoutBinding dslb = {};
+  dslb.binding = 0;
+  dslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dslb.descriptorCount = 1;
+  dslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+  VkDescriptorSetLayoutCreateInfo dslci = {};
+  dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  dslci.bindingCount = 1;
+  dslci.pBindings = &dslb;
+  if( VK_SUCCESS != vkCreateDescriptorSetLayout( vk->device, &dslci, NULL,
+						 &vk->bufferLayout ) ) 
+    die( "Descriptor layout creation failed." );
 }

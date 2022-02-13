@@ -23,6 +23,7 @@
 #define UNICODE
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <uxtheme.h>
 
 #include "pl.h"
 #include "vk.h"
@@ -79,8 +80,9 @@ guiInfo* wsetup( char* title, int x, int y, int width, int height ){
   ret->handle = CreateWindowExW( WS_EX_WINDOWEDGE, className, gui->title,
 				 WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS |
 				 WS_CLIPCHILDREN,
-			       x, y, width, height, NULL, NULL,
+				 x, y, width, height, NULL, NULL,
 				 gui->instance, NULL );
+  SetWindowLong( ret->handle, GWL_STYLE, 0 ); //remove all window styles, check MSDN for details
   SetWindowLongPtr( ret->handle, 0, (LONG_PTR)ret );
   gui->hDC = GetDC( ret->handle );
 
