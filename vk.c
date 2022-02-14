@@ -97,7 +97,7 @@ void plvkPrintGPUs( void ){
   print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
 }
 
-void createSwap( plvkState* vk ){
+void rebuild( plvkState* vk ){
   vkDeviceWaitIdle( vk->device );
   getExtent( vk );
   
@@ -535,7 +535,7 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
 
 
   createUBOLayout( vk );
-  createSwap( vk );
+  rebuild( vk );
   
   // Semaphores and fences.
   vk->imageAvailables = newae( VkSemaphore, vk->numImages );
@@ -653,6 +653,6 @@ void draw( void ){
     recreate = 1;
   if( recreate ){
     destroySwap( vk );
-    createSwap( vk );
+    rebuild( vk );
   }
 }
