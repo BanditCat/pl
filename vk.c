@@ -95,164 +95,11 @@ void rebuild( plvkState* vk ){
 
   vk->swap = createSwap( vk, 1, state.frameCount );
   if( vk->swap ){
-    // Shaders
-    VkShaderModule displayVertexShader;
-    VkShaderModule displayFragmentShader;
-    {
-      u32 ssize;
-      const char* shade = loadBuiltin( "frag", &ssize );
-      displayFragmentShader = createModule( vk->device, shade, ssize );
-      shade = loadBuiltin( "vert", &ssize );
-      displayVertexShader = createModule( vk->device, shade, ssize );
-    }
     m;
-    // Pipeline
-    {
-      VkPipelineShaderStageCreateInfo pssci[ 2 ];
-      pssci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-      pssci[ 0 ].pNext = NULL;
-      pssci[ 0 ].flags = 0;
-      pssci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
-      pssci[ 0 ].module = displayVertexShader;
-      pssci[ 0 ].pName = "main";
-      pssci[ 0 ].pSpecializationInfo = NULL;
-      pssci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-      pssci[ 1 ].pNext = NULL;
-      pssci[ 1 ].flags = 0;
-      pssci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-      pssci[ 1 ].module = displayFragmentShader;
-      pssci[ 1 ].pName = "main";
-      pssci[ 1 ].pSpecializationInfo = NULL;
-
-
-      VkPipelineVertexInputStateCreateInfo pvici = {};
-      pvici.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-      VkPipelineInputAssemblyStateCreateInfo piasci = {};
-      piasci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-      piasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-      piasci.primitiveRestartEnable = VK_FALSE;
-
-      VkViewport viewport = {};
-      viewport.x = 0.0f;
-      viewport.y = 0.0f;
-      viewport.width = (float) vk->extent.width;
-      viewport.height = (float) vk->extent.height;
-      viewport.minDepth = 0.0f;
-      viewport.maxDepth = 1.0f;
-
-      VkRect2D scissor = {};
-      scissor.extent = vk->extent;
-
-      VkPipelineViewportStateCreateInfo pvsci = {};
-      pvsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-      pvsci.viewportCount = 1;
-      pvsci.pViewports = &viewport;
-      pvsci.scissorCount = 1;
-      pvsci.pScissors = &scissor;
-    
-      VkPipelineRasterizationStateCreateInfo prsci = {};
-      prsci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-      prsci.depthClampEnable = VK_FALSE;
-      prsci.rasterizerDiscardEnable = VK_FALSE;
-      prsci.polygonMode = VK_POLYGON_MODE_FILL;
-      prsci.lineWidth = 1.0f;
-      prsci.cullMode = VK_CULL_MODE_BACK_BIT;
-      prsci.frontFace = VK_FRONT_FACE_CLOCKWISE;
-      prsci.depthBiasEnable = VK_FALSE;
-
-      VkPipelineMultisampleStateCreateInfo pmsci = {};
-      pmsci.sType =
-	VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-      pmsci.sampleShadingEnable = VK_FALSE;
-      pmsci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-      pmsci.minSampleShading = 1.0f;
-      pmsci.pSampleMask = NULL;
-      pmsci.alphaToCoverageEnable = VK_FALSE;
-      pmsci.alphaToOneEnable = VK_FALSE;
-
-      VkPipelineColorBlendAttachmentState cba = {};
-      cba.colorWriteMask =
-	VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-      cba.blendEnable = VK_FALSE;
-    
-
-      VkPipelineColorBlendStateCreateInfo pcbsci = {};
-      pcbsci.sType =
-	VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-      pcbsci.logicOpEnable = VK_FALSE;
-      pcbsci.attachmentCount = 1;
-      pcbsci.pAttachments = &cba;
-
-      VkPipelineLayoutCreateInfo plci = {};
-      plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-      plci.setLayoutCount = 1;
-      plci.pSetLayouts = &vk->bufferLayout;
-      if( VK_SUCCESS !=
-	  vkCreatePipelineLayout( vk->device, &plci,
-				  NULL, &vk->pipelineLayout ) )
-	die( "Pipeline creation failed." );
-
-      VkAttachmentDescription colorAttachment = {};
-      colorAttachment.format = vk->theSurfaceFormat.format;
-      colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-      colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-      colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-      colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-      VkAttachmentReference colorAttachmentRef = {};
-      colorAttachmentRef.attachment = 0;
-      colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-      VkSubpassDescription subpass = {};
-      subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-      subpass.colorAttachmentCount = 1;
-      subpass.pColorAttachments = &colorAttachmentRef;
-
-      // Render pass creation.
-      VkRenderPassCreateInfo rpci = {};
-      rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-      rpci.attachmentCount = 1;
-      rpci.pAttachments = &colorAttachment;
-      rpci.subpassCount = 1;
-      rpci.pSubpasses = &subpass;
-      VkSubpassDependency dependency = {};
-      dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-      dependency.dstSubpass = 0;
-      dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      dependency.srcAccessMask = 0;
-      dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      rpci.dependencyCount = 1;
-      rpci.pDependencies = &dependency;
-      if( VK_SUCCESS != vkCreateRenderPass( vk->device, &rpci,
-					    NULL, &vk->renderPass ) ) 
-	die( "Render pass creation failed." );
-
-      VkGraphicsPipelineCreateInfo pipelineInfo = {};
-      pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-      pipelineInfo.stageCount = 2;
-      pipelineInfo.pStages = pssci;
-      pipelineInfo.pVertexInputState = &pvici;
-      pipelineInfo.pInputAssemblyState = &piasci;
-      pipelineInfo.pViewportState = &pvsci;
-      pipelineInfo.pRasterizationState = &prsci;
-      pipelineInfo.pMultisampleState = &pmsci;
-      pipelineInfo.pColorBlendState = &pcbsci;
-      pipelineInfo.layout = vk->pipelineLayout;
-      pipelineInfo.renderPass = vk->renderPass;
-      pipelineInfo.subpass = 0;
-
-
-      if( VK_SUCCESS != vkCreateGraphicsPipelines( vk->device, VK_NULL_HANDLE,
-						   1, &pipelineInfo, NULL,
-						   &vk->pipeline ) )
-	die( "Pipeline creation failed." );
-    }
+    u32 fsize, vsize;
+    const char* frag = loadBuiltin( "frag", &fsize );
+    const char* vert = loadBuiltin( "vert", &vsize );
+    vk->pipe = createPipeline( vk, frag, fsize, vert, vsize );
     m;
     // Framebuffers
     if( !vk->framebuffers )
@@ -262,7 +109,7 @@ void rebuild( plvkState* vk ){
       VkImageView attachments[ 1 ] = { vk->swap->imageViews[ i ] };
       VkFramebufferCreateInfo fbci = {};
       fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-      fbci.renderPass = vk->renderPass;
+      fbci.renderPass = vk->pipe->renderPass;
       fbci.attachmentCount = 1;
       fbci.pAttachments = attachments;
       fbci.width = vk->extent.width;
@@ -298,7 +145,7 @@ void rebuild( plvkState* vk ){
 
       VkRenderPassBeginInfo rpbi = {};
       rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-      rpbi.renderPass = vk->renderPass;
+      rpbi.renderPass = vk->pipe->renderPass;
       rpbi.framebuffer = vk->framebuffers[ i ];
       rpbi.renderArea.extent = vk->extent;
 
@@ -310,10 +157,10 @@ void rebuild( plvkState* vk ){
       vkCmdBeginRenderPass( vk->commandBuffers[ i ], &rpbi,
 			    VK_SUBPASS_CONTENTS_INLINE );
       vkCmdBindPipeline( vk->commandBuffers[ i ],
-			 VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipeline );
+			 VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipe->pipeline );
       vkCmdBindDescriptorSets( vk->commandBuffers[ i ],
 			       VK_PIPELINE_BIND_POINT_GRAPHICS,
-			       vk->pipelineLayout, 0, 1,
+			       vk->pipe->pipelineLayout, 0, 1,
 			       &vk->descriptorSets[ i ], 0, NULL );
       vkCmdDraw( vk->commandBuffers[ i ], 3, 1, 0, 0 );
       vkCmdEndRenderPass( vk->commandBuffers[ i ] );
@@ -321,8 +168,6 @@ void rebuild( plvkState* vk ){
 	die( "Command buffer recording failed." );
     }
 
-    destroyModule( vk, displayFragmentShader );
-    destroyModule( vk, displayVertexShader );
   }
 }
 
@@ -330,24 +175,18 @@ void unbuild( plvkStatep vkp ){
   m;
   plvkState* vk = vkp;
   if( vk->swap ){
-  m;
+    m;
     vkDeviceWaitIdle( vk->device );
-  m;
+    m;
     for( u32 i = 0; i < vk->swap->numImages; ++i ){
       vkDestroyFramebuffer( vk->device, vk->framebuffers[ i ], NULL );
-      vkDestroyImageView( vk->device, vk->swap->imageViews[ i ], NULL );
     }
-  m;
+    m;
     destroyDescriptorPool( vk );
     vkFreeCommandBuffers( vk->device, vk->pool, vk->swap->numImages,
 			  vk->commandBuffers );
-    if( vk->pipeline )
-      vkDestroyPipeline( vk->device, vk->pipeline, NULL );
-    if( vk->pipelineLayout )
-      vkDestroyPipelineLayout( vk->device, vk->pipelineLayout, NULL );
-    if( vk->renderPass )
-      vkDestroyRenderPass( vk->device, vk->renderPass, NULL );
-  m;
+    destroyPipeline( vk, vk->pipe );
+    m;
     destroyUBOs( vk );
     destroySwap( vk, vk->swap );
     m;

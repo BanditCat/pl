@@ -26,6 +26,13 @@ typedef struct {
   f32 time;
 } gpuState;
 
+
+// Pipeline and associated state.
+typedef struct{
+  VkPipelineLayout pipelineLayout;
+  VkRenderPass renderPass;
+  VkPipeline pipeline;
+} plvkPipeline;
 // Swapchain and associated state.
 typedef struct{
   VkSwapchainKHR swap;
@@ -76,9 +83,7 @@ typedef struct {
   VkFramebuffer* framebuffers; 
 
   VkExtent2D extent;
-  VkPipelineLayout pipelineLayout;
-  VkRenderPass renderPass;
-  VkPipeline pipeline;
+  plvkPipeline* pipe;
 
   VkCommandPool pool;
   VkCommandBuffer* commandBuffers;
@@ -127,3 +132,6 @@ u64 scoreGPU( VkPhysicalDeviceProperties* gpu );
 // Creates a swapchain with the specified properties. 
 plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames );
 void destroySwap( plvkState* vk, plvkSwapchain* swap );
+plvkPipeline* createPipeline( plvkState* vk, const char* frag, u32 fsize,
+			      const char* vert, u32 vsize );
+void destroyPipeline( plvkState* vk, plvkPipeline* p );
