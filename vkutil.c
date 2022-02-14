@@ -155,6 +155,11 @@ void createDescriptorPool( plvkState* vk ) {
 }
 
 
+void destroyDescriptorPool( plvkState* vk ){
+  vkDestroyDescriptorPool( vk->device, vk->descriptorPool, NULL );
+}
+
+
 void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
 		   VkMemoryPropertyFlags properties, VkBuffer* buffer,
 		   VkDeviceMemory* bufferMemory ){
@@ -440,6 +445,11 @@ VkShaderModule createModule( VkDevice vkd, const char* data, u32 size ){
   if( VK_SUCCESS != vkCreateShaderModule( vkd, &ci, NULL, &ret ) )
     die( "Module creation failed." );
   return ret;
+}
+
+
+void destroyModule( plvkState* vk, VkShaderModule sm ){
+  vkDestroyShaderModule( vk->device, sm, NULL );
 }
 
 

@@ -101,6 +101,8 @@ plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
 			  char* title, int x, int y, int width, int height );
 void destroyDevice( plvkState* vk );
 void createDescriptorPool( plvkState* vk );
+void destroyDescriptorPool( plvkState* vk );
+// Descriptor sets are cleaned up along with the descriptor pool.
 void createDescriptorSets( plvkState* vk );
 void getFuncPointers( plvkState* vk );
 void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
@@ -110,5 +112,6 @@ void createUBOs( plvkState* vk );
 void destroyUBOs( plvkState* vk );
 void getExtent( plvkState* vk );
 VkShaderModule createModule( VkDevice vkd, const char* data, u32 size );
+void destroyModule( plvkState* vk, VkShaderModule sm );
 void createUBOLayout( plvkState* vk );
 u64 scoreGPU( VkPhysicalDeviceProperties* gpu );

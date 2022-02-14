@@ -365,8 +365,8 @@ void rebuild( plvkState* vk ){
       die( "Command buffer recording failed." );
   }
 
-  vkDestroyShaderModule( vk->device, displayFragmentShader, NULL );
-  vkDestroyShaderModule( vk->device, displayVertexShader, NULL );
+  destroyModule( vk, displayFragmentShader );
+  destroyModule( vk, displayVertexShader );
 }
 
 void destroySwap( plvkStatep vkp ){
@@ -377,7 +377,7 @@ void destroySwap( plvkStatep vkp ){
       vkDestroyFramebuffer( vk->device, vk->framebuffers[ i ], NULL );
       vkDestroyImageView( vk->device, vk->imageViews[ i ], NULL );
     }
-    vkDestroyDescriptorPool( vk->device, vk->descriptorPool, NULL );
+    destroyDescriptorPool( vk );
     vkFreeCommandBuffers( vk->device, vk->pool, vk->numImages,
 			  vk->commandBuffers );
     if( vk->pipeline )
