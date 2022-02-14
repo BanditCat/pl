@@ -136,16 +136,15 @@ int main( int argc, const char** argv ){
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
-  guiInfo* gui = wsetup( TARGET, x, y, w, h );
-  plvkInit( gpu, gui, debugLevel );
+  plvkStatep vk = plvkInit( gpu, debugLevel, TARGET, x, y, w, h );
 #ifdef DEBUG
   plvkPrintInitInfo();
 #endif
   // Main loop.
   m;
   if( run ){
-    guiShow( gui );
-    while( weventLoop( gui ) )
+    plvkShow( vk );
+    while( plvkeventLoop( vk ) )
       draw();
     m;
     testPrograms();

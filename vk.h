@@ -19,7 +19,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Scores and picks gpus to pick one, unless whichGPU is a positive, in which case it picks that one.
-void plvkInit( s32 whichGPU, void* gui, u32 debugLevel );
+plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
+	       int width, int height );
 void plvkEnd( plvkStatep vk );  
 
 void draw( void );
@@ -28,3 +29,8 @@ void plvkPrintGPUs( void );
 #ifdef DEBUG
 void plvkPrintInitInfo( void );
 #endif		    
+
+bool plvkeventLoop( plvkStatep p );
+
+void plvkShow( plvkStatep g );
+void plvkHide( plvkStatep g );

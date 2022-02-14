@@ -97,15 +97,16 @@ typedef struct {
 #endif
 } plvkState;
 
-plvkState* createDevice( s32 whichGPU, void* vgui, u32 debugLevel );
+plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
+			  char* title, int x, int y, int width, int height );
 void createDescriptorPool( plvkState* vk );
 void createDescriptorSets( plvkState* vk );
 void getFuncPointers( plvkState* vk );
 void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
 		   VkMemoryPropertyFlags properties, VkBuffer* buffer,
 		   VkDeviceMemory* bufferMemory );
-void destroyUBOs( plvkState* vk );
 void createUBOs( plvkState* vk );
+void destroyUBOs( plvkState* vk );
 void getExtent( plvkState* vk );
 VkShaderModule createModule( VkDevice vkd, const char* data, u32 size );
 void createUBOLayout( plvkState* vk );

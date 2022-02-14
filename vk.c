@@ -26,14 +26,6 @@
 
 
 
-
-
-
-
-
-
-
-
 #ifdef DEBUG
 void plvkPrintInitInfo( void ){
   plvkState* vk = state.vk;
@@ -476,11 +468,12 @@ void plvkEnd( plvkStatep vkp ){
 }
 
 
-
-void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
+plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
+		     int width, int height ){
   m;
   // Set up validation layer callback.
-  plvkState* vk = createDevice( whichGPU, vgui, debugLevel );
+  plvkState* vk = createDevice( whichGPU, debugLevel, title, x, y,
+				width, height );
   m;
 
 
@@ -561,7 +554,7 @@ void plvkInit( s32 whichGPU, void* vgui, u32 debugLevel ){
   }
 
   m;
-  
+  return vk;
 }
 void updateGPUstate( plvkState* vk, f32 time ){
   vk->UBOcpumem.time = time;
@@ -655,4 +648,17 @@ void draw( void ){
     destroySwap( vk );
     rebuild( vk );
   }
+}
+bool plvkeventLoop( plvkStatep p ){
+  plvkState* vk = p;
+  return weventLoop( vk->gui );
+}
+
+void plvkShow( plvkStatep p ){
+  plvkState* vk = p;
+  guiShow( vk->gui );
+}
+void plvkHide( plvkStatep p ){
+  plvkState* vk = p;
+  guiHide( vk->gui );
 }

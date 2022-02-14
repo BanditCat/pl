@@ -218,10 +218,11 @@ void destroyUBOs( plvkState* vk ){
     vkFreeMemory( vk->device, vk->UBOmems[ i ], NULL );
   }
 }
-plvkState* createDevice(  s32 whichGPU, void* vgui, u32 debugLevel ){
+plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
+			  char* title, int x, int y, int width, int height ){
   new( vk, plvkState );
   state.vk = vk;
-  vk->gui = vgui;
+  vk->gui = wsetup( title, x, y, width, height );
   vk->debugLevel = debugLevel;
 
   // Get extensions.
