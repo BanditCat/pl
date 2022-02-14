@@ -26,6 +26,11 @@ typedef struct {
   f32 time;
 } gpuState;
 
+// A GPU buffer.
+typedef struct{
+  VkBuffer buffer;
+  VkDeviceMemory memory;
+} plvkBuffer;
 // Instance wide state.
 typedef struct {
   VkInstance instance;
@@ -82,8 +87,7 @@ typedef struct {
   bool rendering;
 
   VkDescriptorSetLayout bufferLayout;
-  VkBuffer* UBOs;
-  VkDeviceMemory* UBOmems;
+  plvkBuffer* UBOs;
   gpuState UBOcpumem;
   VkDescriptorPool descriptorPool;
   VkDescriptorSet* descriptorSets;
@@ -97,6 +101,7 @@ typedef struct {
 #endif
 } plvkState;
 
+
 plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
 			  char* title, int x, int y, int width, int height );
 void destroyDevice( plvkState* vk );
@@ -106,8 +111,8 @@ void destroyDescriptorPool( plvkState* vk );
 void createDescriptorSets( plvkState* vk );
 void getFuncPointers( plvkState* vk );
 void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
-		   VkMemoryPropertyFlags properties, VkBuffer* buffer,
-		   VkDeviceMemory* bufferMemory );
+		   plvkBuffer* buffer );
+void destroyBuffer( plvkState* vk, plvkBuffer* p );
 void createUBOs( plvkState* vk );
 void destroyUBOs( plvkState* vk );
 void getExtent( plvkState* vk );

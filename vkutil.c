@@ -120,7 +120,7 @@ void createDescriptorSets( plvkState* vk ){
 
   for( u32 i = 0; i < vk->numImages; ++i ){
     VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = vk->UBOs[ i ];
+    bufferInfo.buffer = vk->UBOs[ i ].buffer;
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof( gpuState );
 
@@ -161,19 +161,20 @@ void destroyDescriptorPool( plvkState* vk ){
 
 
 void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
-		   VkMemoryPropertyFlags properties, VkBuffer* buffer,
-		   VkDeviceMemory* bufferMemory ){
+		   plvkBuffer* buffer ){
+  static const VkMemoryPropertyFlags properties =
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
   VkBufferCreateInfo bci = {};
   bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   bci.size = size;
   bci.usage = usage;
   bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   if( VK_SUCCESS != vkCreateBuffer( vk->device, &bci,
-				    NULL, buffer ) )
+				    NULL, &buffer->buffer ) )
     die( "Buffer creation failed." );
 
   VkMemoryRequirements mr;
-  vkGetBufferMemoryRequirements( vk->device, *buffer, &mr );
+  vkGetBufferMemoryRequirements( vk->device, buffer->buffer, &mr );
 
   VkMemoryAllocateInfo mai = {};
   mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -196,32 +197,32 @@ void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
   mai.memoryTypeIndex = memtype;
 
   if( VK_SUCCESS != vkAllocateMemory( vk->device, &mai, NULL,
-				      bufferMemory ) )
+				      &buffer->memory ) )
     die( "GPU memory allocation failed." );
 
-  vkBindBufferMemory( vk->device, *buffer, *bufferMemory, 0 );
+  vkBindBufferMemory( vk->device, buffer->buffer, buffer->memory, 0 );
+}
+
+
+void destroyBuffer( plvkState* vk, plvkBuffer* p ){
+  vkDestroyBuffer( vk->device, p->buffer, NULL );
+  vkFreeMemory( vk->device, p->memory, NULL );
 }
 
 
 void createUBOs( plvkState* vk ){
   VkDeviceSize size = sizeof( gpuState );
   if( !vk->UBOs )
-    vk->UBOs = newae( VkBuffer, vk->numImages );
-  if( !vk->UBOmems )
-    vk->UBOmems = newae( VkDeviceMemory, vk->numImages );
+    vk->UBOs = newae( plvkBuffer, vk->numImages );
   for( size_t i = 0; i < vk->numImages; i++ )
     createBuffer( vk, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		  &vk->UBOs[ i ], &vk->UBOmems[ i ] );
+		  &vk->UBOs[ i ] );
 }
 
 
 void destroyUBOs( plvkState* vk ){
-  for( u32 i = 0; i < vk->numImages; ++i ){
-    vkDestroyBuffer( vk->device, vk->UBOs[ i ], NULL );
-    vkFreeMemory( vk->device, vk->UBOmems[ i ], NULL );
-  }
+  for( u32 i = 0; i < vk->numImages; ++i )
+    destroyBuffer( vk, &vk->UBOs[ i ] );
 }
 plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
 			  char* title, int x, int y, int width, int height ){

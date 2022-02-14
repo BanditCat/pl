@@ -410,8 +410,6 @@ void plvkEnd( plvkStatep vkp ){
     vkDestroyCommandPool( vk->device, vk->pool, NULL );
   if( vk->UBOs )
     memfree( vk->UBOs );
-  if( vk->UBOmems )
-    memfree( vk->UBOmems );
   if( vk->imageAvailables )
     memfree( vk->imageAvailables );
   if( vk->renderCompletes )
@@ -544,10 +542,10 @@ plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
 void updateGPUstate( plvkState* vk, f32 time ){
   vk->UBOcpumem.time = time;
   void* data;
-  vkMapMemory( vk->device, vk->UBOmems[ vk->currentImage ], 0,
+  vkMapMemory( vk->device, vk->UBOs[ vk->currentImage ].memory, 0,
 	       sizeof( gpuState ), 0, &data );
   memcpy( data, &vk->UBOcpumem, sizeof( gpuState ) );
-  vkUnmapMemory( vk->device, vk->UBOmems[ vk->currentImage ] );
+  vkUnmapMemory( vk->device, vk->UBOs[ vk->currentImage ].memory );
 }
 void draw( void ){
   static u64 firstDrawTime = 0;
