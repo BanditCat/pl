@@ -476,7 +476,7 @@ void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl ){
 
 plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
   m;
-  VkExtent2D  wh = getExtent( vk );
+  VkExtent2D wh = getExtent( vk );
   if( wh.width && wh.height ){
     vk->extent = wh;
   

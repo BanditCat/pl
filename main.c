@@ -144,6 +144,7 @@ int main( int argc, const char** argv ){
   m;
   if( run ){
     plvkShow( vk );
+    m;
     while( plvkeventLoop( vk ) )
       draw();
     m;

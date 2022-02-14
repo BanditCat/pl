@@ -327,13 +327,17 @@ void rebuild( plvkState* vk ){
 }
 
 void unbuild( plvkStatep vkp ){
+  m;
   plvkState* vk = vkp;
   if( vk->swap ){
+  m;
     vkDeviceWaitIdle( vk->device );
+  m;
     for( u32 i = 0; i < vk->swap->numImages; ++i ){
       vkDestroyFramebuffer( vk->device, vk->framebuffers[ i ], NULL );
       vkDestroyImageView( vk->device, vk->swap->imageViews[ i ], NULL );
     }
+  m;
     destroyDescriptorPool( vk );
     vkFreeCommandBuffers( vk->device, vk->pool, vk->swap->numImages,
 			  vk->commandBuffers );
@@ -343,8 +347,10 @@ void unbuild( plvkStatep vkp ){
       vkDestroyPipelineLayout( vk->device, vk->pipelineLayout, NULL );
     if( vk->renderPass )
       vkDestroyRenderPass( vk->device, vk->renderPass, NULL );
-    destroySwap( vk, vk->swap );
+  m;
     destroyUBOs( vk );
+    destroySwap( vk, vk->swap );
+    m;
   }
 }
 void plvkEnd( plvkStatep vkp ){
