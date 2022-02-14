@@ -99,6 +99,7 @@ typedef struct {
 
 plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
 			  char* title, int x, int y, int width, int height );
+void destroyDevice( plvkState* vk );
 void createDescriptorPool( plvkState* vk );
 void createDescriptorSets( plvkState* vk );
 void getFuncPointers( plvkState* vk );

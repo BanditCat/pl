@@ -422,14 +422,10 @@ void plvkEnd( plvkStatep vkp ){
     memfree( vk->fenceSyncs );
   if( vk->surface )
     vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
-  if( vk->device )
-    vkDestroyDevice( vk->device, NULL);
   m;
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
-  if( vk->instance )
-    vkDestroyInstance( vk->instance, NULL );
   m;
   // Free memory.
   if( vk->descriptorSets )
@@ -444,18 +440,7 @@ void plvkEnd( plvkStatep vkp ){
   m;
   if( vk->images )
     memfree( vk->images );
-  if( vk->gpus )
-    memfree( vk->gpus );
-  if( vk->gpuProperties )
-    memfree( vk->gpuProperties );
-  if( vk->extensions )
-    memfree( vk->extensions );
-  if( vk->deviceExtensions )
-    memfree( vk->deviceExtensions );
-  if( vk->layers )
-    memfree( vk->layers );
-  if( vk->queueFamilies )
-    memfree( vk->queueFamilies );
+  destroyDevice( vk );
   if( vk->surfaceFormats )
     memfree( vk->surfaceFormats );
   if( vk->surfacePresentations )

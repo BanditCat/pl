@@ -382,6 +382,27 @@ plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
 }
 
 
+void destroyDevice( plvkState* vk ){
+  if( vk->device )
+    vkDestroyDevice( vk->device, NULL);
+  if( vk->instance )
+    vkDestroyInstance( vk->instance, NULL );
+
+  if( vk->extensions )
+    memfree( vk->extensions );
+  if( vk->layers )
+    memfree( vk->layers );
+  if( vk->gpus )
+    memfree( vk->gpus );
+  if( vk->gpuProperties )
+    memfree( vk->gpuProperties );
+  if( vk->deviceExtensions )
+    memfree( vk->deviceExtensions );
+  if( vk->queueFamilies )
+    memfree( vk->queueFamilies );
+}
+
+
 void getExtent( plvkState* vk ){
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
 					     &vk->surfaceCapabilities );
@@ -403,7 +424,6 @@ void getExtent( plvkState* vk ){
     vk->extent = wh;
   }
   
-
   if( !vk->extent.width || !vk->extent.height )
     vk->rendering = 0;
   else
