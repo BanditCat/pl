@@ -26,6 +26,13 @@ typedef struct {
   f32 time;
 } gpuState;
 
+// Swapchain and associated state.
+typedef struct{
+  VkSwapchainKHR swap;
+  u32 numImages;
+  VkImage* images;
+  VkImageView* imageViews;
+} plvkSwapchain;
 // A GPU buffer.
 typedef struct{
   VkBuffer buffer;
@@ -64,10 +71,8 @@ typedef struct {
   u32 numSurfacePresentations;
   VkPresentModeKHR* surfacePresentations;
 
-  VkSwapchainKHR swap;
-  u32 numImages;
-  VkImage* images;
-  VkImageView* imageViews;
+  // swap WILL BE NULL IF NOT RENDERING!!!
+  plvkSwapchain* swap;
   VkFramebuffer* framebuffers; 
 
   VkExtent2D extent;
@@ -83,8 +88,6 @@ typedef struct {
   VkFence* fences;
   VkFence* fenceSyncs;
   u32 currentImage;
-
-  bool rendering;
 
   VkDescriptorSetLayout bufferLayout;
   plvkBuffer* UBOs;
@@ -115,9 +118,12 @@ void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
 void destroyBuffer( plvkState* vk, plvkBuffer* p );
 void createUBOs( plvkState* vk );
 void destroyUBOs( plvkState* vk );
-void getExtent( plvkState* vk );
+VkExtent2D getExtent( plvkState* vk );
 VkShaderModule createModule( VkDevice vkd, const char* data, u32 size );
 void destroyModule( plvkState* vk, VkShaderModule sm );
 VkDescriptorSetLayout createUBOLayout( plvkState* vk );
 void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl );
 u64 scoreGPU( VkPhysicalDeviceProperties* gpu );
+// Creates a swapchain with the specified properties. 
+plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames );
+void destroySwap( plvkState* vk, plvkSwapchain* swap );

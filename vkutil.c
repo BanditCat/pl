@@ -101,24 +101,24 @@ void getFuncPointers( plvkState* vk ){
 
 
 void createDescriptorSets( plvkState* vk ){
-  newa( tl, VkDescriptorSetLayout, vk->numImages );
-  for( u32 i = 0; i < vk->numImages; ++i )
+  newa( tl, VkDescriptorSetLayout, vk->swap->numImages );
+  for( u32 i = 0; i < vk->swap->numImages; ++i )
     tl[ i ] = vk->bufferLayout;
   VkDescriptorSetAllocateInfo dsai = {};
   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   dsai.descriptorPool = vk->descriptorPool;
-  dsai.descriptorSetCount = vk->numImages;
+  dsai.descriptorSetCount = vk->swap->numImages;
   dsai.pSetLayouts = tl;
 
   
   if( !vk->descriptorSets )
-    vk->descriptorSets = newae( VkDescriptorSet, vk->numImages );
+    vk->descriptorSets = newae( VkDescriptorSet, vk->swap->numImages );
 
   if( VK_SUCCESS != vkAllocateDescriptorSets( vk->device, &dsai,
 					      vk->descriptorSets ) )
     die( "Failed to allocate descriptor sets." );
 
-  for( u32 i = 0; i < vk->numImages; ++i ){
+  for( u32 i = 0; i < vk->swap->numImages; ++i ){
     VkDescriptorBufferInfo bufferInfo = {};
     bufferInfo.buffer = vk->UBOs[ i ].buffer;
     bufferInfo.offset = 0;
@@ -142,13 +142,13 @@ void createDescriptorSets( plvkState* vk ){
 void createDescriptorPool( plvkState* vk ) {
   VkDescriptorPoolSize dps = {};
   dps.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  dps.descriptorCount = vk->numImages;
+  dps.descriptorCount = vk->swap->numImages;
 
   VkDescriptorPoolCreateInfo dpci = {};
   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   dpci.poolSizeCount = 1;
   dpci.pPoolSizes = &dps;
-  dpci.maxSets = vk->numImages;
+  dpci.maxSets = vk->swap->numImages;
   if( VK_SUCCESS != vkCreateDescriptorPool( vk->device, &dpci, NULL,
 					    &vk->descriptorPool ) )
     die( "Descriptor pool creation failed." );
@@ -213,15 +213,15 @@ void destroyBuffer( plvkState* vk, plvkBuffer* p ){
 void createUBOs( plvkState* vk ){
   VkDeviceSize size = sizeof( gpuState );
   if( !vk->UBOs )
-    vk->UBOs = newae( plvkBuffer, vk->numImages );
-  for( size_t i = 0; i < vk->numImages; i++ )
+    vk->UBOs = newae( plvkBuffer, vk->swap->numImages );
+  for( size_t i = 0; i < vk->swap->numImages; i++ )
     createBuffer( vk, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		  &vk->UBOs[ i ] );
 }
 
 
 void destroyUBOs( plvkState* vk ){
-  for( u32 i = 0; i < vk->numImages; ++i )
+  for( u32 i = 0; i < vk->swap->numImages; ++i )
     destroyBuffer( vk, &vk->UBOs[ i ] );
 }
 plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
@@ -409,14 +409,14 @@ void destroyDevice( plvkState* vk ){
 }
 
 
-void getExtent( plvkState* vk ){
+VkExtent2D getExtent( plvkState* vk ){
+  VkExtent2D wh = {};
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
 					     &vk->surfaceCapabilities );
   const guiInfo* g = vk->gui;
   if( vk->surfaceCapabilities.currentExtent.width != UINT32_MAX ){
-    vk->extent = vk->surfaceCapabilities.currentExtent;
+    wh = vk->surfaceCapabilities.currentExtent;
   } else {
-    VkExtent2D  wh;
     wh.width = g->clientWidth;
     wh.height = g->clientHeight;
     if( wh.width > vk->surfaceCapabilities.maxImageExtent.width )
@@ -427,13 +427,9 @@ void getExtent( plvkState* vk ){
       wh.height = vk->surfaceCapabilities.maxImageExtent.height;
     if( wh.height < vk->surfaceCapabilities.minImageExtent.height )
       wh.height = vk->surfaceCapabilities.minImageExtent.height;
-    vk->extent = wh;
   }
-  
-  if( !vk->extent.width || !vk->extent.height )
-    vk->rendering = 0;
-  else
-    vk->rendering = 1;
+
+  return wh;
 }
 
 
@@ -475,4 +471,77 @@ VkDescriptorSetLayout createUBOLayout( plvkState* vk ){
 
 void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl ){
   vkDestroyDescriptorSetLayout( vk->device, dsl, NULL );
+}
+
+
+plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
+  m;
+  VkExtent2D  wh = getExtent( vk );
+  if( wh.width && wh.height ){
+    vk->extent = wh;
+  
+    new( ret, plvkSwapchain );
+    VkPresentModeKHR pm = vsync ? VK_PRESENT_MODE_FIFO_KHR :
+      VK_PRESENT_MODE_IMMEDIATE_KHR ;
+    VkSwapchainCreateInfoKHR scci = {};
+    scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    scci.surface = vk->surface;
+    scci.minImageCount = minFrames;
+    scci.imageFormat = vk->theSurfaceFormat.format;
+    scci.imageColorSpace = vk->theSurfaceFormat.colorSpace;
+    scci.imageExtent = vk->extent;
+    scci.imageArrayLayers = 1;
+    scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    scci.queueFamilyIndexCount = 0;
+    scci.pQueueFamilyIndices = NULL;
+    scci.preTransform = vk->surfaceCapabilities.currentTransform;
+    scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    scci.presentMode = pm;
+    scci.clipped = VK_TRUE;
+    scci.oldSwapchain = VK_NULL_HANDLE;
+    m;
+    if( VK_SUCCESS !=
+	vkCreateSwapchainKHR( vk->device, &scci, NULL, &ret->swap ) )
+      die( "Swapchain creation failed." );
+    m;
+    vkGetSwapchainImagesKHR( vk->device, ret->swap, &ret->numImages, NULL );
+    ret->images = newae( VkImage, ret->numImages );
+    vkGetSwapchainImagesKHR( vk->device, ret->swap, &ret->numImages,
+			     ret->images );
+    m;
+    // Image views.
+    ret->imageViews = newae( VkImageView, ret->numImages );
+    for( u32 i = 0; i < ret->numImages; ++i ){
+      VkImageViewCreateInfo ivci = {};
+      ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      ivci.image = ret->images[ i ];
+      ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      ivci.format = vk->theSurfaceFormat.format;
+      ivci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+      ivci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+      ivci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+      ivci.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+      ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      ivci.subresourceRange.baseMipLevel = 0;
+      ivci.subresourceRange.levelCount = 1;
+      ivci.subresourceRange.baseArrayLayer = 0;
+      ivci.subresourceRange.layerCount = 1;
+      if( VK_SUCCESS != vkCreateImageView( vk->device, &ivci, NULL,
+					   &ret->imageViews[ i ] ) )
+	die( "Failed to create image view." );
+    }
+    m;
+    return ret;
+  } else
+    return NULL;
+}
+
+
+void destroySwap( plvkState* vk, plvkSwapchain* swap ){
+  (void)vk;
+  vkDestroySwapchainKHR( vk->device, swap->swap, NULL );
+  memfree( swap->images );
+  memfree( swap->imageViews );
+  memfree( swap );
 }

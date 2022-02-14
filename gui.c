@@ -82,7 +82,8 @@ guiInfo* wsetup( char* title, int x, int y, int width, int height ){
 				 WS_CLIPCHILDREN,
 				 x, y, width, height, NULL, NULL,
 				 gui->instance, NULL );
-  SetWindowLong( ret->handle, GWL_STYLE, 0 ); //remove all window styles, check MSDN for details
+  //remove all window styles, check MSDN for details
+  //  SetWindowLong( ret->handle, GWL_STYLE, 0 );
   SetWindowLongPtr( ret->handle, 0, (LONG_PTR)ret );
   gui->hDC = GetDC( ret->handle );
 
