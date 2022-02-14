@@ -118,5 +118,6 @@ void destroyUBOs( plvkState* vk );
 void getExtent( plvkState* vk );
 VkShaderModule createModule( VkDevice vkd, const char* data, u32 size );
 void destroyModule( plvkState* vk, VkShaderModule sm );
-void createUBOLayout( plvkState* vk );
+VkDescriptorSetLayout createUBOLayout( plvkState* vk );
+void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl );
 u64 scoreGPU( VkPhysicalDeviceProperties* gpu );

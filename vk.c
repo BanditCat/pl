@@ -404,7 +404,7 @@ void plvkEnd( plvkStatep vkp ){
   m;
   destroySwap( vkp );
   if( vk->bufferLayout )
-    vkDestroyDescriptorSetLayout( vk->device, vk->bufferLayout, NULL );
+    destroyUBOLayout( vk, vk->bufferLayout );
   m;
   if( vk->pool )
     vkDestroyCommandPool( vk->device, vk->pool, NULL );
@@ -510,7 +510,7 @@ plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
     die( "Command pool creation failed." );
 
 
-  createUBOLayout( vk );
+  vk->bufferLayout = createUBOLayout( vk );
   rebuild( vk );
   
   // Semaphores and fences.

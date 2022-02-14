@@ -454,7 +454,8 @@ void destroyModule( plvkState* vk, VkShaderModule sm ){
 }
 
 
-void createUBOLayout( plvkState* vk ){
+VkDescriptorSetLayout createUBOLayout( plvkState* vk ){
+  VkDescriptorSetLayout ret;
   VkDescriptorSetLayoutBinding dslb = {};
   dslb.binding = 0;
   dslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -466,6 +467,12 @@ void createUBOLayout( plvkState* vk ){
   dslci.bindingCount = 1;
   dslci.pBindings = &dslb;
   if( VK_SUCCESS != vkCreateDescriptorSetLayout( vk->device, &dslci, NULL,
-						 &vk->bufferLayout ) ) 
+						 &ret ) ) 
     die( "Descriptor layout creation failed." );
+  return ret;
+}
+
+
+void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl ){
+  vkDestroyDescriptorSetLayout( vk->device, dsl, NULL );
 }
