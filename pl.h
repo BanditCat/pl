@@ -27,7 +27,7 @@
 #define die( x ) { eprint( "!!!!!!!!DEAD!!!!!!!! " AT "\n" );\
     eprint( x ); endl(); end( 1 ); }
 
-//#define MARKERS 1
+#define MARKERS 1
 
 #ifdef MARKERS
 #define m { eprintl( "Marker " AT ); }

@@ -129,9 +129,16 @@ void destroyModule( plvkState* vk, VkShaderModule sm );
 VkDescriptorSetLayout createUBOLayout( plvkState* vk );
 void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl );
 u64 scoreGPU( VkPhysicalDeviceProperties* gpu );
-// Creates a swapchain with the specified properties. 
 plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames );
 void destroySwap( plvkState* vk, plvkSwapchain* swap );
 plvkPipeline* createPipeline( plvkState* vk, const char* frag, u32 fsize,
 			      const char* vert, u32 vsize );
 void destroyPipeline( plvkState* vk, plvkPipeline* p );
+VkFramebuffer* createFramebuffers( plvkState* vk, plvkPipeline* p,
+				   plvkSwapchain* swap );
+void destroyFramebuffers( plvkState* vk, VkFramebuffer* fbs );
+VkCommandBuffer* createCommandBuffers( plvkState* vk );
+void destroyCommandBuffers( plvkState* vk, VkCommandBuffer* cbs );
+// Command pool, semaphores, and fences.
+void createPoolAndFences( plvkState* vk );
+void destroyPoolAndFences( plvkState* vk, u32 numImages );

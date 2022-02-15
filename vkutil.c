@@ -212,7 +212,7 @@ void destroyBuffer( plvkState* vk, plvkBuffer* p ){
 
 void createUBOs( plvkState* vk ){
   VkDeviceSize size = sizeof( gpuState );
-    vk->UBOs = newae( plvkBuffer, vk->swap->numImages );
+  vk->UBOs = newae( plvkBuffer, vk->swap->numImages );
   for( size_t i = 0; i < vk->swap->numImages; i++ )
     createBuffer( vk, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		  &vk->UBOs[ i ] );
@@ -539,7 +539,6 @@ plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
 
 
 void destroySwap( plvkState* vk, plvkSwapchain* swap ){
-  (void)vk;
   for( u32 i = 0; i < swap->numImages; ++i )
     vkDestroyImageView( vk->device, swap->imageViews[ i ], NULL );
   vkDestroySwapchainKHR( vk->device, swap->swap, NULL );
@@ -706,9 +705,151 @@ plvkPipeline* createPipeline( plvkState* vk, const char* frag, u32 fsize,
   destroyModule( vk, displayVertexShader );
   return ret;
 }
+
+
 void destroyPipeline( plvkState* vk, plvkPipeline* p ){
   vkDestroyPipeline( vk->device, p->pipeline, NULL );
   vkDestroyPipelineLayout( vk->device, p->pipelineLayout, NULL );
   vkDestroyRenderPass( vk->device, p->renderPass, NULL );
   memfree( p );
+}
+
+
+VkFramebuffer* createFramebuffers( plvkState* vk, plvkPipeline* pipe,
+				   plvkSwapchain* swap ){
+  newa( ret, VkFramebuffer, vk->swap->numImages );
+  for( u32 i = 0; i < swap->numImages; ++i ){
+    VkImageView attachments[ 1 ] = { swap->imageViews[ i ] };
+    VkFramebufferCreateInfo fbci = {};
+    fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fbci.renderPass = pipe->renderPass;
+    fbci.attachmentCount = 1;
+    fbci.pAttachments = attachments;
+    fbci.width = vk->extent.width;
+    fbci.height = vk->extent.height;
+    fbci.layers = 1;
+    if( VK_SUCCESS != vkCreateFramebuffer( vk->device, &fbci,
+					   NULL, &ret[ i ] ) )
+      die( "Framebuffer creation failed." );
+  }
+
+  return ret;
+}
+
+
+void destroyFramebuffers( plvkState* vk, VkFramebuffer* fbs ){
+  for( u32 i = 0; i < vk->swap->numImages; ++i )
+    vkDestroyFramebuffer( vk->device, fbs[ i ], NULL );
+  memfree( fbs );
+}
+
+
+VkCommandBuffer* createCommandBuffers( plvkState* vk ){
+  newa( ret, VkCommandBuffer, vk->swap->numImages );
+
+  VkCommandBufferAllocateInfo cbai = {};
+  cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  cbai.commandPool = vk->pool;
+  cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  cbai.commandBufferCount = vk->swap->numImages;
+  if( VK_SUCCESS != vkAllocateCommandBuffers( vk->device, &cbai,
+					      ret ) )
+    die( "Command buffer creation failed." );
+  m;
+    
+  // Command buffers and render passes.
+  for( u32 i = 0; i < vk->swap->numImages; i++ ){
+    VkCommandBufferBeginInfo cbbi = {};
+    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    if( VK_SUCCESS != vkBeginCommandBuffer( ret[ i ], &cbbi ) )
+      die( "Command buffer begining failed." );
+
+    VkRenderPassBeginInfo rpbi = {};
+    rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpbi.renderPass = vk->pipe->renderPass;
+    rpbi.framebuffer = vk->framebuffers[ i ];
+    rpbi.renderArea.extent = vk->extent;
+
+    VkClearValue cc = {};
+    cc.color.float32[ 3 ] = 1.0f;
+    rpbi.clearValueCount = 1;
+    rpbi.pClearValues = &cc;
+
+    vkCmdBeginRenderPass( ret[ i ], &rpbi,
+			  VK_SUBPASS_CONTENTS_INLINE );
+    vkCmdBindPipeline( ret[ i ],
+		       VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipe->pipeline );
+    vkCmdBindDescriptorSets( ret[ i ],
+			     VK_PIPELINE_BIND_POINT_GRAPHICS,
+			     vk->pipe->pipelineLayout, 0, 1,
+			     &vk->descriptorSets[ i ], 0, NULL );
+    vkCmdDraw( ret[ i ], 3, 1, 0, 0 );
+    vkCmdEndRenderPass( ret[ i ] );
+    if( VK_SUCCESS != vkEndCommandBuffer( ret[ i ] ) )
+      die( "Command buffer recording failed." );
+  }
+  return ret;
+}
+
+
+void destroyCommandBuffers( plvkState* vk, VkCommandBuffer* cbs ){
+  vkFreeCommandBuffers( vk->device, vk->pool, vk->swap->numImages,
+			cbs );
+  memfree( cbs );
+}
+
+
+void createPoolAndFences( plvkState* vk ){
+  // Command pool.
+  m;
+  VkCommandPoolCreateInfo cpci = {};
+  cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  cpci.queueFamilyIndex = 0;
+  m;
+  if( VK_SUCCESS != vkCreateCommandPool( vk->device, &cpci, NULL,
+					 &vk->pool ) )
+    die( "Command pool creation failed." );
+  m;
+  // Semaphores and fences.
+  vk->imageAvailables = newae( VkSemaphore, vk->swap->numImages );
+  vk->renderCompletes = newae( VkSemaphore, vk->swap->numImages );
+  m;
+  vk->fences = newae( VkFence, vk->swap->numImages );
+  vk->fenceSyncs = newae( VkFence, vk->swap->numImages );
+  m;
+  for( u32 i = 0; i < vk->swap->numImages; ++i )
+    vk->fenceSyncs[ i ] = VK_NULL_HANDLE;
+  VkSemaphoreCreateInfo sci = {};
+  sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  VkFenceCreateInfo fci = {};
+  fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+  m;
+  for( u32 i = 0; i < vk->swap->numImages; ++i ){
+    if( VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
+					 &vk->imageAvailables[ i ] ) ||
+	VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
+					 &vk->renderCompletes[ i ] ) )
+      die( "Semaphore creation failed." );
+    if( VK_SUCCESS != vkCreateFence( vk->device, &fci, NULL,
+				     &vk->fences[ i ] ) )
+      die( "Fence creation failed." );
+  }
+}
+
+
+void destroyPoolAndFences( plvkState* vk, u32 numImages ){
+  m;
+  for( u32 i = 0; i < numImages; ++i ){
+    vkDestroySemaphore( vk->device, vk->imageAvailables[ i ], NULL );
+    vkDestroySemaphore( vk->device, vk->renderCompletes[ i ], NULL );
+    vkDestroyFence( vk->device, vk->fences[ i ], NULL );
+  }
+  m;
+  vkDestroyCommandPool( vk->device, vk->pool, NULL );
+  memfree( vk->imageAvailables );
+  memfree( vk->renderCompletes );
+  memfree( vk->fences );
+  memfree( vk->fenceSyncs );
+  m;
 }
