@@ -18,6 +18,7 @@
 // Vulkan internal interface.                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
+#define VK_USE_PLATFORM_WIN32_KHR
 #include "inc\vulkan\vulkan.h"
 #include "pl.h"
 #include "gui.h"
@@ -27,6 +28,16 @@ typedef struct {
 } gpuState;
 
 
+// Win32/vulkan surface
+typedef struct{
+  VkSurfaceKHR surface;
+  VkSurfaceCapabilitiesKHR surfaceCapabilities;
+  u32 numSurfaceFormats;
+  VkSurfaceFormatKHR* surfaceFormats;
+  VkSurfaceFormatKHR theSurfaceFormat;
+  u32 numSurfacePresentations;
+  VkPresentModeKHR* surfacePresentations;
+} plvkSurface;
 // Pipeline and associated state.
 typedef struct{
   VkPipelineLayout pipelineLayout;
@@ -59,8 +70,8 @@ typedef struct {
   u32 numQueues;
   VkQueue queue;
   VkQueueFamilyProperties* queueFamilies;
-  VkSurfaceKHR surface;
-
+  plvkSurface* surface;
+  
   u32 gpuIndex;
   VkPhysicalDevice gpu;
   VkPhysicalDeviceProperties* selectedGpuProperties;
@@ -70,13 +81,6 @@ typedef struct {
   u32 queueFamily;
   VkDevice device;
   u32 debugLevel;
-
-  VkSurfaceCapabilitiesKHR surfaceCapabilities;
-  u32 numSurfaceFormats;
-  VkSurfaceFormatKHR* surfaceFormats;
-  VkSurfaceFormatKHR theSurfaceFormat;
-  u32 numSurfacePresentations;
-  VkPresentModeKHR* surfacePresentations;
 
   // swap WILL BE NULL IF NOT RENDERING!!!
   plvkSwapchain* swap;
@@ -143,3 +147,6 @@ void destroyCommandBuffers( plvkState* vk, VkCommandBuffer* cbs );
 // Command pool, semaphores, and fences.
 void createPoolAndFences( plvkState* vk );
 void destroyPoolAndFences( plvkState* vk, u32 numImages );
+plvkSurface* createSurface( plvkState* vk );
+void destroySurface( plvkState* vk, plvkSurface* surf );
+  

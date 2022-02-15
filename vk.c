@@ -18,7 +18,6 @@
 // Vulkan interface.                                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
-#define VK_USE_PLATFORM_WIN32_KHR
 #include "vkutil.h"
 #include "util.h"
 #include "os.h"
@@ -50,17 +49,17 @@ void plvkPrintInitInfo( void ){
     printl( vk->deviceExtensions[ i ].extensionName );
   }
   printl( "\nSurface formats:" );
-  for( u32 i = 0; i < vk->numSurfaceFormats; ++i ){
+  for( u32 i = 0; i < vk->surface->numSurfaceFormats; ++i ){
     printInt( i ); printl( ": " );
     print( "       format: " );
-    printInt( vk->surfaceFormats[ i ].format ); endl();
+    printInt( vk->surface->surfaceFormats[ i ].format ); endl();
     print( "  color space: " );
-    printInt( vk->surfaceFormats[ i ].colorSpace ); endl();
+    printInt( vk->surface->surfaceFormats[ i ].colorSpace ); endl();
   }
   printl( "\nSurface presentations:" );
-  for( u32 i = 0; i < vk->numSurfacePresentations; ++i ){
+  for( u32 i = 0; i < vk->surface->numSurfacePresentations; ++i ){
     printInt( i ); print( ": " );
-    printInt( vk->surfacePresentations[ i ] ); endl();
+    printInt( vk->surface->surfacePresentations[ i ] ); endl();
   }
 
 }
@@ -131,17 +130,12 @@ void plvkEnd( plvkStatep vkp ){
     destroyPoolAndFences( vk, ni );
   }
   destroyUBOLayout( vk, vk->bufferLayout );
-  if( vk->surface )
-    vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
+  destroySurface( vk, vk->surface );
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
   destroyDescriptorSets( vk );
   destroyDevice( vk );
-  if( vk->surfaceFormats )
-    memfree( vk->surfaceFormats );
-  if( vk->surfacePresentations )
-    memfree( vk->surfacePresentations );
   if( vk->gui )
     wend( vk->gui );
   memfree( vk );
@@ -153,45 +147,7 @@ plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
   plvkState* vk = createDevice( whichGPU, debugLevel, title, x, y,
 				width, height );
   
-
-  // Create surface
-  VkWin32SurfaceCreateInfoKHR srfci = {};
-  srfci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-  srfci.hwnd = vk->gui->handle;
-  srfci.hinstance = GetModuleHandle( NULL ); 
-  if( VK_SUCCESS != vkCreateWin32SurfaceKHR( vk->instance, &srfci, NULL,
-					     &vk->surface ) )
-    die( "Win32 surface creation failed." );
-  VkBool32 supported = 0;
-  vkGetPhysicalDeviceSurfaceSupportKHR( vk->gpu, 0, vk->surface, &supported );
-  if( VK_FALSE == supported )
-    die( "Surface not supported." );
-
-  // Get device surface capabilities.
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
-					     &vk->surfaceCapabilities );
-  vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu,
-					vk->surface,
-					&vk->numSurfaceFormats, NULL );
-  vk->surfaceFormats = newae( VkSurfaceFormatKHR, vk->numSurfaceFormats );
-  vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu, vk->surface,
-					&vk->numSurfaceFormats,
-					vk->surfaceFormats );
-  vkGetPhysicalDeviceSurfacePresentModesKHR( vk->gpu, vk->surface,
-					     &vk->numSurfacePresentations,
-					     NULL );
-  vk->surfacePresentations = newae( VkPresentModeKHR,
-				    vk->numSurfacePresentations );
-  vkGetPhysicalDeviceSurfacePresentModesKHR( vk->gpu, vk->surface,
-					     &vk->numSurfacePresentations,
-					     vk->surfacePresentations );
-  if( vk->surfaceCapabilities.maxImageCount < 2 &&
-      vk->surfaceCapabilities.minImageCount < 2 )
-    die( "Double buffering not supported." );
-  if( state.frameCount > vk->surfaceCapabilities.maxImageCount )
-    die( "The requested number of frames is not supported." );
-  vk->theSurfaceFormat = vk->surfaceFormats[ 0 ];
-
+  vk->surface = createSurface( vk );
   vk->bufferLayout = createUBOLayout( vk );
   rebuild( vk );
   return vk;

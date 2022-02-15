@@ -416,22 +416,22 @@ void destroyDevice( plvkState* vk ){
 
 VkExtent2D getExtent( plvkState* vk ){
   VkExtent2D wh = {};
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
-					     &vk->surfaceCapabilities );
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface->surface,
+					     &vk->surface->surfaceCapabilities );
   const guiInfo* g = vk->gui;
-  if( vk->surfaceCapabilities.currentExtent.width != UINT32_MAX ){
-    wh = vk->surfaceCapabilities.currentExtent;
+  if( vk->surface->surfaceCapabilities.currentExtent.width != UINT32_MAX ){
+    wh = vk->surface->surfaceCapabilities.currentExtent;
   } else {
     wh.width = g->clientWidth;
     wh.height = g->clientHeight;
-    if( wh.width > vk->surfaceCapabilities.maxImageExtent.width )
-      wh.width = vk->surfaceCapabilities.maxImageExtent.width;
-    if( wh.width < vk->surfaceCapabilities.minImageExtent.width )
-      wh.width = vk->surfaceCapabilities.minImageExtent.width;
-    if( wh.height > vk->surfaceCapabilities.maxImageExtent.height )
-      wh.height = vk->surfaceCapabilities.maxImageExtent.height;
-    if( wh.height < vk->surfaceCapabilities.minImageExtent.height )
-      wh.height = vk->surfaceCapabilities.minImageExtent.height;
+    if( wh.width > vk->surface->surfaceCapabilities.maxImageExtent.width )
+      wh.width = vk->surface->surfaceCapabilities.maxImageExtent.width;
+    if( wh.width < vk->surface->surfaceCapabilities.minImageExtent.width )
+      wh.width = vk->surface->surfaceCapabilities.minImageExtent.width;
+    if( wh.height > vk->surface->surfaceCapabilities.maxImageExtent.height )
+      wh.height = vk->surface->surfaceCapabilities.maxImageExtent.height;
+    if( wh.height < vk->surface->surfaceCapabilities.minImageExtent.height )
+      wh.height = vk->surface->surfaceCapabilities.minImageExtent.height;
   }
 
   return wh;
@@ -489,17 +489,17 @@ plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
       VK_PRESENT_MODE_IMMEDIATE_KHR ;
     VkSwapchainCreateInfoKHR scci = {};
     scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    scci.surface = vk->surface;
+    scci.surface = vk->surface->surface;
     scci.minImageCount = minFrames;
-    scci.imageFormat = vk->theSurfaceFormat.format;
-    scci.imageColorSpace = vk->theSurfaceFormat.colorSpace;
+    scci.imageFormat = vk->surface->theSurfaceFormat.format;
+    scci.imageColorSpace = vk->surface->theSurfaceFormat.colorSpace;
     scci.imageExtent = vk->extent;
     scci.imageArrayLayers = 1;
     scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     scci.queueFamilyIndexCount = 0;
     scci.pQueueFamilyIndices = NULL;
-    scci.preTransform = vk->surfaceCapabilities.currentTransform;
+    scci.preTransform = vk->surface->surfaceCapabilities.currentTransform;
     scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     scci.presentMode = pm;
     scci.clipped = VK_TRUE;
@@ -518,7 +518,7 @@ plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
       ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
       ivci.image = ret->images[ i ];
       ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-      ivci.format = vk->theSurfaceFormat.format;
+      ivci.format = vk->surface->theSurfaceFormat.format;
       ivci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
       ivci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
       ivci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -643,7 +643,7 @@ plvkPipeline* createPipeline( plvkState* vk, const char* frag, u32 fsize,
     die( "Pipeline creation failed." );
 
   VkAttachmentDescription colorAttachment = {};
-  colorAttachment.format = vk->theSurfaceFormat.format;
+  colorAttachment.format = vk->surface->theSurfaceFormat.format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -842,4 +842,54 @@ void destroyPoolAndFences( plvkState* vk, u32 numImages ){
   memfree( vk->renderCompletes );
   memfree( vk->fences );
   memfree( vk->fenceSyncs );
+}
+
+
+plvkSurface* createSurface( plvkState* vk ){
+  new( ret, plvkSurface ); 
+  VkWin32SurfaceCreateInfoKHR srfci = {};
+  srfci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+  srfci.hwnd = vk->gui->handle;
+  srfci.hinstance = GetModuleHandle( NULL ); 
+  if( VK_SUCCESS != vkCreateWin32SurfaceKHR( vk->instance, &srfci, NULL,
+					     &ret->surface ) )
+    die( "Win32 surface creation failed." );
+  VkBool32 supported = 0;
+  vkGetPhysicalDeviceSurfaceSupportKHR( vk->gpu, 0, ret->surface, &supported );
+  if( VK_FALSE == supported )
+    die( "Surface not supported." );
+
+  // Get device surface capabilities.
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, ret->surface,
+					     &ret->surfaceCapabilities );
+  vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu,
+					ret->surface,
+					&ret->numSurfaceFormats, NULL );
+  ret->surfaceFormats = newae( VkSurfaceFormatKHR, ret->numSurfaceFormats );
+  vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu, ret->surface,
+					&ret->numSurfaceFormats,
+					ret->surfaceFormats );
+  vkGetPhysicalDeviceSurfacePresentModesKHR( vk->gpu, ret->surface,
+					     &ret->numSurfacePresentations,
+					     NULL );
+  ret->surfacePresentations = newae( VkPresentModeKHR,
+				    ret->numSurfacePresentations );
+  vkGetPhysicalDeviceSurfacePresentModesKHR( vk->gpu, ret->surface,
+					     &ret->numSurfacePresentations,
+					     ret->surfacePresentations );
+  if( ret->surfaceCapabilities.maxImageCount < 2 &&
+      ret->surfaceCapabilities.minImageCount < 2 )
+    die( "Double buffering not supported." );
+  if( state.frameCount > ret->surfaceCapabilities.maxImageCount )
+    die( "The requested number of frames is not supported." );
+  ret->theSurfaceFormat = ret->surfaceFormats[ 0 ];
+  return ret;
+}
+
+
+void destroySurface( plvkState* vk, plvkSurface* surf ){
+  vkDestroySurfaceKHR( vk->instance, surf->surface, NULL );
+  memfree( surf->surfaceFormats );
+  memfree( surf->surfacePresentations );
+  memfree( surf );
 }
