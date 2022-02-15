@@ -209,8 +209,6 @@ void plvkEnd( plvkStatep vkp ){
   m;
   if( vk->pool )
     vkDestroyCommandPool( vk->device, vk->pool, NULL );
-  if( vk->UBOs )
-    memfree( vk->UBOs );
   if( vk->imageAvailables )
     memfree( vk->imageAvailables );
   if( vk->renderCompletes )

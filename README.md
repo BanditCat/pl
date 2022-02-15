@@ -1,5 +1,6 @@
 # [__magic__](https://kinda.science)
-
+## A programming language that makes GPU programming easy*
+*haha not really.
 
      
                                   .╓

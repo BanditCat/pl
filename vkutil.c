@@ -212,7 +212,6 @@ void destroyBuffer( plvkState* vk, plvkBuffer* p ){
 
 void createUBOs( plvkState* vk ){
   VkDeviceSize size = sizeof( gpuState );
-  if( !vk->UBOs )
     vk->UBOs = newae( plvkBuffer, vk->swap->numImages );
   for( size_t i = 0; i < vk->swap->numImages; i++ )
     createBuffer( vk, size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -223,6 +222,7 @@ void createUBOs( plvkState* vk ){
 void destroyUBOs( plvkState* vk ){
   for( u32 i = 0; i < vk->swap->numImages; ++i )
     destroyBuffer( vk, &vk->UBOs[ i ] );
+  memfree( vk->UBOs );
 }
 plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
 			  char* title, int x, int y, int width, int height ){
