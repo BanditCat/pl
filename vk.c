@@ -90,21 +90,17 @@ void plvkPrintGPUs( void ){
 }
 
 void rebuild( plvkState* vk ){
-  m;
   vkDeviceWaitIdle( vk->device );
 
   vk->swap = createSwap( vk, 1, state.frameCount );
   if( vk->swap ){
     if( !vk->pool )
       createPoolAndFences( vk );
-    m;
     u32 fsize, vsize;
     const char* frag = loadBuiltin( "frag", &fsize );
     const char* vert = loadBuiltin( "vert", &vsize );
     vk->pipe = createPipeline( vk, frag, fsize, vert, vsize );
-    m;
     vk->framebuffers = createFramebuffers( vk, vk->pipe, vk->swap );
-    m;
 
     createUBOs( vk );
     createDescriptorPool( vk );
@@ -115,67 +111,48 @@ void rebuild( plvkState* vk ){
 }
 
 void unbuild( plvkStatep vkp ){
-  m;
   plvkState* vk = vkp;
   if( vk->swap ){
-    m;
     vkDeviceWaitIdle( vk->device );
-    m;
     destroyFramebuffers( vk, vk->framebuffers );
-    m;
     destroyDescriptorPool( vk );
     destroyPipeline( vk, vk->pipe );
     destroyCommandBuffers( vk, vk->commandBuffers );
-    m;
     destroyUBOs( vk );
     destroySwap( vk, vk->swap );
-    m;
   }
 }
 void plvkEnd( plvkStatep vkp ){
-  m;
   plvkState* vk = vkp;
   vkDeviceWaitIdle( vk->device );
-  m;
   {
     u32 ni = vk->swap->numImages;
     unbuild( vkp );
     destroyPoolAndFences( vk, ni );
   }
-  m;
   destroyUBOLayout( vk, vk->bufferLayout );
-  m;
   if( vk->surface )
     vkDestroySurfaceKHR( vk->instance, vk->surface, NULL );
-  m;
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
-  m;
-  // Free memory.
-  if( vk->descriptorSets )
-    memfree( vk->descriptorSets );
-  m;
+  destroyDescriptorSets( vk );
   destroyDevice( vk );
   if( vk->surfaceFormats )
     memfree( vk->surfaceFormats );
   if( vk->surfacePresentations )
     memfree( vk->surfacePresentations );
-  m;
   if( vk->gui )
     wend( vk->gui );
   memfree( vk );
-  m;
 }
 
 
 plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
 		     int width, int height ){
-  m;
   plvkState* vk = createDevice( whichGPU, debugLevel, title, x, y,
 				width, height );
-  m;
-
+  
 
   // Create surface
   VkWin32SurfaceCreateInfoKHR srfci = {};
@@ -190,7 +167,6 @@ plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
   if( VK_FALSE == supported )
     die( "Surface not supported." );
 
-  m;
   // Get device surface capabilities.
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface,
 					     &vk->surfaceCapabilities );
@@ -217,10 +193,7 @@ plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
   vk->theSurfaceFormat = vk->surfaceFormats[ 0 ];
 
   vk->bufferLayout = createUBOLayout( vk );
-  m;
   rebuild( vk );
-  m;
-  m;
   return vk;
 }
 void updateGPUstate( plvkState* vk, f32 time ){

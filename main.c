@@ -141,18 +141,13 @@ int main( int argc, const char** argv ){
   plvkPrintInitInfo();
 #endif
   // Main loop.
-  m;
   if( run ){
     plvkShow( vk );
-    m;
     while( plvkeventLoop( vk ) )
       draw();
-    m;
     testPrograms();
-    m;
   }else
     plvkPrintGPUs();
-  m;
   return 0;
 }
 

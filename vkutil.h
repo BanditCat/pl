@@ -117,6 +117,7 @@ void createDescriptorPool( plvkState* vk );
 void destroyDescriptorPool( plvkState* vk );
 // Descriptor sets are cleaned up along with the descriptor pool.
 void createDescriptorSets( plvkState* vk );
+void destroyDescriptorSets( plvkState* vk );
 void getFuncPointers( plvkState* vk );
 void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
 		   plvkBuffer* buffer );

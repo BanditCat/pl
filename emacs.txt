@@ -113,6 +113,7 @@
 (global-set-key (kbd "<f2>") 'ispell-comments-and-strings)
 (global-set-key (kbd "<S-f2>") 'ispell-buffer)
 (global-set-key (kbd "<f3>") 'bandit-indent)
+(global-set-key (kbd "<f4>") 'next-error)
 (global-set-key (kbd "<f6>") (lambda () (interactive) (bandit-run "rall")))
 (global-set-key (kbd "<f7>") (lambda () (interactive) (bandit-run "clean")))
 (global-set-key (kbd "<f8>") (lambda () (interactive) (bandit-run "backup")))

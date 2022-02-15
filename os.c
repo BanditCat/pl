@@ -91,9 +91,7 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
   state.fps = 0;
 #endif
   *((u32*)&state.frameCount) = 2;
-  m;
   end( main( state.argc, state.argv ) );
-  m;
 }
 
 void print( const char* str ){
@@ -131,7 +129,6 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
-  m;
   if( state.vk )
     plvkEnd( state.vk );
 #ifdef DEBUG

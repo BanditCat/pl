@@ -139,6 +139,11 @@ void createDescriptorSets( plvkState* vk ){
 }
 
 
+void destroyDescriptorSets( plvkState* vk ){
+  memfree( vk->descriptorSets );
+}
+
+
 void createDescriptorPool( plvkState* vk ) {
   VkDescriptorPoolSize dps = {};
   dps.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -475,7 +480,6 @@ void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl ){
 
 
 plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
-  m;
   VkExtent2D wh = getExtent( vk );
   if( wh.width && wh.height ){
     vk->extent = wh;
@@ -500,16 +504,13 @@ plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
     scci.presentMode = pm;
     scci.clipped = VK_TRUE;
     scci.oldSwapchain = VK_NULL_HANDLE;
-    m;
     if( VK_SUCCESS !=
 	vkCreateSwapchainKHR( vk->device, &scci, NULL, &ret->swap ) )
       die( "Swapchain creation failed." );
-    m;
     vkGetSwapchainImagesKHR( vk->device, ret->swap, &ret->numImages, NULL );
     ret->images = newae( VkImage, ret->numImages );
     vkGetSwapchainImagesKHR( vk->device, ret->swap, &ret->numImages,
 			     ret->images );
-    m;
     // Image views.
     ret->imageViews = newae( VkImageView, ret->numImages );
     for( u32 i = 0; i < ret->numImages; ++i ){
@@ -531,7 +532,6 @@ plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
 					   &ret->imageViews[ i ] ) )
 	die( "Failed to create image view." );
     }
-    m;
     return ret;
   } else
     return NULL;
@@ -755,7 +755,6 @@ VkCommandBuffer* createCommandBuffers( plvkState* vk ){
   if( VK_SUCCESS != vkAllocateCommandBuffers( vk->device, &cbai,
 					      ret ) )
     die( "Command buffer creation failed." );
-  m;
     
   // Command buffers and render passes.
   for( u32 i = 0; i < vk->swap->numImages; i++ ){
@@ -801,22 +800,17 @@ void destroyCommandBuffers( plvkState* vk, VkCommandBuffer* cbs ){
 
 void createPoolAndFences( plvkState* vk ){
   // Command pool.
-  m;
   VkCommandPoolCreateInfo cpci = {};
   cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   cpci.queueFamilyIndex = 0;
-  m;
   if( VK_SUCCESS != vkCreateCommandPool( vk->device, &cpci, NULL,
 					 &vk->pool ) )
     die( "Command pool creation failed." );
-  m;
   // Semaphores and fences.
   vk->imageAvailables = newae( VkSemaphore, vk->swap->numImages );
   vk->renderCompletes = newae( VkSemaphore, vk->swap->numImages );
-  m;
   vk->fences = newae( VkFence, vk->swap->numImages );
   vk->fenceSyncs = newae( VkFence, vk->swap->numImages );
-  m;
   for( u32 i = 0; i < vk->swap->numImages; ++i )
     vk->fenceSyncs[ i ] = VK_NULL_HANDLE;
   VkSemaphoreCreateInfo sci = {};
@@ -824,7 +818,6 @@ void createPoolAndFences( plvkState* vk ){
   VkFenceCreateInfo fci = {};
   fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-  m;
   for( u32 i = 0; i < vk->swap->numImages; ++i ){
     if( VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL,
 					 &vk->imageAvailables[ i ] ) ||
@@ -839,17 +832,14 @@ void createPoolAndFences( plvkState* vk ){
 
 
 void destroyPoolAndFences( plvkState* vk, u32 numImages ){
-  m;
   for( u32 i = 0; i < numImages; ++i ){
     vkDestroySemaphore( vk->device, vk->imageAvailables[ i ], NULL );
     vkDestroySemaphore( vk->device, vk->renderCompletes[ i ], NULL );
     vkDestroyFence( vk->device, vk->fences[ i ], NULL );
   }
-  m;
   vkDestroyCommandPool( vk->device, vk->pool, NULL );
   memfree( vk->imageAvailables );
   memfree( vk->renderCompletes );
   memfree( vk->fences );
   memfree( vk->fenceSyncs );
-  m;
 }
