@@ -39,3 +39,30 @@ void printFloat( f64 );
 void printIntWithPrefix( u64 n, u32 minWidth, char pad );
 void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth, char pad );
 void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr );
+
+
+// Arrays.
+typedef char* array;
+array aNew( u32 size, const char* data );
+void aDel( array a );
+u32 aSize( array a );
+char* aData( array a );
+u32* aIData( array a );
+// Buckets.
+typedef struct{
+  u32 hash;
+  array key;
+  array value;
+} bucket;
+// Hash table size is in bits.
+typedef struct{
+  u32 bits;
+  bucket* data;
+  u32 size;
+  u32* used;
+} hasht;
+
+hasht* htNew( void );
+void htDestroy( hasht* ht );
+// Takes ownership of the arrays, freeing them in htDestroy.
+void htAdd( hasht* ht, array key, array value );

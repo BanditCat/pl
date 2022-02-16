@@ -175,3 +175,103 @@ void printArray( u32 indent, u32 numsPerRow, u32 nums, const u32* arr ){
     
   }
 }
+
+
+// Hash tables.
+#define HASHTABLE_INITIAL_SIZE_IN_BITS 8
+#define HASHTABLE_MAX_PROBES 10
+#define HASH_P 2305843009213693951
+#define HASH_P_BITS 61
+#define HASH_I 5381
+u32 hash( array a, u32 size ){
+  u32 asize = aSize( a );
+  u32* data = aIData( a );
+  u64 h = HASH_I;
+  for( u32 i = 0; i < asize; i += 4 ){
+    // h << 5 + h = h times 33
+    h = ( h << 5 ) + h + *data;
+    ++data;
+    // h mod p, p a Mersenne prime
+    h = ( h & HASH_P ) + ( h >> HASH_P_BITS );
+    if( h >= HASH_P )
+      h -= HASH_P;
+  }
+  // Rotate bits.
+  u32 shift = size - HASHTABLE_INITIAL_SIZE_IN_BITS;
+  u32 h32 = h;
+  return ( h32 << shift ) | ( h32 >> ( 32 - shift ) );
+}
+array aNew( u32 size, const char* data ){
+  u32 asize = size + ( ( 4 - ( size & 3 ) ) & 3 );
+  newa( ret, char, asize + 4 );
+  memcpy( ret + 4, data, size );
+  *((u32*)ret) = size;
+  return ret;  
+}
+void aDel( array a ){
+  memfree( a );
+}
+u32 aSize( array a ){
+  return  *((u32*)a);
+}
+char* aData( array a ){
+  return ((char*)a) + 4;
+}
+u32* aIData( array a ){
+  return ((u32*)a) + 1;
+}
+hasht* htNew( void ){
+  new( ret, hasht );
+  ret->bits = HASHTABLE_INITIAL_SIZE_IN_BITS;
+  ret->data = newae( bucket, 1 << HASHTABLE_INITIAL_SIZE_IN_BITS );
+  ret->used = newae( u32, 1 << HASHTABLE_INITIAL_SIZE_IN_BITS );
+  ret->size = 0;
+  return ret;
+}
+void htDestroy( hasht* ht ){
+  for( u32 i = 0; i < ht->size; ++i ){
+    memfree( ht->data[ ht->used[ i ] ].key );
+    memfree( ht->data[ ht->used[ i ] ].value );
+  }
+  memfree( ht->data );
+  memfree( ht->used );
+  memfree( ht );
+}
+void htRehash( hasht* ht ){
+  ++ht->bits;
+  u32 mask = ( 1 << ht->bits ) - 1;
+  newa( nd, bucket, 1 << ht->bits );
+  newa( nu, u32, 1 << ht->bits );
+  for( u32 i = 0; i < ht->size; ++i ){
+    bucket* item = ht->data + ht->used[ i ];
+    u32 nh = ( item->hash << 1 ) | ( item->hash >> 31 );
+    nu[ i ] = nh & mask;
+    nd[ nh & mask ].hash = nh;
+    nd[ nh & mask ].key = item->key;
+    nd[ nh & mask ].value = item->value;
+  }
+  memfree( ht->data );
+  ht->data = nd;
+  memfree( ht->used );
+  ht->used = nu;
+}
+void htAdd( hasht* ht, array key, array value ){
+  u32 h, probes;
+  u32 mask = ( 1 << ht->bits ) - 1;
+  h = hash( key, ht->bits );
+  while( 1 ){
+    probes = 0;
+    while( ht->data[ h ].key && probes < HASHTABLE_MAX_PROBES ){
+      h = ( h + 1 ) & mask;
+      ++probes;
+    }
+    if( probes >= HASHTABLE_MAX_PROBES ){
+      htRehash( ht );
+    } else
+      break;
+  }
+  ht->data[ h & mask ].hash = h;
+  ht->data[ h & mask ].key = key;
+  ht->data[ h & mask ].key = value;
+  ht->used[ ht->size++ ] = h & mask;
+}
