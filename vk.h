@@ -26,9 +26,7 @@ void plvkEnd( plvkStatep vk );
 void draw( void );
 
 void plvkPrintGPUs( void );
-#ifdef DEBUG
 void plvkPrintInitInfo( void );
-#endif		    
 
 bool plvkeventLoop( plvkStatep p );
 

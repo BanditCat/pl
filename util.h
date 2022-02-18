@@ -56,6 +56,7 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr );
 
 // dword aligned arrays. 
 typedef char* array;
+#define printArr( a ) { printRaw( aData( a ), aSize( a ) ); }
 array aNew( u64 size, const char* data );
 #define aString( s ) aNew( slen( s ), s )
 void aDel( array a );

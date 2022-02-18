@@ -214,35 +214,28 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr ){
 #define HASH_P 2305843009213693951
 #define HASH_P_BITS 61
 #define HASH_I 538184554674741098
+#define HASH_TABLE_SHIFT 7
+
 // a "good" hash function.
-/* u32 hash( array a, u32 size ){ */
-/*   u64 asize = aISize( a ); */
-/*   u64* data = aIData( a ); */
-/*   u64 h = HASH_I; */
-/*   for( u64 i = 0; i < asize; ++i ){ */
-/*     // h << 5 + h = h times 33 */
-/*     h = ( h << 5 ) + h + *data; */
-/*     ++data; */
-/*     // h mod p, p a Mersenne prime */
-/*     h = ( h & HASH_P ) + ( h >> HASH_P_BITS ); */
-/*     if( h >= HASH_P ) */
-/*       h -= HASH_P; */
-/*   } */
-/*   // Rotate bits. */
-/*   u32 shift = size - HASHTABLE_INITIAL_SIZE_IN_BITS; */
-/*   u32 h32 = h; */
-/*   return ( h32 << shift ) | ( h32 >> ( 32 - shift ) ); */
-/* } */
-// But I will use this.
 u32 hash( array a, u32 size ){
   u64 asize = aISize( a );
   u64* data = aIData( a );
   u64 h = HASH_I;
   for( u64 i = 0; i < asize; ++i ){
-    h ^= rotl( data[ i ], i * 5 );
+    // h << 5 + h = h times 33
+    h = ( h << 5 ) + h + *data;
+    ++data;
+    // h mod p, p a Mersenne prime
+    h = ( h & HASH_P ) + ( h >> HASH_P_BITS );
+    if( h >= HASH_P )
+      h -= HASH_P;
   }
-  return rotl( ((u32)h), size * 7 );
+  // Rotate bits.
+  u32 shift = size * HASH_TABLE_SHIFT - HASHTABLE_INITIAL_SIZE_IN_BITS;
+  u32 h32 = h;
+  return rotl( h32, shift );
 }
+
 array aNew( u64 size, const char* data ){
   u64 asize = ( ( size + 7 ) >> 3 ) << 3;
   newa( ret, char, asize + 8 );
@@ -298,7 +291,6 @@ hasht* htNew( void ){
 }
 void htDestroy( hasht* ht ){
   for( u32 i = 0; i < ht->size; ++i ){
-    printl( aData( ht->data[ ht->used[ i ] ].key ) );
     aDel( ht->data[ ht->used[ i ] ].key );
     aDel( ht->data[ ht->used[ i ] ].value );
   }
@@ -313,7 +305,7 @@ void htRehash( hasht* ht ){
   newa( nu, u32, 1 << ht->bits );
   for( u32 i = 0; i < ht->size; ++i ){
     bucket* item = ht->data + ht->used[ i ];
-    u32 nh = rotl( item->hash, 7 );
+    u32 nh = rotl( item->hash, HASH_TABLE_SHIFT );
     endl(); printInt( nh );    endl();    endl();
     u32 index = nh & mask;
     while( nd[ index ].key )

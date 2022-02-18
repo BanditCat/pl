@@ -25,7 +25,6 @@
 
 
 
-#ifdef DEBUG
 void plvkPrintInitInfo( void ){
   plvkState* vk = state.vk;
   printl( "\nInstance extensions:" );
@@ -63,7 +62,6 @@ void plvkPrintInitInfo( void ){
   }
 
 }
-#endif  
 
 void plvkPrintGPUs( void ){
   plvkState* vk = state.vk;

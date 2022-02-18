@@ -38,6 +38,9 @@ const char* clUsage =
   "-gpu=<G>                   Use the gpu "
   "specified by G, which is an integer.\n"
   "\n"
+  "-info                      List the gpu"
+  "s and other information.\n"
+  "\n"
   "-frameCount=<N>            Use n frames"
   "for rendering, aka pre rendering.\n"
   "\n"
@@ -67,7 +70,6 @@ int main( int argc, const char** argv ){
   // -1 means pick GPU based on score.
   int gpu = -1;
   u32 debugLevel = 2;
-  bool run = 1;
 
   // Parse and execute command line.
   for( int i = 1; i < argc; ++i ){
@@ -124,12 +126,21 @@ int main( int argc, const char** argv ){
       state.fps = 1;
       continue;
     }
-    if( strcomp( argv[ i ], "-help" ) && strcomp( argv[ i ], "--help" ) && strcomp( argv[ i ], "-?" ) && strcomp( argv[ i ], "/?" ) ){
-      print( "Unrecognized command line option " );
-      printl( argv[ i ] );
+    if( !strcomp( "-info", argv[ i ] ) ){
+      plvkInit( gpu, debugLevel, TARGET, 10, 10, 320, 240 );
+      plvkPrintInitInfo();
+      plvkPrintGPUs();
+      return 0;
     }
+    if( !strcomp( argv[ i ], "-help" ) || !strcomp( argv[ i ], "--help" ) ||
+	!strcomp( argv[ i ], "-?" ) || !strcomp( argv[ i ], "/?" ) ){
+      printl( clUsage );
+      return 0;
+    }
+    print( "Unrecognized command line option " );
+    printl( argv[ i ] );
     printl( clUsage );
-    run = 0;
+    return 1;
   }
 
   // Initialize vulkan.
@@ -137,21 +148,15 @@ int main( int argc, const char** argv ){
   printl( "Initializing vulkan..." );
 #endif
   plvkStatep vk = plvkInit( gpu, debugLevel, TARGET, x, y, w, h );
-#ifdef DEBUG
-  plvkPrintInitInfo();
-#endif
   // Main loop.
-  if( run ){
-    plvkShow( vk );
-    while( plvkeventLoop( vk ) )
-      draw();
-    // Run tests.
+  plvkShow( vk );
+  while( plvkeventLoop( vk ) )
+    draw();
+  // Run tests.
 #ifdef DEBUG
-    testPrograms();
-    htTest();
+  testPrograms();
+  htTest();
 #endif
-  }else
-    plvkPrintGPUs();
   return 0;
 }
 
