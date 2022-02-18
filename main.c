@@ -145,7 +145,11 @@ int main( int argc, const char** argv ){
     plvkShow( vk );
     while( plvkeventLoop( vk ) )
       draw();
+    // Run tests.
+#ifdef DEBUG
     testPrograms();
+    htTest();
+#endif
   }else
     plvkPrintGPUs();
   return 0;

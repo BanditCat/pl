@@ -24,10 +24,13 @@
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #define AT __FILE__ ":" TOSTRING(__LINE__)
-#define die( x ) { eprint( "!!!!!!!!DEAD!!!!!!!! " AT "\n" );\
+#define die( x ) { eprint( AT ":!!!!!!!!DEAD!!!!!!!!\n" );\
     eprint( x ); endl(); end( 1 ); }
 
-#define m { eprintl( "Marker " AT ); }
+#define memc { if( !memCheck( 0 ) ){ memCheck( 1 );\
+	die( "memory check failed." ); } }
+#define marc { eprintl( AT ": Marker" ); memc; }
+#define mark { eprintl( AT ": Marker " ); }
 
 #include <limits.h>
 
@@ -100,7 +103,8 @@ typedef struct {
   bool fps;
   const u32 frameCount;
   plvkStatep vk;
-
+  bool ended;
+  
   // Memory instrumentation.
 #ifdef DEBUG
   u64 memallocCount;

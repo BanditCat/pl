@@ -48,10 +48,15 @@ void memfreeSimple( void* p );
 
 // Generates exceptions, memory is zerod.
 #ifdef DEBUG
+// Prints diagnostics if show is 1. Returns 1 iff memory is consistent,
+// otherwise 0.
+bool memCheck( bool show );
+// Verifies addr is allocated, otherwise dies with a message about double frees.
+void memCheckAddr( void* addr, const char* tag );
 void* memDebug( u64 size, const char* tag );
 void memfreeDebug( void* p, const char* tag );
 #define mem( s ) memDebug( s, AT )
-#define memfree( s ) memfreeDebug( s, "Bad free " AT )
+#define memfree( s ) memfreeDebug( s, AT ": bad free." )
 #else
 #define mem memSimple
 #define memfree memfreeSimple

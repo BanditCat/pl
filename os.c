@@ -29,11 +29,13 @@
 
 #define MEMCONST1 0x12FEEDFACEC0FFEE
 #define MEMCONST2 0xDEADBEEFDEADBEEF
+#define MEMCONST3 254
 #ifdef DEBUG
 typedef struct{
   const char* tag;
   u64 index;
   u64 check;
+  u64 size;
 } memtag;
 #endif
 
@@ -47,7 +49,8 @@ u32 _fltused = 1;
 void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow ){
   (void)hInstance; (void)hPrevInstance; (void)pCmdLine; (void)nCmdShow;
   state.heap = HeapCreate( HEAP_GENERATE_EXCEPTIONS, 0, 0 );
-
+  state.ended = 0;
+  
 #ifdef DEBUG
   state.memallocCount = 0;
   state.memnextFree = 0;
@@ -129,43 +132,87 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
-  if( state.vk )
-    plvkEnd( state.vk );
+  if( !state.ended ){
+    state.ended = 1;
+    if( state.vk )
+      plvkEnd( state.vk );
 #ifdef DEBUG
-  if( !state.memallocCount ){
-    print( "Memory consistency test indicates success." );
-  }else{
-      
-    print( "Ending with " );
-    printInt( state.memallocCount );
-    print( " unfreed allocs.\n" );
-    for( u64 i = 0; i < state.memindicesAllocated; i++ ){
-      if( state.memallocd[ i ] ){
-	memtag* mt = (memtag*)state.memallocd[ i ];
-	printInt( i );
-	print( ": " );
-	if( MEMCONST1 == ( mt->check ^ mt->index ) ){
-	  print( "good " ); print( mt->tag );
-	}else
-	  print( "bad" );
-	endl();
-      }
-    }
-  }
+    memCheck( 1 );
+    eprintl( "Exiting from end()." );
 #endif
-  FreeConsole();
-  HeapDestroy( state.heap );
+    FreeConsole();
+    HeapDestroy( state.heap );
+  }
   ExitProcess( ecode );
 }
 
 #ifdef DEBUG
+bool memCheck( bool show ){
+  u64 ac = 0;
+  if( show ){
+    eprintInt( state.memallocCount );
+    eprintl( " unfreed allocs." );
+  }
+  for( u64 i = 0; i < state.memindicesAllocated; ++i ){
+    if( state.memallocd[ i ] ){
+      memtag* mt = (memtag*)state.memallocd[ i ];
+      const u8* mtc = (const u8*)mt;
+      ++ac;
+      if( show ){
+	eprint( "Index " );
+	eprintInt( i );
+	eprint( " size " );
+	eprintInt( mt->size - sizeof( memtag ) - 1 ); endl();
+	eprint( mt->tag );
+	eprint( ": " );
+      }
+      if( MEMCONST1 != ( mt->check ^ mt->index ) ){
+	if( show ) eprintl( "Memory begin constant check failed." );
+	return 0;
+      }else if( MEMCONST3 != mtc[ mt->size - 1 ] ){
+	if( show ) eprintl( "Memory end constant check failed." );
+	return 0;
+      }else if( mt->index != i ){
+	if( show ) eprintl( "Memory index check failed." );
+	return 0;
+      }else{
+	if( show ) eprintl( "good" );
+      }
+    }
+  }
+  if( ac != state.memallocCount ){
+    if( show ) eprintl( "Memory count check failed." );
+    return 0;
+  }
+  return 1;      
+}
+void memCheckAddr( void* addrarg, const char* tag ){
+  void* addr = ((char*)addrarg) - sizeof( memtag );
+  for( u64 i = 0; i < state.memindicesAllocated; ++i ){
+    if( state.memallocd[ i ] == addr ){
+      memtag* mt = addr;
+      const u8* mtc = (const u8*)mt;
+      if( MEMCONST1 != ( mt->check ^ mt->index ) ){
+	die( tag );
+      }else if( MEMCONST3 != mtc[ mt->size - 1 ] ){
+	die( tag );
+      }else if( mt->index != i ){
+	die( tag );
+      }
+      return;
+    }
+  }
+  eprint( tag );
+  die( "Address not found, possible double free." );      
+}
 void* memDebug( u64 size, const char* tag ){
+  memc;
   // Make room if necessary.
   if( state.memnextFree >= state.memindicesAllocated ){
     u64 tc = state.memindicesAllocated;
     state.memindicesAllocated *= 2;
     u64* t = memperm( sizeof( u64 ) * state.memindicesAllocated );
-    for( u64 i = 0; i < state.memindicesAllocated; ++ i )
+    for( u64 i = 0; i < state.memindicesAllocated; ++i )
       if( i < tc )
 	t[ i ] = state.memindices[ i ];
       else
@@ -178,37 +225,41 @@ void* memDebug( u64 size, const char* tag ){
     state.memallocd = ta;
   }    
     
-  char* mem = HeapAlloc( state.heap,
-			 HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY,
-			 size + sizeof( memtag ) );
-
+  u8* mem = HeapAlloc( state.heap,
+		       HEAP_GENERATE_EXCEPTIONS + HEAP_ZERO_MEMORY,
+		       size + sizeof( memtag ) + 1 );
+  mem[ size + sizeof( memtag ) ] = MEMCONST3;
   memtag* mt = (memtag*)mem;
   mt->tag = tag;
   mt->index = state.memnextFree;
   state.memallocd[ mt->index ] = (char*)mt;
   state.memnextFree = state.memindices[ state.memnextFree ];
   mt->check = MEMCONST1 ^ mt->index;
+  mt->size = size + sizeof( memtag ) + 1;
   
   ++state.memallocCount;
+  memc;
   return mem + sizeof( memtag );
 }
 void memfreeDebug( void* vp, const char* tag ){
+  memc;
+  memCheckAddr( vp, tag );
   char* p = ((char*)vp) - sizeof( memtag );
   memtag* mt = (memtag*)p;
-  mt->check ^= mt->index;
-  if( mt->check != MEMCONST1 )
+  if( MEMCONST1 != ( mt->check ^ mt->index ) )
     die( tag );
+  mt->check = MEMCONST2;
   u64 t = state.memnextFree;
   state.memallocd[ mt->index ] = NULL;
   state.memnextFree = mt->index;
   state.memindices[ mt->index ] = t;
   
-  mt->check = MEMCONST2 ^ mt->index;
   mt->index = 0xFFFFFFFFFFFFFFFF;
   
   
   --state.memallocCount;
   HeapFree( state.heap, 0, p );
+  memc;
 }
 
 #endif
