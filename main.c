@@ -157,8 +157,11 @@ int main( int argc, const char** argv ){
   testPrograms();
   htTest();
 #endif
-  hasht* th = htLoadDirectory( "reひらがs" );
-  htDestroy( th );
+  hasht* ht = htLoadDirectory( "" );
+  const char* htfs = htFindString( ht, "reひらがs\\pl.ico", 0 );
+endl();endl();endl();endl();  print( htfs );endl();endl();endl();
+//  htPrint( ht );
+  htDestroy( ht );
   return 0;
 }
 

@@ -233,7 +233,7 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr ){
 
 // a "good" hash function.
 u32 hash( const char* cdata, u32 size, u32 bits ){
-  u64* data = (u64*)cdata;
+  const char* data = cdata;
   u64 h = HASH_I;
   for( u64 i = 0; i < size; ++i ){
     // h << 5 + h = h times 33
@@ -405,7 +405,10 @@ void htPrint( hasht* ht ){
       print( "    key: <" ); printInt( cb->keysize ); print( ">" );
       printRaw( cb->key, cb->keysize ); endl();
       print( "    val: <" ); printInt( cb->valuesize ); print( ">" );
-      printRaw( cb->value, cb->valuesize ); endl();
+      if( cb->valuesize < 100 ){
+	printRaw( cb->value, cb->valuesize );
+      }
+       endl();
       print( "    index: " ); printInt( cb->index ); endl();
     }
   }
@@ -700,8 +703,6 @@ void htLoadDirectoryHelper( hasht* ht, fileNames* fns, u32 chop ){
     strappend( &name, fns->dirName );
     strappend( &name, "\\" );
     strappend( &name, fns->files[ i ] );
-    printl( name );
-    printl( name + chop );
     u32 size;
     char* f = loadFileOrDie( name, &size );
     htAddString( ht, name + chop, f, size );
