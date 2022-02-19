@@ -157,6 +157,7 @@ int main( int argc, const char** argv ){
   testPrograms();
   htTest();
 #endif
+  delFileNames( getFileNames( "" ) );//"reひらがs" ) );
   return 0;
 }
 

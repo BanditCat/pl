@@ -283,6 +283,12 @@ void* memcpy( void* dst, void const* src, size_t size ){
     ( (char*)dst )[ i ] = ( (const char*)src )[ i ];
   return dst;
 }
+void* copy( const void* d, u64 s ){
+  newa( ret, char, s );
+  memcpy( ret, d, s );
+  return ret;
+}
+
 void* memset( void* dst, int chr, size_t size ){
   for( u64 i = 0; i < size; ++i )
     ( (char*)dst )[ i ] = (char)chr;
@@ -365,4 +371,106 @@ const char* loadBuiltin( const char* name, u32* size ){
   if( NULL == res )
     die( "Failed to lock resource." );
   return res;
+}
+#define MAX_PATH_LENGTH 32000
+fileNames* getFileNames( const char* nameArg ){
+  u32 cdlen = GetCurrentDirectoryW( 0, NULL ) + 2;
+  newa( cd16, u16, cdlen );
+  GetCurrentDirectoryW( cdlen, cd16 );
+  char* cd = utf16to8( cd16 );
+  memfree( cd16 );
+  u32 len = slen( nameArg ) + 5;
+  new( rname, char );
+  strappend( &rname, "\\\\?\\" );
+  strappend( &rname, cd );
+  memfree( cd );
+  if( slen( nameArg ) )
+    strappend( &rname, "\\" );
+  strappend( &rname, nameArg );
+  newa( name, char, slen( rname ) + 5 );
+  strcopy( name, rname );
+  strappend( &name, "\\*" );
+  endl();endl();printl( name );endl();endl();
+  len = 0;
+  u16* nameu = utf8to16( name );
+  memfree( name );
+  while( nameu[ len ] )
+    len++;
+  if( len > MAX_PATH_LENGTH )
+    die( "Path too long in getFiles." );
+  WIN32_FIND_DATAW fd;
+  HANDLE h = FindFirstFileW( nameu, &fd );
+  if( INVALID_HANDLE_VALUE == h )
+    die( "Directory listing failed." );
+  u32 fcount = 0;
+  u32 dcount = 0;
+  do{
+    char* fname = utf16to8( fd.cFileName );
+    if( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY
+	&& strcomp( fname, "." ) && strcomp( fname, ".." ) )
+      ++dcount;
+    else if( !( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) )
+      ++fcount;
+    memfree( fname );
+  }while( FindNextFileW( h, &fd ) );
+  new( ret, fileNames );
+  ret->numDirs = dcount;
+  ret->subDirs = newae( fileNames*, dcount );
+  ret->numFiles = fcount;
+  ret->files = newae( char*, fcount );
+  ret->dirName = rname + 4;
+  fcount = 0;
+  dcount = 0;
+  h = FindFirstFileW( nameu, &fd );
+  do{
+    char* fname = utf16to8( fd.cFileName );
+    if( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY
+	&& strcomp( fname, "." ) && strcomp( fname, ".." ) ){
+      if( dcount >= ret->numDirs )
+	die( "Unstable filesystem." );
+      newa( sd, char, slen( nameArg ) + slen( fname ) + 5 );
+      if( slen( nameArg ) ){
+	strappend( &sd, nameArg );
+	strappend( &sd, "\\" );
+      }
+      strappend( &sd, fname );
+      ret->subDirs[ dcount ] = getFileNames( sd );
+      memfree( sd );
+      memfree( fname );
+      ++dcount;
+    }else if( !( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) ){
+      if( fcount >= ret->numFiles )
+	die( "Unstable filesystem." );
+      ret->files[ fcount ] = fname;
+      ++fcount;
+    }else
+      memfree( fname );
+  }while( FindNextFileW( h, &fd ) );
+
+  memfree( nameu );
+  return ret;
+}
+void delFileNames( fileNames* dn ){
+  print( "Directory: " ); print( dn->dirName ); printl( "[" );
+  print( "  number of files: " ); printInt( dn->numFiles ); endl();
+  print( "  number of dirs: " ); printInt( dn->numDirs ); endl();
+  printl( "  dirs[" );
+  for( u64 i = 0; i < dn->numDirs; ++i ){
+    print( "    " ); printl( dn->subDirs[ i ]->dirName );
+  }
+  printl( "  ]" );
+  printl( "  files[" );
+  for( u64 i = 0; i < dn->numFiles; ++i ){
+    print( "    " ); printl( dn->files[ i ] );
+  }
+  printl( "  ]\n]" );
+
+  for( u64 i = 0; i < dn->numDirs; ++i )
+    delFileNames( dn->subDirs[ i ] );
+  for( u64 i = 0; i < dn->numFiles; ++i )
+    memfree( dn->files[ i ] );
+  memfree( dn->subDirs );
+  memfree( dn->files );
+  memfree( dn->dirName - 4 );
+  memfree( dn );
 }

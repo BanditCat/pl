@@ -52,6 +52,21 @@ void strcopy( char* dst, const char* src ){
   }
   dst[ c ] = 0;
 }
+void strappend( char** dst, const char* addend ){
+  u64 dlen = slen( *dst );
+  u64 alen = slen( addend );
+  newa( ret, char, dlen + alen + 1 );
+  for( u64 i = 0; i < alen + dlen; ++i ){
+    if( i < dlen ){
+      ret[ i ] = (*dst)[ i ];
+    }else{
+      ret[ i ] = addend[ i - dlen ];
+    }
+  }
+  ret[ dlen + alen ] = 0;
+  memfree( *dst );
+  *dst = ret;
+}  
 int strcomp( const char* x, const char* y ){
   const char* xp = x;
   const char* yp = y;
@@ -209,19 +224,18 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr ){
 
 
 // Hash tables.
-#define HASHTABLE_INITIAL_SIZE_IN_BITS 1
-#define HASHTABLE_MAX_PROBES 10
+#define HASHTABLE_INITIAL_SIZE_IN_BITS 3
+#define HASHTABLE_MAX_PROBES 5
 #define HASH_P 2305843009213693951
 #define HASH_P_BITS 61
 #define HASH_I 538184554674741098
-#define HASH_TABLE_SHIFT 7
+#define HASH_TABLE_SHIFT 3
 
 // a "good" hash function.
-u32 hash( array a, u32 size ){
-  u64 asize = aISize( a );
-  u64* data = aIData( a );
+u32 hash( const char* cdata, u32 size, u32 bits ){
+  u64* data = (u64*)cdata;
   u64 h = HASH_I;
-  for( u64 i = 0; i < asize; ++i ){
+  for( u64 i = 0; i < size; ++i ){
     // h << 5 + h = h times 33
     h = ( h << 5 ) + h + *data;
     ++data;
@@ -231,45 +245,20 @@ u32 hash( array a, u32 size ){
       h -= HASH_P;
   }
   // Rotate bits.
-  u32 shift = size * HASH_TABLE_SHIFT - HASHTABLE_INITIAL_SIZE_IN_BITS;
+  u32 shift = bits * HASH_TABLE_SHIFT - HASHTABLE_INITIAL_SIZE_IN_BITS;
   u32 h32 = h;
   return rotl( h32, shift );
 }
 
-array aNew( u64 size, const char* data ){
-  u64 asize = ( ( size + 7 ) >> 3 ) << 3;
-  newa( ret, char, asize + 8 );
-  memcpy( ret + 8, data, size );
-  *((u64*)ret) = size;
-  return ret;
-}
-void aDel( array a ){
-  memfree( a );
-}
-u64 aSize( array a ){
-  return  *((u64*)a);
-}
-u64 aISize( array a ){
-  u64 size = aSize( a );
-  return ( size + 7 ) >> 3;
-}
-char* aData( array a ){
-  return ((char*)a) + 8;
-}
-u64* aIData( array a ){
-  return (u64*)aData( a );
-}
-s32 aComp( array a, array b ){
-  u64 asize = aSize( a );
-  u64 bsize = aSize( b );
+s32 strSizeComp( const char* a, u64 asize, const char* b, u64 bsize ){
   if( asize < bsize )
     return -1;
   if( asize > bsize )
     return 1;
-  u64* astart = aIData( a );
-  u64* aend = astart + aISize( a ) - 1;
-  u64* bstart = aIData( b );
-  u64* bend = bstart + aISize( b ) - 1;
+  const char* astart = a;
+  const char* aend = astart + asize - 1;
+  const char* bstart = b;
+  const char* bend = bstart + bsize - 1;
   while( astart <= aend ){
     if( *astart < *bstart || *aend < *bend )
       return -1;
@@ -291,8 +280,8 @@ hasht* htNew( void ){
 }
 void htDestroy( hasht* ht ){
   for( u32 i = 0; i < ht->size; ++i ){
-    aDel( ht->data[ ht->used[ i ] ].key );
-    aDel( ht->data[ ht->used[ i ] ].value );
+    memfree( ht->data[ ht->used[ i ] ].key );
+    memfree( ht->data[ ht->used[ i ] ].value );
   }
   memfree( ht->data );
   memfree( ht->used );
@@ -306,14 +295,15 @@ void htRehash( hasht* ht ){
   for( u32 i = 0; i < ht->size; ++i ){
     bucket* item = ht->data + ht->used[ i ];
     u32 nh = rotl( item->hash, HASH_TABLE_SHIFT );
-    endl(); printInt( nh );    endl();    endl();
     u32 index = nh & mask;
     while( nd[ index ].key )
       index = ( index + 1 ) & mask;
     nu[ i ] = index;
     nd[ index ].hash = nh;
     nd[ index ].key = item->key;
+    nd[ index ].keysize = item->keysize;
     nd[ index ].value = item->value;
+    nd[ index ].valuesize = item->valuesize;
     nd[ index ].index = i;
   }
   memfree( ht->data );
@@ -321,39 +311,85 @@ void htRehash( hasht* ht ){
   memfree( ht->used );
   ht->used = nu;
 }
-void htAdd( hasht* ht, array key, array value ){
+void htAdd( hasht* ht, const char* key, u64 keysize,
+	    const char* val, u64 valsize ){
   u32 probes = 0;
   u32 mask = ( 1 << ht->bits ) - 1;
-  u32 h = hash( key, ht->bits );
+  u32 h = hash( key, keysize, ht->bits );
   u32 index = h & mask;
   while( 1 ){
     while( ht->data[ index ].key && probes < HASHTABLE_MAX_PROBES ){
       if( ht->data[ index ].hash == h &&
-	  !aComp( ht->data[ index ].key, key ) ){
-	aDel( ht->data[ index ].value );
-	ht->data[ index ].value = value;
-	aDel( ht->data[ index ].key );
-	ht->data[ index ].key = key;
-	ht->data[ index ].hash = h;
-	return;
+	  !strSizeComp( ht->data[ index ].key, ht->data[ index ].keysize,
+			key, keysize ) ){
+	die( "Duplicate key in htAdd." );
       }
       index = ( index + 1 ) & mask;
       ++probes;
     }
     if( probes >= HASHTABLE_MAX_PROBES ){
       htRehash( ht );
-      htAdd( ht, key, value );
+      htAdd( ht, key, keysize, val, valsize );
       return;
     } else
       break;
   }
   ht->data[ index ].hash = h;
-  ht->data[ index ].key = key;
-  ht->data[ index ].value = value;
+  ht->data[ index ].key = copy( key, keysize );
+  ht->data[ index ].keysize = keysize;
+  ht->data[ index ].value = copy( val, valsize );
+  ht->data[ index ].valuesize = valsize;
   ht->data[ index ].index = ht->size;
   ht->used[ ht->size++ ] = index;
 }
+const char* htFind( hasht* ht, const char* key, u64 keysize, u64* retSize ){ 
+  u32 mask = ( 1 << ht->bits ) - 1;
+  u32 h = hash( key, keysize, ht->bits );
+  u32 index = h & mask;
+  u32 probes = 0;
+  while( ht->data[ index ].key && probes <= ht->size ){
+    if( ht->data[ index ].hash == h &&
+	!strSizeComp( ht->data[ index ].key, ht->data[ index ].keysize,
+		      key, keysize ) ){
+      if( retSize )
+	*retSize = ht->data[ index ].valuesize;
+      return ht->data[ index ].value;
+    }
+    index = ( index + 1 ) & mask;
+    ++probes;
+  }
+  return 0;
+}
+void htRemove( hasht* ht, const char* key, u64 keysize ){
+  u32 mask = ( 1 << ht->bits ) - 1;
+  u32 h = hash( key, keysize, ht->bits );
+  u32 index = h & mask;
+  u32 probes = 0;
+  while( ht->data[ index ].key && probes <= ht->size ){
+    if( ht->data[ index ].hash == h &&
+	!strSizeComp( ht->data[ index ].key, ht->data[ index ].keysize,
+		      key, keysize ) ){
+      ht->data[ index ].hash = 0;
+      memfree( ht->data[ index ].key );
+      ht->data[ index ].key = 0;
+      ht->data[ index ].keysize = 0;
+      memfree( ht->data[ index ].value );
+      ht->data[ index ].value = 0;
+      ht->data[ index ].valuesize = 0;
+      --ht->size;
+      ht->data[ ht->used[ ht->size ] ].index = ht->data[ index ].index;
+      ht->used[ ht->data[ index ].index ] = ht->used[ ht->size ];
+      ht->used[ ht->size ] = 0;
+      ht->data[ index ].index = 0;
+      return;
+    }
+    index = ( index + 1 ) & mask;
+    ++probes;
+  }
+  die( "Key not found in htRemove." );
+}
 
+		   
 #ifdef DEBUG
 void htPrint( hasht* ht ){
   printl( "Hash table{" );
@@ -366,16 +402,16 @@ void htPrint( hasht* ht ){
     if( cb->key ){
       print( "  bucket " ); printInt( i ); printl( ":" );
       print( "    hash: " ); printIntInBase( cb->hash, 2 ); endl();
-      print( "    key: <" ); printInt( aSize( cb->key ) ); print( ">" );
-      printRaw( aData( cb->key ), aSize( cb->key ) ); endl();
-      print( "    val: <" ); printInt( aSize( cb->value ) ); print( ">" );
-      printRaw( aData( cb->value ), aSize( cb->value ) ); endl();
+      print( "    key: <" ); printInt( cb->keysize ); print( ">" );
+      printRaw( cb->key, cb->keysize ); endl();
+      print( "    val: <" ); printInt( cb->valuesize ); print( ">" );
+      printRaw( cb->value, cb->valuesize ); endl();
       print( "    index: " ); printInt( cb->index ); endl();
     }
   }
 }
-#define NUM_TEST_STRINGS 34
-const char* testStrings[ NUM_TEST_STRINGS ] = {
+#define NUM_TEST_STRINGS ( sizeof( testStrings ) / sizeof( testStrings[ 0 ] ) )
+const char* testStrings[] = {
   "aLETkG7FTz",
   "gOuSpSzmV8",
   "PrfmCpqyBl",
@@ -409,246 +445,250 @@ const char* testStrings[ NUM_TEST_STRINGS ] = {
   "H6yTuIZzp1",
   "lBgXVddeYH",
   "QjBp1SFcL0",
-  "SnirrcAcFO" };
-  /* "pgWtFKELCq", */
-  /* "szasAK5AII", */
-  /* "zdITxsmCrn", */
-  /* "HhHlSp4hkx", */
-  /* "LmoKL5rT79", */
-  /* "E0CAiTC8Oe", */
-  /* "fiaHOkdHT7", */
-  /* "HdRUxs2KgY", */
-  /* "uMiFKD1aSm", */
-  /* "lHm0uplF2V", */
-  /* "dScYsWRTty", */
-  /* "UwLoAzQX0x", */
-  /* "P7azyjCD00", */
-  /* "mTB7kBSyJs", */
-  /* "BIKIYtUfzi", */
-  /* "s1vOSkMo0e", */
-  /* "mqz7RqPwl7", */
-  /* "qOTYRy3CWz", */
-  /* "rE6wwJaEbV", */
-  /* "s48r13c1AR", */
-  /* "VTjIIwCYGJ", */
-  /* "Xyz7Cgf4uA", */
-  /* "g4iJDzl03B", */
-  /* "bNNWi8AG2R", */
-  /* "5S6EKNBeXe", */
-  /* "T9K03Pt1Lq", */
-  /* "nNEvEAtEs6", */
-  /* "lZdesJgUND", */
-  /* "S7rfsTQMiS", */
-  /* "Cai84ndY5z", */
-  /* "YS88dEtmo6", */
-  /* "ucUmmrMRSt", */
-  /* "hfi0kZizz4", */
-  /* "D2VK0s4G2k", */
-  /* "5SANa2PNc6", */
-  /* "u761IgRIN9", */
-  /* "aK0QUJisuA", */
-  /* "IN8uyvZ53C", */
-  /* "CCkH9WJWep", */
-  /* "eggn4LWIkU", */
-  /* "hxQDhmoxg3", */
-  /* "3Togy6aFV8", */
-  /* "kqMe66nZAW", */
-  /* "Pd1HzW1OJ7", */
-  /* "kJ20gf3UaB", */
-  /* "1rSWb1cRZ1", */
-  /* "sWkbNIXMxm", */
-  /* "ikgMrPTW3g", */
-  /* "bdToqgnBj6", */
-  /* "u6bYJh9srP", */
-  /* "yHBYWOoiaH", */
-  /* "Z6E81nbz7G", */
-  /* "secEsne6hV", */
-  /* "v3aX32E6JL", */
-  /* "mbeiglpEyM", */
-  /* "Zsdd1kwhB8", */
-  /* "DkkMwHLuq0", */
-  /* "uGxAq2CRM2", */
-  /* "jKg85eWdcz", */
-  /* "ImGRGalMwp", */
-  /* "yKKmL0Zsd7", */
-  /* "cyefQt3MO7", */
-  /* "NVOJ4MNmCY", */
-  /* "DboEviiWXR", */
-  /* "SHjYZ7arP4", */
-  /* "pBTg5mXc1l", */
-  /* "nZ5GG6owiO", */
-  /* "ZDseLhZIim", */
-  /* "QfYIfSoWax", */
-  /* "t4IZdozvqQ", */
-  /* "Tdwq6DqGrI", */
-  /* "9aYhTFqtOR", */
-  /* "94B8Wi5k7v", */
-  /* "MbHpyd4xUC", */
-  /* "r0708V6O6q", */
-  /* "ECM1Jegd5c", */
-  /* "A14dqgxMLB", */
-  /* "BbHqq49Gzw", */
-  /* "UCvMnUtTSI", */
-  /* "r5eMsnARO7", */
-  /* "yTRlR7sqzj", */
-  /* "c6AFtk7Vun", */
-  /* "tnBGUmYZDI", */
-  /* "snuzOXxczl", */
-  /* "CzjU4swsI8", */
-  /* "wPpucyKDbN", */
-  /* "HD3vMP3MbS", */
-  /* "hxdx9k6ATj", */
-  /* "SwTYHdMcVO", */
-  /* "vQ7AAfe84T", */
-  /* "ljwgPcfJpA", */
-  /* "", */
-  /* "", */
-  /* "", */
-  /* "", */
-  /* "", */
-  /* "5yvpVFP9Ey", */
-  /* "OrfuxwU", */
-  /* "Z5pYrIx90m", */
-  /* "0ghN4tcjQz", */
-  /* "Y3YP3pVlwP", */
-  /* "h7gqwSttpc", */
-  /* "tUYkG47fik", */
-  /* "O33vb7QuEM", */
-  /* "7yNClFD9yV", */
-  /* "EPQkiXNeA1", */
-  /* "whC0fNQizU", */
-  /* "J6wCv3B8eV", */
-  /* "2RGNVIuNLW", */
-  /* "n16SlDaJjt", */
-  /* "GyMMbTqmaG", */
-  /* "XkXpgxZDC7", */
-  /* "wCjERUJXYu", */
-  /* "WUR6oEy0hP", */
-  /* "yV015t0CYk", */
-  /* "jCrgn6dVt7", */
-  /* "abE6JUP1Aq", */
-  /* "wOLc539Brt", */
-  /* "ond9Wkax3g", */
-  /* "YBDLvwy4sZ", */
-  /* "bzn0Xlyeb3", */
-  /* "veWVF8L42F", */
-  /* "88wZQX7FLw", */
-  /* "r1hNPVCUSF", */
-  /* "lEMnjIxTkE", */
-  /* "8GcmAOBwvy", */
-  /* "vGoTSf9", */
-  /* "EZxoB3SikZ", */
-  /* "nXvpjXVN", */
-  /* "Th2tQq7OzP", */
-  /* "GZf2a87Hn9", */
-  /* "zG90lApgOS", */
-  /* "oqHQEuJixo", */
-  /* "3vcmAtdXop", */
-  /* "eu0yfkuku2", */
-  /* "8OkDSrZXpW", */
-  /* "OWODp9rhdf", */
-  /* "kaKCD2dlFt", */
-  /* "73fY0ixcbY", */
-  /* "o1kd3KTy8d", */
-  /* "zZKF7DZh40", */
-  /* "RH2bnImZax", */
-  /* "hX8bjc1XUb", */
-  /* "WLd3wamF4H", */
-  /* "UJUvZdeRND", */
-  /* "rJnnFVDbLw", */
-  /* "dlHpb7V1BY", */
-  /* "NDHwNc6LOm", */
-  /* "b", */
-  /* "3zieMDaSwQ", */
-  /* "HqWMdhaogx", */
-  /* "b2IfhXsT4h", */
-  /* "d5EeJe5Bsg", */
-  /* "AvVCQ5Yn80", */
-  /* "aecpnaHFim", */
-  /* "kyEOwqctPf", */
-  /* "ma9CEW1SPj", */
-  /* "fY2ZG8Vr9E", */
-  /* "r2vWpeXUcl", */
-  /* "ofw41j77qG", */
-  /* "FHRvjXzM2y", */
-  /* "jAuScIDrTv", */
-  /* "bC7V1CgLqZ", */
-  /* "uMuciVCbzi", */
-  /* "AjGKTQUpLZ", */
-  /* "bh2wa6TJlt", */
-  /* "GGUuQDI7ci", */
-  /* "kdUw8fdSDU", */
-  /* "xOYr06lWWz", */
-  /* "lALCyRAVLc", */
-  /* "JC4", */
-  /* "HV7XGR4F9s", */
-  /* "07jwWfNQV3", */
-  /* "7U9yMKd5XC", */
-  /* "gj1zeBk4uk", */
-  /* "wQ99aJUnq", */
-  /* "P0J1GHLk4s", */
-  /* "zG645HihJK", */
-  /* "xpQwcHOec1", */
-  /* "lfnqIVx8Yw", */
-  /* "Ys9VhbJJ", */
-  /* "LDGwDGNzCi", */
-  /* "lZtdpSyMD0", */
-  /* "S2QBNT45JF", */
-  /* "cWjhikn", */
-  /* "lMyoH57DI8", */
-  /* "VhmzxOPjh6", */
-  /* "iyDoVi0m4n", */
-  /* "12P5u", */
-  /* "3nsCbXUnwx", */
-  /* "BQbGEyMyRv", */
-  /* "Ldn1", */
-  /* "jUyX8Lq30G", */
-  /* "rlHtmxrfvH", */
-  /* "KBonf4HSHX", */
-  /* "Gz54m61RGD", */
-  /* "6OiuyQQM9P", */
-  /* "3V0tKCFLBk", */
-  /* "2AbpbkXqif", */
-  /* "bHvKHUtbQv", */
-  /* "qaNcLkPqei", */
-  /* "v5hb6Z7t32", */
-  /* "9ZzZtspwhC", */
-  /* "q7EFStLZF2", */
-  /* "aT11KGJZvP", */
-  /* "gk1CJ5Jwbg", */
-  /* "k34Qb9wNFN", */
-  /* "wTLkaF5QvW", */
-  /* "brZ0QWl\xFFiI", */
-  /* "0RMFBVgxsg", */
-  /* "zO8vrrOov2", */
-  /* "eGD4T0Dtl0", */
-  /* "mCQdLD\04p06", */
-  /* "EqJnafxqSj", */
-  /* "3jWrHzJiLI", */
-  /* "LW8SWhBpgU", */
-  /* "HqdJ6UEFZE", */
-  /* "SrOWOIBg9l", */
-  /* "416lu\0\0\0j2olZ", */
-  /* "KfftVnCXen", */
-  /* "NmAWR4OqAK", */
-  /* "KZAn6Gp\31XDn", */
-  /* "5Mazc7hWhE", */
-  /* "mkCi0QAv7V", */
-  /* "bGmB3qNjgK", */
-  /* "CjxezNsMWN" }; */
+  "SnirrcAcFO",
+  "pgWtFKELCq",
+  "szasAK5AII",
+  "zdITxsmCrn",
+  "HhHlSp4hkx",
+  "LmoKL5rT79",
+  "E0CAiTC8Oe",
+  "fiaHOkdHT7",
+  "HdRUxs2KgY",
+  "uMiFKD1aSm",
+  "lHm0uplF2V",
+  "dScYsWRTty",
+  "UwLoAzQX0x",
+  "P7azyjCD00",
+  "mTB7kBSyJs",
+  "BIKIYtUfzi",
+  "s1vOSkMo0e",
+  "mqz7RqPwl7",
+  "qOTYRy3CWz",
+  "rE6wwJaEbV",
+  "s48r13c1AR",
+  "VTjIIwCYGJ",
+  "Xyz7Cgf4uA",
+  "g4iJDzl03B",
+  "bNNWi8AG2R",
+  "5S6EKNBeXe",
+  "T9K03Pt1Lq",
+  "nNEvEAtEs6",
+  "lZdesJgUND",
+  "S7rfsTQMiS",
+  "Cai84ndY5z",
+  "YS88dEtmo6",
+  "ucUmmrMRSt",
+  "hfi0kZizz4",
+  "D2VK0s4G2k",
+  "5SANa2PNc6",
+  "u761IgRIN9",
+  "aK0QUJisuA",
+  "IN8uyvZ53C",
+  "CCkH9WJWep",
+  "eggn4LWIkU",
+  "hxQDhmoxg3",
+  "3Togy6aFV8",
+  "kqMe66nZAW",
+  "Pd1HzW1OJ7",
+  "kJ20gf3UaB",
+  "1rSWb1cRZ1",
+  "sWkbNIXMxm",
+  "ikgMrPTW3g",
+  "bdToqgnBj6",
+  "u6bYJh9srP",
+  "yHBYWOoiaH",
+  "Z6E81nbz7G",
+  "secEsne6hV",
+  "v3aX32E6JL",
+  "mbeiglpEyM",
+  "Zsdd1kwhB8",
+  "DkkMwHLuq0",
+  "uGxAq2CRM2",
+  "jKg85eWdcz",
+  "ImGRGalMwp",
+  "yKKmL0Zsd7",
+  "cyefQt3MO7",
+  "NVOJ4MNmCY",
+  "DboEviiWXR",
+  "SHjYZ7arP4",
+  "pBTg5mXc1l",
+  "nZ5GG6owiO",
+  "ZDseLhZIim",
+  "QfYIfSoWax",
+  "t4IZdozvqQ",
+  "Tdwq6DqGrI",
+  "9aYhTFqtOR",
+  "94B8Wi5k7v",
+  "MbHpyd4xUC",
+  "r0708V6O6q",
+  "ECM1Jegd5c",
+  "A14dqgxMLB",
+  "BbHqq49Gzw",
+  "UCvMnUtTSI",
+  "r5eMsnARO7",
+  "yTRlR7sqzj",
+  "c6AFtk7Vun",
+  "tnBGUmYZDI",
+  "snuzOXxczl",
+  "CzjU4swsI8",
+  "wPpucyKDbN",
+  "HD3vMP3MbS",
+  "hxdx9k6ATj",
+  "SwTYHdMcVO",
+  "vQ7AAfe84T",
+  "ljwgPcfJpA",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "5yvpVFP9Ey",
+  "OrfuxwU",
+  "Z5pYrIx90m",
+  "0ghN4tcjQz",
+  "Y3YP3pVlwP",
+  "h7gqwSttpc",
+  "tUYkG47fik",
+  "O33vb7QuEM",
+  "7yNClFD9yV",
+  "EPQkiXNeA1",
+  "whC0fNQizU",
+  "J6wCv3B8eV",
+  "2RGNVIuNLW",
+  "n16SlDaJjt",
+  "GyMMbTqmaG",
+  "XkXpgxZDC7",
+  "wCjERUJXYu",
+  "WUR6oEy0hP",
+  "yV015t0CYk",
+  "jCrgn6dVt7",
+  "abE6JUP1Aq",
+  "wOLc539Brt",
+  "ond9Wkax3g",
+  "YBDLvwy4sZ",
+  "bzn0Xlyeb3",
+  "veWVF8L42F",
+  "88wZQX7FLw",
+  "r1hNPVCUSF",
+  "lEMnjIxTkE",
+  "8GcmAOBwvy",
+  "vGoTSf9",
+  "EZxoB3SikZ",
+  "nXvpjXVN",
+  "Th2tQq7OzP",
+  "GZf2a87Hn9",
+  "zG90lApgOS",
+  "oqHQEuJixo",
+  "3vcmAtdXop",
+  "eu0yfkuku2",
+  "8OkDSrZXpW",
+  "OWODp9rhdf",
+  "kaKCD2dlFt",
+  "73fY0ixcbY",
+  "o1kd3KTy8d",
+  "zZKF7DZh40",
+  "RH2bnImZax",
+  "hX8bjc1XUb",
+  "WLd3wamF4H",
+  "UJUvZdeRND",
+  "rJnnFVDbLw",
+  "dlHpb7V1BY",
+  "NDHwNc6LOm",
+  "b",
+  "3zieMDaSwQ",
+  "HqWMdhaogx",
+  "b2IfhXsT4h",
+  "d5EeJe5Bsg",
+  "AvVCQ5Yn80",
+  "aecpnaHFim",
+  "kyEOwqctPf",
+  "ma9CEW1SPj",
+  "fY2ZG8Vr9E",
+  "r2vWpeXUcl",
+  "ofw41j77qG",
+  "FHRvjXzM2y",
+  "jAuScIDrTv",
+  "bC7V1CgLqZ",
+  "uMuciVCbzi",
+  "AjGKTQUpLZ",
+  "bh2wa6TJlt",
+  "GGUuQDI7ci",
+  "kdUw8fdSDU",
+  "xOYr06lWWz",
+  "lALCyRAVLc",
+  "JC4",
+  "HV7XGR4F9s",
+  "07jwWfNQV3",
+  "7U9yMKd5XC",
+  "gj1zeBk4uk",
+  "wQ99aJUnq",
+  "P0J1GHLk4s",
+  "zG645HihJK",
+  "xpQwcHOec1",
+  "lfnqIVx8Yw",
+  "Ys9VhbJJ",
+  "LDGwDGNzCi",
+  "lZtdpSyMD0",
+  "S2QBNT45JF",
+  "cWjhikn",
+  "lMyoH57DI8",
+  "VhmzxOPjh6",
+  "iyDoVi0m4n",
+  "12P5u",
+  "3nsCbXUnwx",
+  "BQbGEyMyRv",
+  "Ldn1",
+  "jUyX8Lq30G",
+  "rlHtmxrfvH",
+  "KBonf4HSHX",
+  "Gz54m61RGD",
+  "6OiuyQQM9P",
+  "3V0tKCFLBk",
+  "2AbpbkXqif",
+  "bHvKHUtbQv",
+  "qaNcLkPqei",
+  "v5hb6Z7t32",
+  "9ZzZtspwhC",
+  "q7EFStLZF2",
+  "aT11KGJZvP",
+  "gk1CJ5Jwbg",
+  "k34Qb9wNFN",
+  "wTLkaF5QvW",
+  "brZ0QWl\xFFiI",
+  "0RMFBVgxsg",
+  "zO8vrrOov2",
+  "eGD4T0Dtl0",
+  "mCQdLD\04p06",
+  "SrOWOIBg9l",
+  "416lu\0\0\0j2olZ",
+  "KfftVnCXen",
+  "NmAWR4OqAK",
+  "KZAn6Gp\31XDn",
+  "5Mazc7hWhE",
+  "mkCi0QAv7V",
+  "bGmB3qNjgK",
+  "CjxezNsMWN" };
 
 void htTest( void ){
   hasht* test = htNew();
   htPrint( test );
-  array k = aNew( 8, "lb\x11\x2a\x4\x0\30a" );
-  array v = aNew( 11, "dogs\0\0\0dogs" );
-  htAdd( test, k, v );
+  htAdd( test, "lb\x11\x2a\x4\x0\30a", 8, "dogs\0\0\0dogs", 11 );
   htPrint( test );
   for( u32 i = 0; i < NUM_TEST_STRINGS; i += 2 ){
-    k = aString( testStrings[ i ] );
-    v = aString( testStrings[ i + 1 ] );
-    htAdd( test, k, v );
+    if( !htFind( test, testStrings[ i ], slen( testStrings[ i ] ), 0 ) )
+      htAdd( test, testStrings[ i ], slen( testStrings[ i ] ),
+	     testStrings[ i + 1 ], slen( testStrings[ i + 1 ] ) );
     htPrint( test );
+    if( !( ( i + 1 ) % 3 ) ){
+      u32 ind = ( ( i * 2981873 ) % ( i + 12455 ) ) % i;
+      ind = ind ^ ( ind & 1 );
+      print( "Removing " ); printl( testStrings[ ind ] );
+      if( htFind( test, testStrings[ ind ], slen( testStrings[ ind ] ), 0 ) ){
+	htRemove( test, testStrings[ ind ], slen( testStrings[ ind ] ) );
+	htPrint( test );
+      }else
+	print( "...not found" );	  
+    }
   }
   htDestroy( test );
 }

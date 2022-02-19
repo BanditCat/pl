@@ -20,6 +20,8 @@
 
 
 void* memcpy( void* dst, void const* src, size_t size );
+void* copy( const void* d, u64 s );
+
 void* memset( void* dst, int chr, size_t size );
 void* memmove( void* dst, const void* src, size_t num );
 int memcmp( const void * ptr1, const void* ptr2, size_t num );
@@ -78,3 +80,13 @@ u64 tickCount( void );
 // of type "PLCUSTOM".
 const char* loadBuiltin( const char* name, u32* size );
 
+// File functions.
+typedef struct fileNames{
+  char* dirName;
+  u32 numDirs, numFiles;
+  char** files;
+  struct fileNames** subDirs;
+} fileNames;
+// Dies if directory not found.
+fileNames* getFileNames( const char* name );
+void delFileNames( fileNames* dn );

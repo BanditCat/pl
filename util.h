@@ -31,8 +31,12 @@
 
 // String functions.
 void strcopy( char* dst, const char* src );
+// Deallocates dst, reallocates a big enough chunk, and appends them.
+void strappend( char** dst, const char* addend );
 // -1 if x < y, 1 if x > y, 0 if x == y.
 int strcomp( const char* x, const char* y );
+// A faster non-lexicographic compare for not null terminated strings.
+s32 strSizeComp( const char* a, u64 asize, const char* b, u64 bsize );
 // True iff str starts with init.
 bool strStartsWith( const char* init, const char* str );
 void strreverse( char* s );
@@ -54,39 +58,35 @@ void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth, char pad );
 void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr );
 
 
-// dword aligned arrays. 
-typedef char* array;
-#define printArr( a ) { printRaw( aData( a ), aSize( a ) ); }
-array aNew( u64 size, const char* data );
-#define aString( s ) aNew( slen( s ), s )
-void aDel( array a );
-u64 aSize( array a );
-u64 aISize( array a );
-char* aData( array a );
-u64* aIData( array a );
-// -1 if a < b, 1 if a > b, 0 if a == b. This is a not lexicographic, but is
-// still a complete ordering. In particular, shorter strings are always lesser.
-s32 aComp( array a, array b );
-// Buckets.
+
+// Hash tables.
 typedef struct{
   u32 hash;
-  array key;
-  array value;
+  char* key;
+  u64 keysize;
+  char* value;
+  u64 valuesize;
   u32 index;
 } bucket;
-// Hash tables.
 typedef struct{
   u32 bits;
   bucket* data;
   u32 size;
   u32* used;
 } hasht;
-// MAKE SURE TO FRESHLY ALLOCATE WHATEVER YOU PUT IN A HASH TABLE. The
-// hash table will not check to see if you insert the same pointer twice.
 hasht* htNew( void );
 void htDestroy( hasht* ht );
-// Takes ownership of the arrays, freeing them in htDestroy.
-void htAdd( hasht* ht, array key, array value );
+// Copies data.
+void htAdd( hasht* ht, const char* key, u64 keysize,
+	    const char* val, u64 valsize );
+#define htAddString( ht, k, v, vs ) htAdd( ht, k, slen( k ), v, vs )
+// Returns NULL if key isn't found. If retSize isn't NULL, it is assigned the
+// size of the returned array, in bytes.
+const char* htFind( hasht* ht, const char* key, u64 keysize, u64* retSize );
+#define htFindString( ht, k, rs ) htFind( ht, k, slen( k ), rs )
+// Removes the element key, errors and exits if key isn't found.
+void htRemove( hasht* ht, const char* key, u64 keysize );
+
 #ifdef DEBUG
 void htTest( void );
 #endif
