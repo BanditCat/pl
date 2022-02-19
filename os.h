@@ -84,9 +84,14 @@ const char* loadBuiltin( const char* name, u32* size );
 typedef struct fileNames{
   char* dirName;
   u32 numDirs, numFiles;
+  u64* fileSizes;
   char** files;
   struct fileNames** subDirs;
 } fileNames;
 // Dies if directory not found.
 fileNames* getFileNames( const char* name );
 void delFileNames( fileNames* dn );
+// Loads the specified file name, or terminates on error. If size is not NULL,
+// the integer it points to is set to the file size. Only supports files < 4gb.
+// The returned array must be freed.
+char* loadFileOrDie( const char* filename, u32* size );

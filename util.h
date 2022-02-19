@@ -86,7 +86,11 @@ const char* htFind( hasht* ht, const char* key, u64 keysize, u64* retSize );
 #define htFindString( ht, k, rs ) htFind( ht, k, slen( k ), rs )
 // Removes the element key, errors and exits if key isn't found.
 void htRemove( hasht* ht, const char* key, u64 keysize );
-
+// Debugging.
 #ifdef DEBUG
+void htPrint( hasht* ht );
 void htTest( void );
 #endif
+ 
+// Loads a directory and all it's files into a hash table.
+hasht* htLoadDirectory( const char* dirname );

@@ -671,25 +671,52 @@ const char* testStrings[] = {
 
 void htTest( void ){
   hasht* test = htNew();
-  htPrint( test );
+  //  htPrint( test );
   htAdd( test, "lb\x11\x2a\x4\x0\30a", 8, "dogs\0\0\0dogs", 11 );
-  htPrint( test );
+  //  htPrint( test );
   for( u32 i = 0; i < NUM_TEST_STRINGS; i += 2 ){
     if( !htFind( test, testStrings[ i ], slen( testStrings[ i ] ), 0 ) )
       htAdd( test, testStrings[ i ], slen( testStrings[ i ] ),
 	     testStrings[ i + 1 ], slen( testStrings[ i + 1 ] ) );
-    htPrint( test );
+    //htPrint( test );
     if( !( ( i + 1 ) % 3 ) ){
       u32 ind = ( ( i * 2981873 ) % ( i + 12455 ) ) % i;
       ind = ind ^ ( ind & 1 );
-      print( "Removing " ); printl( testStrings[ ind ] );
+      //print( "Removing " ); printl( testStrings[ ind ] );
       if( htFind( test, testStrings[ ind ], slen( testStrings[ ind ] ), 0 ) ){
 	htRemove( test, testStrings[ ind ], slen( testStrings[ ind ] ) );
-	htPrint( test );
-      }else
-	print( "...not found" );	  
+	//htPrint( test );
+      }else{
+	//print( "...not found" );
+      }
     }
   }
   htDestroy( test );
 }
 #endif
+void htLoadDirectoryHelper( hasht* ht, fileNames* fns, u32 chop ){
+  for( u64 i = 0; i < fns->numFiles; ++i ){
+    new( name, char );
+    strappend( &name, fns->dirName );
+    strappend( &name, "\\" );
+    strappend( &name, fns->files[ i ] );
+    printl( name );
+    printl( name + chop );
+    u32 size;
+    char* f = loadFileOrDie( name, &size );
+    htAddString( ht, name + chop, f, size );
+    memfree( f );
+    memfree( name );
+  }
+  for( u64 i = 0; i < fns->numDirs; ++i ){
+    htLoadDirectoryHelper( ht, fns->subDirs[ i ], chop );
+  }
+}
+hasht* htLoadDirectory( const char* dirname ){
+  fileNames* fns = getFileNames( dirname );
+  u32 chop = slen( fns->dirName ) + 1;
+  hasht* ht = htNew();
+  htLoadDirectoryHelper( ht, fns, chop );
+  delFileNames( fns );
+  return ht;
+}

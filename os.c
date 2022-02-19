@@ -390,7 +390,6 @@ fileNames* getFileNames( const char* nameArg ){
   newa( name, char, slen( rname ) + 5 );
   strcopy( name, rname );
   strappend( &name, "\\*" );
-  endl();endl();printl( name );endl();endl();
   len = 0;
   u16* nameu = utf8to16( name );
   memfree( name );
@@ -418,6 +417,7 @@ fileNames* getFileNames( const char* nameArg ){
   ret->subDirs = newae( fileNames*, dcount );
   ret->numFiles = fcount;
   ret->files = newae( char*, fcount );
+  ret->fileSizes = newae( u64, fcount );
   ret->dirName = rname + 4;
   fcount = 0;
   dcount = 0;
@@ -442,6 +442,8 @@ fileNames* getFileNames( const char* nameArg ){
       if( fcount >= ret->numFiles )
 	die( "Unstable filesystem." );
       ret->files[ fcount ] = fname;
+      ret->fileSizes[ fcount ] = ( ((u64)fd.nFileSizeHigh) << 32 ) |
+	((u64)fd.nFileSizeLow);
       ++fcount;
     }else
       memfree( fname );
@@ -451,19 +453,20 @@ fileNames* getFileNames( const char* nameArg ){
   return ret;
 }
 void delFileNames( fileNames* dn ){
-  print( "Directory: " ); print( dn->dirName ); printl( "[" );
-  print( "  number of files: " ); printInt( dn->numFiles ); endl();
-  print( "  number of dirs: " ); printInt( dn->numDirs ); endl();
-  printl( "  dirs[" );
-  for( u64 i = 0; i < dn->numDirs; ++i ){
-    print( "    " ); printl( dn->subDirs[ i ]->dirName );
-  }
-  printl( "  ]" );
-  printl( "  files[" );
-  for( u64 i = 0; i < dn->numFiles; ++i ){
-    print( "    " ); printl( dn->files[ i ] );
-  }
-  printl( "  ]\n]" );
+  /* print( "Directory: " ); print( dn->dirName ); printl( "[" ); */
+  /* print( "  number of files: " ); printInt( dn->numFiles ); endl(); */
+  /* print( "  number of dirs: " ); printInt( dn->numDirs ); endl(); */
+  /* printl( "  dirs[" ); */
+  /* for( u64 i = 0; i < dn->numDirs; ++i ){ */
+  /*   print( "    " ); printl( dn->subDirs[ i ]->dirName ); */
+  /* } */
+  /* printl( "  ]" ); */
+  /* printl( "  files[" ); */
+  /* for( u64 i = 0; i < dn->numFiles; ++i ){ */
+  /*   print( "    " ); print( dn->files[ i ] ); */
+  /*   print( ", size " ); printInt( dn->fileSizes[ i ] ); endl(); */
+  /* } */
+  /* printl( "  ]\n]" ); */
 
   for( u64 i = 0; i < dn->numDirs; ++i )
     delFileNames( dn->subDirs[ i ] );
@@ -471,6 +474,35 @@ void delFileNames( fileNames* dn ){
     memfree( dn->files[ i ] );
   memfree( dn->subDirs );
   memfree( dn->files );
+  memfree( dn->fileSizes );
   memfree( dn->dirName - 4 );
   memfree( dn );
+}
+char* loadFileOrDie( const char* filename, u32* size ){
+  HANDLE h;
+
+  u16* wname = utf8to16( filename );
+  h = CreateFileW( wname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+		   FILE_ATTRIBUTE_NORMAL, NULL );
+  memfree( wname );
+  if( INVALID_HANDLE_VALUE == h )
+    die( "Failed to open file." );
+  DWORD hfsize;
+  u32 fsize = GetFileSize( h, &hfsize );
+  if( INVALID_FILE_SIZE == fsize ) 
+    die( "Failed to get file size." );
+  if( hfsize ) 
+    die( "File too large." );
+  newa( buf, char, fsize + 4 );
+  DWORD read;
+  if( FALSE == ReadFile( h, buf, fsize + 8, &read, NULL ) )
+    die( "Failed to read file." );
+  if( read != fsize )
+    die( "Failed to read file." );
+  if( size )
+    *size = read;
+  buf[ read ] = 0;
+  buf[ read + 1 ] = 0;
+  CloseHandle( h );
+  return buf;
 }

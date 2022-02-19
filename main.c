@@ -157,7 +157,8 @@ int main( int argc, const char** argv ){
   testPrograms();
   htTest();
 #endif
-  delFileNames( getFileNames( "" ) );//"reひらがs" ) );
+  hasht* th = htLoadDirectory( "reひらがs" );
+  htDestroy( th );
   return 0;
 }
 
