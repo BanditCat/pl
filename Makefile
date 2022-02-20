@@ -106,7 +106,7 @@ debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(SOBJS) $(RES) $(TARGET) $(DBGTARGET)
+	rm -f $(OBJS) $(DOBJS) $(SOBJS) $(RES) $(TARGET) $(DBGTARGET)
 
 
 .PHONY: backup
