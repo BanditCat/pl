@@ -95,4 +95,5 @@ void delFileNames( fileNames* dn );
 // the integer it points to is set to the file size. Only supports files < 4gb.
 // The returned array must be freed.
 char* loadFileOrDie( const char* filename, u32* outSize );
+void writeFileOrDie( const char* filename, const char* data, u64 dataSize );
 const char* compressOrDie( const char* data, u64 dataSize, u64* outSize );

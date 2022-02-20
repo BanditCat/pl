@@ -171,20 +171,22 @@ int main( int argc, const char** argv ){
   }else if( !compressDir && compressorOutput ){
     die( "Compression output file given, but no directory specified." );
   }else if( compressDir && compressorOutput ){
+    print( "Compressing directory " ); print( compressDir );
+    print( " to file " ); printl( compressorOutput );
     hasht* ht = htLoadDirectory( compressDir );
-    const char* htfs = htFindString( ht, "shaders\\mainFrag.spv", 0 );
-    endl();endl();endl();endl();  printRaw( htfs, 100 );endl();endl();endl();
     u64 ssize;
     const char* sd = htSerialize( ht, &ssize );
-    u64 csize;
-    compressOrDie( sd, ssize, &csize );
-    memfree( (void*)sd );
-    print( "osize: " ); printInt( ssize ); endl();
-    print( "csize: " ); printInt( csize ); endl();
-    print( "diff: " ); printInt( ssize - csize ); endl();
- 
-    print( "Ratio: " ); printFloat( (f64)( csize ) / (f64)ssize ); endl();
     htDestroy( ht );
+    u64 csize;
+    const char* cd = compressOrDie( sd, ssize, &csize );
+    memfree( (void*)sd );
+    print( "Original size:   " ); printInt( ssize ); endl();
+    print( "Compressed size: " ); printInt( csize ); endl();
+    print( "Difference:      " ); printInt( ssize - csize ); endl();
+    print( "Ratio:           " ); printFloat( (f64)( csize ) / (f64)ssize );
+    endl();
+    writeFileOrDie( compressorOutput, cd, csize );
+    memfree( (void*)cd );
     return 0;
   }
 
