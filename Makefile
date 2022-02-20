@@ -33,45 +33,44 @@ CC=clang
 CCFLAGS=-m64 -std=c17 -Wall -fno-exceptions -Wextra -Werror -ffreestanding -c
 CCINCFLAG=
 LD=clang
-LDFLAGS=-luser32 -luxtheme -lkernel32 -nostdlib -lCabinet -lshell32 -lvulkan-1 -Wl,-entry:__entry,-subsystem:windows
+LDFLAGS=-luser32 -luxtheme -lkernel32 -nostdlib -lCabinet -lshell32 -lbuild/vulkan-1 -Wl,-entry:__entry,-subsystem:windows
 STRIPC=llvm-strip
 RC=llvm-rc
 PACKC=upx
 GLSLC=glslc
 
-TARGET=pl.exe
-DBGTARGET=pl_debug.exe
+TARGET=./build/pl.exe
+DBGTARGET=./build/pl_debug.exe
 TARGETDEFINE=-DWINDOWS -DTARGET=\"$(TARGET)\"
 DBGTARGETDEFINE=-DWINDOWS -DTARGET=\"$(DBGTARGET)\"
-RES=windowsResource.res
+RES=./build/windowsResource.res
 
-# Actual build rules.
-# These are supposed to be everything that might be edited.
+
 TXTS:=$(TXTS) $(wildcard ./*.txt) ./Makefile ./README.md ./windowsResource.rc
 SRCS:=$(SRCS) $(wildcard ./*.h) $(wildcard ./*.c) $(wildcard ./*.vert) $(wildcard ./*.frag)
 CS:=$(CS) $(wildcard ./*.c)
-SHADERS:=$(SHADERS) $(wildcard ./*.vert) $(wildcard ./*.frag)
-SOBJS:=$(SOBJS) $(SHADERS:.vert=.spv) $(SHADERS:.frag=.spv)
-OBJS:=$(RES) $(CS:.c=.o)
-DOBJS:=$(RES) $(CS:.c=_dbg.o)
+SHADERS:=$(SHADERS) $(wildcard ./shaders/*.vert) $(wildcard ./shaders/*.frag)
+SOBJS:=$(SOBJS) $(SHADERS:./shaders/%.vert=./res/shaders/%.spv) $(SHADERS:./shaders/%.vert=./res/shaders/%.spv)
+OBJS:=$(RES) $(CS:%.c=./build/%.o)
+DOBJS:=$(RES) $(CS:%.c=./build/%_dbg.o)
 $(OBJS): Makefile
 
 include deps.txt
 
 
-# windres
-windowsResource.res: windowsResource.rc pl.ico $(SOBJS)
+# Actual build rules.
+$(RES): windowsResource.rc graphics/pl.ico $(SOBJS)
 	$(RC) $<
+	mv ./windowsResource.res $@
 
-# Override defaults
-%.spv: %.vert
+./res/shaders/%.spv: ./shaders/%.vert
 	$(GLSLC) $< -o $@
-%.spv: %.frag
+./res/shaders/%.spv: ./shaders/%.frag
 	$(GLSLC) $< -o $@
 
-%.o: %.c
+./build/%.o: %.c
 	$(CC) $(CCINCFLAG) $(CCFLAGS) $< -o $@
-%_dbg.o: %.c
+./build/%_dbg.o: %.c
 	$(CC) $(CCINCFLAG) $(CCFLAGS) $< -o $@
 
 $(TARGET): $(OBJS) 
@@ -107,7 +106,7 @@ debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f ./*.o ./*.res ./*.spv ./$(TARGET) ./$(DBGTARGET)
+	rm -f $(OBJS) $(SOBJS) $(RES) $(TARGET) $(DBGTARGET)
 
 
 .PHONY: backup

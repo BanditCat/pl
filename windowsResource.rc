@@ -19,9 +19,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-101 ICON "pl.ico"
-vert PLCUSTOM "mainVert.spv"
-frag PLCUSTOM "mainFrag.spv"
+101 ICON "graphics/pl.ico"
+vert PLCUSTOM "res/shaders/mainVert.spv"
+frag PLCUSTOM "res/shaders/mainFrag.spv"
 
 
 1 VERSIONINFO
