@@ -32,6 +32,10 @@
 #define marc { eprintl( AT ": Marker" ); memc; }
 #define mark { eprintl( AT ": Marker " ); }
 
+#ifndef NULL
+#define NULL 0
+#endif
+
 #include <limits.h>
 
 

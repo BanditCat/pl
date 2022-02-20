@@ -47,6 +47,12 @@ const char* clUsage =
   "-fps                       Print fps to "
   "stdout every second.\n"
   "\n"
+  "-compressorOutput=name     The output fi"
+  "lename for the compressor.\n"
+  "\n"
+  "-compressDir=dir           Compress the "
+  "indicated directory.\n"
+  "\n"
 #ifdef DEBUG  
   "-debugLevel=<D>            Prevents val"
   "idation messages with severity less than\n"
@@ -71,6 +77,10 @@ int main( int argc, const char** argv ){
   int gpu = -1;
   u32 debugLevel = 2;
 
+  // For compression.
+  const char* compressorOutput = NULL;
+  const char* compressDir = NULL;
+  
   // Parse and execute command line.
   for( int i = 1; i < argc; ++i ){
     if( strStartsWith( "-window=", argv[ i ] ) ){
@@ -112,6 +122,20 @@ int main( int argc, const char** argv ){
 	die( "Malformed -frameCount= command line option." );
       continue;
     }
+    if( strStartsWith( "-compressorOutput=", argv[ i ] ) ){
+      const char* opt = argv[ i ] + slen( "-compressorOutput=" );
+      if( !slen( opt ) )
+	die( "Malformed -compressorOutput= command line option." );
+      compressorOutput = opt;
+      continue;
+    }
+    if( strStartsWith( "-compressDir=", argv[ i ] ) ){
+      const char* opt = argv[ i ] + slen( "-compressDir=" );
+      if( !slen( opt ) )
+	die( "Malformed -compressDir= command line option." );
+      compressDir = opt;
+      continue;
+    }
 #ifdef DEBUG    
     if( strStartsWith( "-debugLevel=", argv[ i ] ) ){
       const char* opt = argv[ i ] + slen( "-debugLevel=" );
@@ -142,6 +166,27 @@ int main( int argc, const char** argv ){
     printl( clUsage );
     return 1;
   }
+  if( compressDir && !compressorOutput ){
+    die( "Directory to compress given, but no output specified." );
+  }else if( !compressDir && compressorOutput ){
+    die( "Compression output file given, but no directory specified." );
+  }else if( compressDir && compressorOutput ){
+    hasht* ht = htLoadDirectory( compressDir );
+    const char* htfs = htFindString( ht, "shaders\\mainFrag.spv", 0 );
+    endl();endl();endl();endl();  printRaw( htfs, 100 );endl();endl();endl();
+    u64 ssize;
+    const char* sd = htSerialize( ht, &ssize );
+    u64 csize;
+    compressOrDie( sd, ssize, &csize );
+    memfree( (void*)sd );
+    print( "osize: " ); printInt( ssize ); endl();
+    print( "csize: " ); printInt( csize ); endl();
+    print( "diff: " ); printInt( ssize - csize ); endl();
+ 
+    print( "Ratio: " ); printFloat( (f64)( csize ) / (f64)ssize ); endl();
+    htDestroy( ht );
+    return 0;
+  }
 
   // Initialize vulkan.
 #ifdef DEBUG
@@ -157,21 +202,6 @@ int main( int argc, const char** argv ){
   testPrograms();
   htTest();
 #endif
-  hasht* ht = htLoadDirectory( "res" );
-  const char* htfs = htFindString( ht, "shaders\\mainFrag.spv", 0 );
-  endl();endl();endl();endl();  printRaw( htfs, 100 );endl();endl();endl();
-//  htPrint( ht );
- u64 ssize;
- const char* sd = htSerialize( ht, &ssize );
- u64 csize;
- compressOrDie( sd, ssize, &csize );
- print( "osize: " ); printInt( ssize ); endl();
- print( "csize: " ); printInt( csize ); endl();
- print( "diff: " ); printInt( ssize - csize ); endl();
- 
- print( "Ratio: " ); printFloat( (f64)( csize ) / (f64)ssize ); endl();
-  htDestroy( ht );
-  memfree( (void*)sd );
   return 0;
 }
 

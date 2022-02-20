@@ -496,7 +496,7 @@ char* loadFileOrDie( const char* filename, u32* size ){
     die( "File too large." );
   newa( buf, char, fsize + 4 );
   DWORD read;
-  if( FALSE == ReadFile( h, buf, fsize + 8, &read, NULL ) )
+  if( !ReadFile( h, buf, fsize + 8, &read, NULL ) )
     die( "Failed to read file." );
   if( read != fsize )
     die( "Failed to read file." );
@@ -506,6 +506,22 @@ char* loadFileOrDie( const char* filename, u32* size ){
   buf[ read + 1 ] = 0;
   CloseHandle( h );
   return buf;
+}
+void writeFileOrDie( const char* filename, const char* data, u64 dataSize ){
+  HANDLE h;
+
+  u16* wname = utf8to16( filename );
+  h = CreateFileW( wname, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+		   FILE_ATTRIBUTE_NORMAL, NULL );
+  memfree( wname );
+  if( INVALID_HANDLE_VALUE == h )
+    die( "Failed to create file for writing. Does it already exist?" );
+  DWORD written;
+  if( !WriteFile( h, data, dataSize, &written, NULL ) )
+    die( "Failed to write file." );
+  if( written != dataSize )
+    die( "Failed to completly write file." );
+  CloseHandle( h );
 }
 const char* compressOrDie( const char* data, u64 dataSize, u64* outSize ){
   COMPRESSOR_HANDLE comp;
