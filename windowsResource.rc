@@ -20,8 +20,7 @@
 
 
 101 ICON "graphics/pl.ico"
-vert PLCUSTOM "res/shaders/mainVert.spv"
-frag PLCUSTOM "res/shaders/mainFrag.spv"
+cres PLCUSTOM "build/cres"
 
 
 1 VERSIONINFO

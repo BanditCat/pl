@@ -174,6 +174,7 @@ int main( int argc, const char** argv ){
     print( "Compressing directory " ); print( compressDir );
     print( " to file " ); printl( compressorOutput );
     hasht* ht = htLoadDirectory( compressDir );
+    htPrint( ht );
     u64 ssize;
     const char* sd = htSerialize( ht, &ssize );
     htDestroy( ht );

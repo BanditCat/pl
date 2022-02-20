@@ -95,6 +95,15 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
   state.fps = 0;
 #endif
   *((u32*)&state.frameCount) = 2;
+  // Get compressed resources.
+  {
+    u32 cresSize;
+    u64 resSize;
+    const char* cres = loadBuiltin( "cres", &cresSize );
+    const char* res = uncompressOrDie( cres, cresSize, &resSize );
+    state.compressedResources = htDeserialize( res );
+    memfree( (void*)res );
+  }
   end( main( state.argc, state.argv ) );
 }
 
@@ -133,6 +142,8 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
+  if( state.compressedResources )
+    htDestroy( state.compressedResources );
   if( !state.ended ){
     state.ended = 1;
     if( state.vk )
@@ -422,7 +433,7 @@ fileNames* getFileNames( const char* nameArg ){
   ret->dirName = rname + 4;
   fcount = 0;
   dcount = 0;
-  h = FindFirstFileW( nameu, &fd );
+  h = FindFirstFileW( nameu, &fd ); 
   do{
     char* fname = utf16to8( fd.cFileName );
     if( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY
@@ -523,10 +534,11 @@ void writeFileOrDie( const char* filename, const char* data, u64 dataSize ){
     die( "Failed to completly write file." );
   CloseHandle( h );
 }
+static const u32 ctypes[ 4 ] = { COMPRESS_ALGORITHM_MSZIP,
+  COMPRESS_ALGORITHM_XPRESS, COMPRESS_ALGORITHM_XPRESS_HUFF,
+  COMPRESS_ALGORITHM_LZMS };
 const char* compressOrDie( const char* data, u64 dataSize, u64* outSize ){
   COMPRESSOR_HANDLE comp;
-  u32 ctypes[ 4 ] = { COMPRESS_ALGORITHM_MSZIP, COMPRESS_ALGORITHM_XPRESS,
-    COMPRESS_ALGORITHM_XPRESS_HUFF, COMPRESS_ALGORITHM_LZMS };
   u32 numCtypes = sizeof( ctypes ) / sizeof( ctypes[ 0 ] );
   size_t smallest = ((size_t)-1);
   const char* ret = NULL;
@@ -534,13 +546,14 @@ const char* compressOrDie( const char* data, u64 dataSize, u64* outSize ){
     if( !CreateCompressor( ctypes[ i ], NULL, &comp ) )
       die( "Failed to create compressor." );
     newa( buf, char, dataSize + 258 );
-    *buf = (char)i;
     ++buf;
     size_t thisSize;
-    Compress( comp, data, dataSize, buf, dataSize + 257, &thisSize );
+    if( !Compress( comp, data, dataSize, buf, dataSize + 257, &thisSize ) )
+      die( "Failed to decompress data." );
     ++thisSize;
     --buf;
     if( thisSize < smallest ){
+      *buf = (char)i;
       ret = buf;
       smallest = thisSize;
     }else
@@ -549,4 +562,18 @@ const char* compressOrDie( const char* data, u64 dataSize, u64* outSize ){
   }
   *outSize = smallest;
   return ret;
+}
+const char* uncompressOrDie( const char* data, u64 dataSize, u64* outSize ){
+  DECOMPRESSOR_HANDLE decomp;
+  if( !CreateDecompressor( ctypes[ (u32)(*data) ], NULL, &decomp ) )
+    die( "Failed to create compressor." );
+  Decompress( decomp, data + 1, dataSize - 1, "", 0, outSize );
+  newa( buf, char, *outSize + 1 );
+  u64 size = *outSize;
+  if( !Decompress( decomp, data + 1, dataSize - 1, buf, size, outSize ) ){
+    print( "\n\n\n\n" );printInt( GetLastError() );
+    die( "Failed to decompress data." );
+  }
+  CloseCompressor( decomp );
+  return buf;
 }

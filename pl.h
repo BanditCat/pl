@@ -108,6 +108,7 @@ typedef struct {
   const u32 frameCount;
   plvkStatep vk;
   bool ended;
+  void* compressedResources;
   
   // Memory instrumentation.
 #ifdef DEBUG

@@ -74,21 +74,28 @@ typedef struct{
   u32 size;
   u32* used;
 } hasht;
+u32 hash( const char* cdata, u32 size, const hasht* ht );
 hasht* htNew( void );
 void htDestroy( hasht* ht );
 // Copies data.
-void htAdd( hasht* ht, const char* key, u64 keysize,
-	    const char* val, u64 valsize );
+void htAddWithHash( hasht* ht, const char* key, u64 keysize,
+		    const char* val, u64 valsize, u32 hash );
+#define htAdd( ht, k, ks, v, vs ) htAddWithHash( ht, k, ks, v, vs,\
+						 hash( k, ks, ht ) )
 #define htAddString( ht, k, v, vs ) htAdd( ht, k, slen( k ), v, vs )
 // Returns NULL if key isn't found. If retSize isn't NULL, it is assigned the
 // size of the returned array, in bytes.
-const char* htFind( hasht* ht, const char* key, u64 keysize, u64* retSize );
+const char* htFindWithHash( hasht* ht, const char* key, u64 keysize,
+			    u64* retSize, u32 hash );
+#define htFind( ht, k, ks, rs ) htFindWithHash( ht, k, ks, rs,\
+						hash( k, ks, ht ) )
 #define htFindString( ht, k, rs ) htFind( ht, k, slen( k ), rs )
 // Removes the element key, errors and exits if key isn't found.
-void htRemove( hasht* ht, const char* key, u64 keysize );
+void htRemoveWithHash( hasht* ht, const char* key, u64 keysize, u32 hash );
+#define htRemove( ht, k, ks ) htRemoveWithHash( ht, k, ks, hash( k, ks, ht ) )
+void htPrint( hasht* ht );
 // Debugging.
 #ifdef DEBUG
-void htPrint( hasht* ht );
 void htTest( void );
 #endif
  
@@ -97,3 +104,4 @@ hasht* htLoadDirectory( const char* dirname );
 // Serializes a hash table and returns the resulting array. Stores the resulting
 // size in size, which must not be NULL. The resulting array must be freed.
 const char* htSerialize( const hasht* ht, u64* size );
+hasht* htDeserialize( const char* ser );

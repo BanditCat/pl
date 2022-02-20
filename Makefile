@@ -44,7 +44,7 @@ DBGTARGET=./build/pl_debug.exe
 TARGETDEFINE=-DWINDOWS -DTARGET=\"$(TARGET)\"
 DBGTARGETDEFINE=-DWINDOWS -DTARGET=\"$(DBGTARGET)\"
 RES=./build/windowsResource.res
-
+CRES=./build/cres
 
 TXTS:=$(TXTS) $(wildcard ./*.txt) ./Makefile ./README.md ./windowsResource.rc
 SRCS:=$(SRCS) $(wildcard ./*.h) $(wildcard ./*.c) $(wildcard ./*.vert) $(wildcard ./*.frag)
@@ -59,7 +59,7 @@ include deps.txt
 
 
 # Actual build rules.
-$(RES): windowsResource.rc graphics/pl.ico $(SOBJS)
+$(RES): windowsResource.rc graphics/pl.ico $(CRES)
 	$(RC) $<
 	mv ./windowsResource.res $@
 
@@ -83,7 +83,9 @@ $(DBGTARGET): $(DOBJS)
 	$(STRIP)
 	$(PACK)
 
-
+$(CRES): $(SOBJS)
+	./pl.exe -compressDir=res -compressorOutput=cres
+	mv ./cres ./build
 
 .PHONY: release 
 release: $(TARGET)
@@ -106,7 +108,7 @@ debug: CCFLAGS:=$(DBGTARGETDEFINE) -O0 -g -DDEBUG $(CCFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(DOBJS) $(SOBJS) $(RES) $(TARGET) $(DBGTARGET)
+	rm -f $(OBJS) $(DOBJS) $(SOBJS) $(RES) $(TARGET) $(DBGTARGET) $(CRES)
 
 
 .PHONY: backup
@@ -118,11 +120,11 @@ backup: release releasedebug
 
 .PHONY: run
 run: $(TARGET)
-	./$(TARGET)
+	$(TARGET)
 
 .PHONY: dbgrun
-dbgrun: ./$(DBGTARGET)
-	./$(DBGTARGET)
+dbgrun: $(DBGTARGET)
+	$(DBGTARGET)
 
 .PHONY: depend
 depend:

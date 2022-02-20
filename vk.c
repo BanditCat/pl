@@ -93,9 +93,13 @@ void rebuild( plvkState* vk ){
   if( vk->swap ){
     if( !vk->pool )
       createPoolAndFences( vk );
-    u32 fsize, vsize;
-    const char* frag = loadBuiltin( "frag", &fsize );
-    const char* vert = loadBuiltin( "vert", &vsize );
+    u64 fsize, vsize;
+    const char* frag = htFindString( state.compressedResources,
+				     "shaders\\mainFrag.spv",
+				     &fsize );
+    const char* vert = htFindString( state.compressedResources,
+				     "shaders\\mainVert.spv",
+				     &vsize );
     vk->pipe = createPipeline( vk, frag, fsize, vert, vsize );
     vk->framebuffers = createFramebuffers( vk, vk->pipe, vk->swap );
 

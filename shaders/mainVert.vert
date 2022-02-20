@@ -22,7 +22,7 @@
 
 layout(binding = 0) uniform UniformBufferObject {
     float time;
-} ubo;
+} ubo; 
 
 layout(location = 0) out vec3 fragColor;
 

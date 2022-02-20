@@ -229,10 +229,10 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr ){
 #define HASH_P 2305843009213693951
 #define HASH_P_BITS 61
 #define HASH_I 538184554674741098
-#define HASH_TABLE_SHIFT 3
+#define HASH_TABLE_SHIFT 1
 
 // a "good" hash function.
-u32 hash( const char* cdata, u32 size, u32 bits ){
+u32 hash( const char* cdata, u32 size, const hasht* ht ){
   const char* data = cdata;
   u64 h = HASH_I;
   for( u64 i = 0; i < size; ++i ){
@@ -245,7 +245,7 @@ u32 hash( const char* cdata, u32 size, u32 bits ){
       h -= HASH_P;
   }
   // Rotate bits.
-  u32 shift = bits * HASH_TABLE_SHIFT - HASHTABLE_INITIAL_SIZE_IN_BITS;
+  u32 shift = ht->bits * HASH_TABLE_SHIFT - HASHTABLE_INITIAL_SIZE_IN_BITS;
   u32 h32 = h;
   return rotl( h32, shift );
 }
@@ -311,11 +311,10 @@ void htRehash( hasht* ht ){
   memfree( ht->used );
   ht->used = nu;
 }
-void htAdd( hasht* ht, const char* key, u64 keySize,
-	    const char* val, u64 valsize ){
+void htAddWithHash( hasht* ht, const char* key, u64 keySize,
+		    const char* val, u64 valsize, u32 h ){
   u32 probes = 0;
   u32 mask = ( 1 << ht->bits ) - 1;
-  u32 h = hash( key, keySize, ht->bits );
   u32 index = h & mask;
   while( 1 ){
     while( ht->data[ index ].key && probes < HASHTABLE_MAX_PROBES ){
@@ -342,9 +341,9 @@ void htAdd( hasht* ht, const char* key, u64 keySize,
   ht->data[ index ].index = ht->size;
   ht->used[ ht->size++ ] = index;
 }
-const char* htFind( hasht* ht, const char* key, u64 keySize, u64* retSize ){ 
+const char* htFindWithHash( hasht* ht, const char* key, u64 keySize,
+			    u64* retSize, u32 h ){ 
   u32 mask = ( 1 << ht->bits ) - 1;
-  u32 h = hash( key, keySize, ht->bits );
   u32 index = h & mask;
   u32 probes = 0;
   while( ht->data[ index ].key && probes <= ht->size ){
@@ -358,11 +357,10 @@ const char* htFind( hasht* ht, const char* key, u64 keySize, u64* retSize ){
     index = ( index + 1 ) & mask;
     ++probes;
   }
-  return 0;
+  return NULL;
 }
-void htRemove( hasht* ht, const char* key, u64 keySize ){
+void htRemoveWithHash( hasht* ht, const char* key, u64 keySize, u32 h ){
   u32 mask = ( 1 << ht->bits ) - 1;
-  u32 h = hash( key, keySize, ht->bits );
   u32 index = h & mask;
   u32 probes = 0;
   while( ht->data[ index ].key && probes <= ht->size ){
@@ -390,7 +388,6 @@ void htRemove( hasht* ht, const char* key, u64 keySize ){
 }
 
 		   
-#ifdef DEBUG
 void htPrint( hasht* ht ){
   printl( "Hash table{" );
   print( "  size: " ); printInt( ht->size ); endl();
@@ -413,6 +410,7 @@ void htPrint( hasht* ht ){
     }
   }
 }
+#ifdef DEBUG
 #define NUM_TEST_STRINGS ( sizeof( testStrings ) / sizeof( testStrings[ 0 ] ) )
 const char* testStrings[] = {
   "aLETkG7FTz",
@@ -725,9 +723,7 @@ hasht* htLoadDirectory( const char* dirname ){
 
 typedef struct{
   u32 hash;
-  u64 keyOffset;
   u64 keySize;
-  u64 valueOffset;
   u64 valueSize;
 } serialBucket;
 const char* htSerialize( const hasht* ht, u64* size ){
@@ -738,18 +734,15 @@ const char* htSerialize( const hasht* ht, u64* size ){
   *size = sizeof( u64 ) + sizeof( serialBucket ) * ht->size + dataSize;
   u64* ret = mem( *size );
   serialBucket* sret = ((serialBucket*)( ret + 1 ));
-  char* cret = ((char*) ret) + sizeof( u64 ) +
+  char* p = ((char*) ret) + sizeof( u64 ) +
     sizeof( serialBucket ) * ht->size;
-  char* p = cret;
   *ret = ht->size;
   for( u64 i = 0; i < *ret; ++i ){
     bucket* item = ht->data + ht->used[ i ];
     sret[ i ].hash = item->hash;
-    sret[ i ].keyOffset = p - cret;
     sret[ i ].keySize = item->keySize;
     memcpy( p, item->key, item->keySize );
     p += item->keySize;
-    sret[ i ].valueOffset = p - cret;
     sret[ i ].valueSize = item->valueSize;
     memcpy( p, item->value, item->valueSize );
     p += item->valueSize;
@@ -758,3 +751,19 @@ const char* htSerialize( const hasht* ht, u64* size ){
   return (const char*)ret;
 }
   
+hasht* htDeserialize( const char* ser ){
+  u64 size = *((u64*)ser);
+  serialBucket* buckets = (serialBucket*)(((u64*)ser) + 1 );
+  const char* data = ((char*) ser) + sizeof( u64 ) +
+    sizeof( serialBucket ) * size;
+  hasht* ret = htNew();
+  for( u64 i = 0; i < size; ++i ){
+    const char* key = data;
+    data += buckets[ i ].keySize;
+    const char* value = data;
+    data += buckets[ i ].valueSize;
+    htAddWithHash( ret, key, buckets[ i ].keySize, value,
+		   buckets[ i ].valueSize, buckets[ i ].hash );
+  }
+  return ret;
+}
