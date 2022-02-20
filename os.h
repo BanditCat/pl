@@ -94,4 +94,5 @@ void delFileNames( fileNames* dn );
 // Loads the specified file name, or terminates on error. If size is not NULL,
 // the integer it points to is set to the file size. Only supports files < 4gb.
 // The returned array must be freed.
-char* loadFileOrDie( const char* filename, u32* size );
+char* loadFileOrDie( const char* filename, u32* outSize );
+const char* compressOrDie( const char* data, u64 dataSize, u64* outSize );

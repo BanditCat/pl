@@ -301,9 +301,9 @@ void htRehash( hasht* ht ){
     nu[ i ] = index;
     nd[ index ].hash = nh;
     nd[ index ].key = item->key;
-    nd[ index ].keysize = item->keysize;
+    nd[ index ].keySize = item->keySize;
     nd[ index ].value = item->value;
-    nd[ index ].valuesize = item->valuesize;
+    nd[ index ].valueSize = item->valueSize;
     nd[ index ].index = i;
   }
   memfree( ht->data );
@@ -311,17 +311,17 @@ void htRehash( hasht* ht ){
   memfree( ht->used );
   ht->used = nu;
 }
-void htAdd( hasht* ht, const char* key, u64 keysize,
+void htAdd( hasht* ht, const char* key, u64 keySize,
 	    const char* val, u64 valsize ){
   u32 probes = 0;
   u32 mask = ( 1 << ht->bits ) - 1;
-  u32 h = hash( key, keysize, ht->bits );
+  u32 h = hash( key, keySize, ht->bits );
   u32 index = h & mask;
   while( 1 ){
     while( ht->data[ index ].key && probes < HASHTABLE_MAX_PROBES ){
       if( ht->data[ index ].hash == h &&
-	  !strSizeComp( ht->data[ index ].key, ht->data[ index ].keysize,
-			key, keysize ) ){
+	  !strSizeComp( ht->data[ index ].key, ht->data[ index ].keySize,
+			key, keySize ) ){
 	die( "Duplicate key in htAdd." );
       }
       index = ( index + 1 ) & mask;
@@ -329,30 +329,30 @@ void htAdd( hasht* ht, const char* key, u64 keysize,
     }
     if( probes >= HASHTABLE_MAX_PROBES ){
       htRehash( ht );
-      htAdd( ht, key, keysize, val, valsize );
+      htAdd( ht, key, keySize, val, valsize );
       return;
     } else
       break;
   }
   ht->data[ index ].hash = h;
-  ht->data[ index ].key = copy( key, keysize );
-  ht->data[ index ].keysize = keysize;
+  ht->data[ index ].key = copy( key, keySize );
+  ht->data[ index ].keySize = keySize;
   ht->data[ index ].value = copy( val, valsize );
-  ht->data[ index ].valuesize = valsize;
+  ht->data[ index ].valueSize = valsize;
   ht->data[ index ].index = ht->size;
   ht->used[ ht->size++ ] = index;
 }
-const char* htFind( hasht* ht, const char* key, u64 keysize, u64* retSize ){ 
+const char* htFind( hasht* ht, const char* key, u64 keySize, u64* retSize ){ 
   u32 mask = ( 1 << ht->bits ) - 1;
-  u32 h = hash( key, keysize, ht->bits );
+  u32 h = hash( key, keySize, ht->bits );
   u32 index = h & mask;
   u32 probes = 0;
   while( ht->data[ index ].key && probes <= ht->size ){
     if( ht->data[ index ].hash == h &&
-	!strSizeComp( ht->data[ index ].key, ht->data[ index ].keysize,
-		      key, keysize ) ){
+	!strSizeComp( ht->data[ index ].key, ht->data[ index ].keySize,
+		      key, keySize ) ){
       if( retSize )
-	*retSize = ht->data[ index ].valuesize;
+	*retSize = ht->data[ index ].valueSize;
       return ht->data[ index ].value;
     }
     index = ( index + 1 ) & mask;
@@ -360,22 +360,22 @@ const char* htFind( hasht* ht, const char* key, u64 keysize, u64* retSize ){
   }
   return 0;
 }
-void htRemove( hasht* ht, const char* key, u64 keysize ){
+void htRemove( hasht* ht, const char* key, u64 keySize ){
   u32 mask = ( 1 << ht->bits ) - 1;
-  u32 h = hash( key, keysize, ht->bits );
+  u32 h = hash( key, keySize, ht->bits );
   u32 index = h & mask;
   u32 probes = 0;
   while( ht->data[ index ].key && probes <= ht->size ){
     if( ht->data[ index ].hash == h &&
-	!strSizeComp( ht->data[ index ].key, ht->data[ index ].keysize,
-		      key, keysize ) ){
+	!strSizeComp( ht->data[ index ].key, ht->data[ index ].keySize,
+		      key, keySize ) ){
       ht->data[ index ].hash = 0;
       memfree( ht->data[ index ].key );
       ht->data[ index ].key = 0;
-      ht->data[ index ].keysize = 0;
+      ht->data[ index ].keySize = 0;
       memfree( ht->data[ index ].value );
       ht->data[ index ].value = 0;
-      ht->data[ index ].valuesize = 0;
+      ht->data[ index ].valueSize = 0;
       --ht->size;
       ht->data[ ht->used[ ht->size ] ].index = ht->data[ index ].index;
       ht->used[ ht->data[ index ].index ] = ht->used[ ht->size ];
@@ -402,11 +402,11 @@ void htPrint( hasht* ht ){
     if( cb->key ){
       print( "  bucket " ); printInt( i ); printl( ":" );
       print( "    hash: " ); printIntInBase( cb->hash, 2 ); endl();
-      print( "    key: <" ); printInt( cb->keysize ); print( ">" );
-      printRaw( cb->key, cb->keysize ); endl();
-      print( "    val: <" ); printInt( cb->valuesize ); print( ">" );
-      if( cb->valuesize < 100 ){
-	printRaw( cb->value, cb->valuesize );
+      print( "    key: <" ); printInt( cb->keySize ); print( ">" );
+      printRaw( cb->key, cb->keySize ); endl();
+      print( "    val: <" ); printInt( cb->valueSize ); print( ">" );
+      if( cb->valueSize < 100 ){
+	printRaw( cb->value, cb->valueSize );
       }
        endl();
       print( "    index: " ); printInt( cb->index ); endl();
@@ -721,3 +721,40 @@ hasht* htLoadDirectory( const char* dirname ){
   delFileNames( fns );
   return ht;
 }
+
+
+typedef struct{
+  u32 hash;
+  u64 keyOffset;
+  u64 keySize;
+  u64 valueOffset;
+  u64 valueSize;
+} serialBucket;
+const char* htSerialize( const hasht* ht, u64* size ){
+  u64 dataSize = 0;
+  for( u64 i = 0; i < ht->size; ++i )
+    dataSize += ( ht->data[ ht->used[ i ] ].keySize +
+		  ht->data[ ht->used[ i ] ].valueSize );
+  *size = sizeof( u64 ) + sizeof( serialBucket ) * ht->size + dataSize;
+  u64* ret = mem( *size );
+  serialBucket* sret = ((serialBucket*)( ret + 1 ));
+  char* cret = ((char*) ret) + sizeof( u64 ) +
+    sizeof( serialBucket ) * ht->size;
+  char* p = cret;
+  *ret = ht->size;
+  for( u64 i = 0; i < *ret; ++i ){
+    bucket* item = ht->data + ht->used[ i ];
+    sret[ i ].hash = item->hash;
+    sret[ i ].keyOffset = p - cret;
+    sret[ i ].keySize = item->keySize;
+    memcpy( p, item->key, item->keySize );
+    p += item->keySize;
+    sret[ i ].valueOffset = p - cret;
+    sret[ i ].valueSize = item->valueSize;
+    memcpy( p, item->value, item->valueSize );
+    p += item->valueSize;
+  }
+    
+  return (const char*)ret;
+}
+  

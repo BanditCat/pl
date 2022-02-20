@@ -157,11 +157,21 @@ int main( int argc, const char** argv ){
   testPrograms();
   htTest();
 #endif
-  hasht* ht = htLoadDirectory( "" );
-  const char* htfs = htFindString( ht, "reひらがs\\pl.ico", 0 );
-endl();endl();endl();endl();  print( htfs );endl();endl();endl();
+  hasht* ht = htLoadDirectory( "res" );
+  const char* htfs = htFindString( ht, "shaders\\mainFrag.spv", 0 );
+  endl();endl();endl();endl();  printRaw( htfs, 100 );endl();endl();endl();
 //  htPrint( ht );
+ u64 ssize;
+ const char* sd = htSerialize( ht, &ssize );
+ u64 csize;
+ compressOrDie( sd, ssize, &csize );
+ print( "osize: " ); printInt( ssize ); endl();
+ print( "csize: " ); printInt( csize ); endl();
+ print( "diff: " ); printInt( ssize - csize ); endl();
+ 
+ print( "Ratio: " ); printFloat( (f64)( csize ) / (f64)ssize ); endl();
   htDestroy( ht );
+  memfree( (void*)sd );
   return 0;
 }
 

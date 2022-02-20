@@ -63,9 +63,9 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr );
 typedef struct{
   u32 hash;
   char* key;
-  u64 keysize;
+  u64 keySize;
   char* value;
-  u64 valuesize;
+  u64 valueSize;
   u32 index;
 } bucket;
 typedef struct{
@@ -94,3 +94,6 @@ void htTest( void );
  
 // Loads a directory and all it's files into a hash table.
 hasht* htLoadDirectory( const char* dirname );
+// Serializes a hash table and returns the resulting array. Stores the resulting
+// size in size, which must not be NULL. The resulting array must be freed.
+const char* htSerialize( const hasht* ht, u64* size );

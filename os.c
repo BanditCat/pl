@@ -21,6 +21,7 @@
 
 #define UNICODE
 #include <windows.h>
+#include <compressapi.h>
 
 #include "pl.h"
 #include "os.h"
@@ -505,4 +506,31 @@ char* loadFileOrDie( const char* filename, u32* size ){
   buf[ read + 1 ] = 0;
   CloseHandle( h );
   return buf;
+}
+const char* compressOrDie( const char* data, u64 dataSize, u64* outSize ){
+  COMPRESSOR_HANDLE comp;
+  u32 ctypes[ 4 ] = { COMPRESS_ALGORITHM_MSZIP, COMPRESS_ALGORITHM_XPRESS,
+    COMPRESS_ALGORITHM_XPRESS_HUFF, COMPRESS_ALGORITHM_LZMS };
+  u32 numCtypes = sizeof( ctypes ) / sizeof( ctypes[ 0 ] );
+  size_t smallest = ((size_t)-1);
+  const char* ret = NULL;
+  for( u32 i = 0; i < numCtypes; ++i ){
+    if( !CreateCompressor( ctypes[ i ], NULL, &comp ) )
+      die( "Failed to create compressor." );
+    newa( buf, char, dataSize + 258 );
+    *buf = (char)i;
+    ++buf;
+    size_t thisSize;
+    Compress( comp, data, dataSize, buf, dataSize + 257, &thisSize );
+    ++thisSize;
+    --buf;
+    if( thisSize < smallest ){
+      ret = buf;
+      smallest = thisSize;
+    }else
+      memfree( buf );
+    CloseCompressor( comp );
+  }
+  *outSize = smallest;
+  return ret;
 }
