@@ -56,6 +56,10 @@ typedef struct{
   VkBuffer buffer;
   VkDeviceMemory memory;
 } plvkBuffer;
+typedef struct{
+  VkImage image;
+  VkDeviceMemory imageMem;
+} plvkTexture;
 // Instance wide state.
 typedef struct {
   VkInstance instance;
@@ -98,6 +102,8 @@ typedef struct {
   VkFence* fenceSyncs;
   u32 currentImage;
 
+  
+  
   VkDescriptorSetLayout bufferLayout;
   plvkBuffer* UBOs;
   gpuState UBOcpumem;
