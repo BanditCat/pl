@@ -102,7 +102,7 @@ void rebuild( plvkState* vk ){
 				     &vsize );
     vk->pipe = createPipeline( vk, frag, fsize, vert, vsize );
     vk->framebuffers = createFramebuffers( vk, vk->pipe, vk->swap );
-
+    createTextures( vk );
     createUBOs( vk );
     createDescriptorPool( vk );
     createDescriptorSets( vk );
@@ -120,6 +120,7 @@ void unbuild( plvkStatep vkp ){
     destroyPipeline( vk, vk->pipe );
     destroyCommandBuffers( vk, vk->commandBuffers );
     destroyUBOs( vk );
+    destroyTextures( vk );
     destroySwap( vk, vk->swap );
   }
 }
@@ -157,10 +158,10 @@ plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
 void updateGPUstate( plvkState* vk, f32 time ){
   vk->UBOcpumem.time = time;
   void* data;
-  vkMapMemory( vk->device, vk->UBOs[ vk->currentImage ].memory, 0,
+  vkMapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory, 0,
 	       sizeof( gpuState ), 0, &data );
   memcpy( data, &vk->UBOcpumem, sizeof( gpuState ) );
-  vkUnmapMemory( vk->device, vk->UBOs[ vk->currentImage ].memory );
+  vkUnmapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory );
 }
 void draw( void ){
   static u64 firstDrawTime = 0;

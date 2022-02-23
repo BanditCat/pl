@@ -409,6 +409,7 @@ void htPrint( hasht* ht ){
       print( "    index: " ); printInt( cb->index ); endl();
     }
   }
+  printl( "}" );
 }
 #ifdef DEBUG
 #define NUM_TEST_STRINGS ( sizeof( testStrings ) / sizeof( testStrings[ 0 ] ) )

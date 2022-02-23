@@ -55,8 +55,18 @@ typedef struct{
 typedef struct{
   VkBuffer buffer;
   VkDeviceMemory memory;
+  VkMemoryPropertyFlags props;
+  VkBufferUsageFlags usage;
+  VkDeviceSize size;
 } plvkBuffer;
+// Textures.
 typedef struct{
+  u32 size;
+  u32 width, height;
+  u8 channels;
+  VkImageUsageFlagBits usage;
+  VkImageTiling tiling;
+  VkFormat format;    
   VkImage image;
   VkDeviceMemory imageMem;
 } plvkTexture;
@@ -102,10 +112,10 @@ typedef struct {
   VkFence* fenceSyncs;
   u32 currentImage;
 
-  
+  plvkTexture* tex;
   
   VkDescriptorSetLayout bufferLayout;
-  plvkBuffer* UBOs;
+  plvkBuffer** UBOs;
   gpuState UBOcpumem;
   VkDescriptorPool descriptorPool;
   VkDescriptorSet* descriptorSets;
@@ -129,8 +139,8 @@ void destroyDescriptorPool( plvkState* vk );
 void createDescriptorSets( plvkState* vk );
 void destroyDescriptorSets( plvkState* vk );
 void getFuncPointers( plvkState* vk );
-void createBuffer( plvkState* vk, VkDeviceSize size, VkBufferUsageFlags usage,
-		   plvkBuffer* buffer );
+plvkBuffer* createBuffer( plvkState* vk, u64 size, VkBufferUsageFlags usage,
+			  VkMemoryPropertyFlags props );
 void destroyBuffer( plvkState* vk, plvkBuffer* p );
 void createUBOs( plvkState* vk );
 void destroyUBOs( plvkState* vk );
@@ -155,4 +165,5 @@ void createPoolAndFences( plvkState* vk );
 void destroyPoolAndFences( plvkState* vk, u32 numImages );
 plvkSurface* createSurface( plvkState* vk );
 void destroySurface( plvkState* vk, plvkSurface* surf );
-  
+void createTextures( plvkState* vk );
+void destroyTextures( plvkState* vk );  
