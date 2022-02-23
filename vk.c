@@ -126,13 +126,13 @@ void unbuild( plvkStatep vkp ){
 }
 void plvkEnd( plvkStatep vkp ){
   plvkState* vk = vkp;
-    destroyTextures( vk );
   vkDeviceWaitIdle( vk->device );
   {
     u32 ni = vk->swap->numImages;
     unbuild( vkp );
     destroyPoolAndFences( vk, ni );
   }
+    destroyTextures( vk );
   destroyLayout( vk );
   destroySurface( vk, vk->surface );
 #ifdef DEBUG
@@ -189,7 +189,7 @@ void draw( void ){
 			 UINT64_MAX );
       vk->fenceSyncs[ index ] = vk->fences[ vk->currentImage ];
 
-      updateGPUstate( vk, (f32)( tickCount() - firstDrawTime )
+      updateGPUstate( vk, 0.1 * (f32)( tickCount() - firstDrawTime )
 		      / (f32)tickFrequency() );
       
       VkSubmitInfo submitInfo = {};

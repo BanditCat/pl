@@ -93,14 +93,14 @@ release: $(TARGET)
 release: CCFLAGS:=-O3 $(TARGETDEFINE) $(CCFLAGS)
 release: LDFLAGS:=-O3 -flto $(LDFLAGS)
 release: STRIP:=$(STRIPC) -s $(TARGET)
-release: PACK:=$(PACKC) --best $(TARGET)
+release: PACK:=$(PACKC) --best $(TARGET) || true
 
 .PHONY: releasedebug
 releasedebug: $(DBGTARGET)
 releasedebug: CCFLAGS:=-O3 $(DBGTARGETDEFINE) -DDEBUG $(CCFLAGS)
 releasedebug: LDFLAGS:=-O3 -flto $(LDFLAGS)
 releasedebug: STRIP:=$(STRIPC) -s $(DBGTARGET)
-releasedebug: PACK:=$(PACKC) --best $(DBGTARGET)
+releasedebug: PACK:=$(PACKC) --best $(DBGTARGET) || true
 
 
 .PHONY: debug 

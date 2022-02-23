@@ -25,6 +25,10 @@ void* copy( const void* d, u64 s );
 void* memset( void* dst, int chr, size_t size );
 void* memmove( void* dst, const void* src, size_t num );
 int memcmp( const void * ptr1, const void* ptr2, size_t num );
+#define isspace( c ) ( c == ' ' || c == '\n' || c == '\f' || c == '\r'\
+			    || c == '\t' || c == '\v' )
+#define isbreak( c ) ( c == '\n'|| c == '\f' || c == '\r' )
+#define isnum( c ) ( c >= '0' && c <= '9' )
 
 void print( const char* str );
 void printl( const char* str );

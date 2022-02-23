@@ -923,17 +923,9 @@ void createImage( plvkState* vk, plvkTexture* tex );
 void copyBufferToImage( plvkState* vk, plvkBuffer* buf, plvkTexture* tex );
 void transitionImageLayout( plvkState* vk, plvkTexture* tex,
 			    VkImageLayout oldLayout, VkImageLayout newLayout );
-plvkTexture* createTextureImage( plvkState* vk, u32 width, u32 height,
-				 u8 channels, VkFormat format ){
+plvkTexture* createTextureImage( plvkState* vk, u8* pixels, u32 width,
+				 u32 height, u8 channels, VkFormat format ){
   new( ret, plvkTexture );
-  u8 pixels[] = {
-    0, 0, 0, 255,
-    255, 0, 0, 255,
-    255, 255, 0, 255,
-    0, 0, 255, 255,
-    255, 0, 255, 255,
-    123, 255, 255, 255
-  };
   ret->width = width;
   ret->height = height;
   ret->channels = channels;
@@ -1085,15 +1077,61 @@ void copyBufferToImage( plvkState* vk, plvkBuffer* buf, plvkTexture* tex ){
 }
     
 
+plvkTexture* loadTexturePPM( plvkState* vk, const char* name ){
+  u64 sz;
+  const char* t = htFindString( state.compressedResources,
+				name, &sz );
+  const char* e = t + sz;
+  if( sz < 200 )
+    die( "ppm too small." );
+  if( memcmp( t, "P6", 2 ) )
+    die( "Invalid ppm." );
+  t += 2;
+  while( t < e && !isbreak( *t ) )
+    ++t;
+  ++t;
+  if( *t == '#' ){
+    while( t < e && !isbreak( *t ) )
+      ++t;
+    ++t;
+  }
+  while( t < e && !isnum( *t ) )
+    ++t;
+  u64 width = parseInt( &t );
+  while( t < e && !isnum( *t ) )
+    ++t;
+  u64 height = parseInt( &t );
+  while( t < e && !isnum( *t ) )
+    ++t;
+  u64 maxval = parseInt( &t );
+  if( maxval != 255 )
+    die( "Weird ppm; maxval not 255." );
+  ++t;
+  u64 size = width * height;
+  if( e != size * 3 + t )
+    die( "Bad size in ppm." );
+  newa( pixels, u8, size * 4 );
+  u8* cp = pixels;
+  for( u64 i = 0; i < size; ++i ){
+    *cp++ = *t++;
+    *cp++ = *t++;
+    *cp++ = *t++;
+    *cp++ = 255;
+  }
+  return createTextureImage( vk, pixels, width, height, 4,
+			     VK_FORMAT_R8G8B8A8_SRGB ); 
+}
+
 void createTextures( plvkState* vk ){
-  vk->tex = createTextureImage( vk, 3, 2, 4, VK_FORMAT_R8G8B8A8_SRGB ); 
+  vk->tex = loadTexturePPM( vk, "graphics\\lc.ppm" );
+  //  vk->tex = createTextureImage( vk, pixels, 3, 2, 4, VK_FORMAT_R8G8B8A8_SRGB ); 
 }
 
 
 void destroyTexture( plvkState* vk, plvkTexture* tex ){
-  vkDestroySampler( vk->device, tex->sampler, NULL );
   vkDestroyImageView( vk->device, tex->view, NULL );
   vkDestroyImage( vk->device, tex->image, NULL );
+  vkDestroySampler( vk->device, tex->sampler, NULL );
   vkFreeMemory( vk->device, tex->imageMem, NULL );
   memfree( tex );
 }
