@@ -125,7 +125,6 @@ void unbuild( plvkStatep vkp ){
   }
 }
 void plvkEnd( plvkStatep vkp ){
-  mark;
   plvkState* vk = vkp;
     destroyTextures( vk );
   vkDeviceWaitIdle( vk->device );

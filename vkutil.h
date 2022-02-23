@@ -69,6 +69,8 @@ typedef struct{
   VkFormat format;    
   VkImage image;
   VkDeviceMemory imageMem;
+  VkImageView view;
+  VkSampler sampler;
 } plvkTexture;
 // Instance wide state.
 typedef struct {
@@ -167,3 +169,5 @@ plvkSurface* createSurface( plvkState* vk );
 void destroySurface( plvkState* vk, plvkSurface* surf );
 void createTextures( plvkState* vk );
 void destroyTextures( plvkState* vk );  
+VkImageView createView( plvkState* vk, VkImage img, VkFormat format );
+void createTextureSampler( plvkState* vk, plvkTexture* tex );
