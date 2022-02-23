@@ -116,7 +116,7 @@ typedef struct {
 
   plvkTexture* tex;
   
-  VkDescriptorSetLayout bufferLayout;
+  VkDescriptorSetLayout layout;
   plvkBuffer** UBOs;
   gpuState UBOcpumem;
   VkDescriptorPool descriptorPool;
@@ -149,8 +149,8 @@ void destroyUBOs( plvkState* vk );
 VkExtent2D getExtent( plvkState* vk );
 VkShaderModule createModule( VkDevice vkd, const char* data, u32 size );
 void destroyModule( plvkState* vk, VkShaderModule sm );
-VkDescriptorSetLayout createUBOLayout( plvkState* vk );
-void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl );
+VkDescriptorSetLayout createLayout( plvkState* vk );
+void destroyLayout( plvkState* vk );
 u64 scoreGPU( VkPhysicalDeviceProperties* gpu );
 plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames );
 void destroySwap( plvkState* vk, plvkSwapchain* swap );

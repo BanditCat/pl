@@ -133,7 +133,7 @@ void plvkEnd( plvkStatep vkp ){
     unbuild( vkp );
     destroyPoolAndFences( vk, ni );
   }
-  destroyUBOLayout( vk, vk->bufferLayout );
+  destroyLayout( vk );
   destroySurface( vk, vk->surface );
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
@@ -152,7 +152,7 @@ plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
 				width, height );
   
   vk->surface = createSurface( vk );
-  vk->bufferLayout = createUBOLayout( vk );
+  vk->layout = createLayout( vk );
   rebuild( vk );
   return vk;
 }

@@ -53,10 +53,7 @@
        (bandit-save)
        (cond
 	((eq major-mode 'emacs-lisp-mode) (eval-buffer) (message "ran"))
-	((eq major-mode 'c-mode) (compile (concat "make -j 24 " arg)))
-	((eq major-mode 'makefile-gmake-mode)
-	 (compile (concat "make -j 24 " arg)))
-	(t (message "Unsupported language"))))
+	(t (compile (concat "make -j 24 " arg)))))
 
 (defun bandit-copypaste () (interactive)
        (if mark-active (kill-region (mark) (point))

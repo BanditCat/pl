@@ -103,7 +103,7 @@ void getFuncPointers( plvkState* vk ){
 void createDescriptorSets( plvkState* vk ){
   newa( tl, VkDescriptorSetLayout, vk->swap->numImages );
   for( u32 i = 0; i < vk->swap->numImages; ++i )
-    tl[ i ] = vk->bufferLayout;
+    tl[ i ] = vk->layout;
   VkDescriptorSetAllocateInfo dsai = {};
   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   dsai.descriptorPool = vk->descriptorPool;
@@ -124,16 +124,40 @@ void createDescriptorSets( plvkState* vk ){
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof( gpuState );
 
-    VkWriteDescriptorSet descriptorWrite = {};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = vk->descriptorSets[ i ];
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
+    /* VkWriteDescriptorSet descriptorWrite = {}; */
+    /* descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; */
+    /* descriptorWrite.dstSet = vk->descriptorSets[ i ]; */
+    /* descriptorWrite.dstBinding = 0; */
+    /* descriptorWrite.dstArrayElement = 0; */
+    /* descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; */
+    /* descriptorWrite.descriptorCount = 1; */
+    /* descriptorWrite.pBufferInfo = &bufferInfo; */
+    /* vkUpdateDescriptorSets( vk->device, 1, &descriptorWrite, 0, NULL ); */
 
-    vkUpdateDescriptorSets( vk->device, 1, &descriptorWrite, 0, NULL );
+    VkDescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = vk->tex->view;
+    imageInfo.sampler = vk->tex->sampler;
+    VkWriteDescriptorSet dwrites[ 2 ] = {};
+    dwrites[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    dwrites[ 0 ].dstSet = vk->descriptorSets[ i ];
+    dwrites[ 0 ].dstBinding = 0;
+    dwrites[ 0 ].dstArrayElement = 0;
+    dwrites[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    dwrites[ 0 ].descriptorCount = 1;
+    dwrites[ 0 ].pBufferInfo = &bufferInfo;
+    
+    dwrites[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    dwrites[ 1 ].dstSet = vk->descriptorSets[ i ];
+    dwrites[ 1 ].dstBinding = 1;
+    dwrites[ 1 ].dstArrayElement = 0;
+    dwrites[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    dwrites[ 1 ].descriptorCount = 1;
+    dwrites[ 1 ].pImageInfo = &imageInfo;
+
+    vkUpdateDescriptorSets( vk->device,
+			    sizeof( dwrites ) / sizeof( dwrites[ 0 ] ),
+			    dwrites, 0, NULL );
   }
   memfree( tl );
 }
@@ -145,14 +169,16 @@ void destroyDescriptorSets( plvkState* vk ){
 
 
 void createDescriptorPool( plvkState* vk ) {
-  VkDescriptorPoolSize dps = {};
-  dps.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  dps.descriptorCount = vk->swap->numImages;
+  VkDescriptorPoolSize dps[ 2 ] = {};
+  dps[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dps[ 0 ].descriptorCount = vk->swap->numImages;
+  dps[ 1 ].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  dps[ 1 ].descriptorCount = vk->swap->numImages;
 
   VkDescriptorPoolCreateInfo dpci = {};
   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  dpci.poolSizeCount = 1;
-  dpci.pPoolSizes = &dps;
+  dpci.poolSizeCount = sizeof( dps ) / sizeof( dps[ 0 ] );
+  dpci.pPoolSizes = dps;
   dpci.maxSets = vk->swap->numImages;
   if( VK_SUCCESS != vkCreateDescriptorPool( vk->device, &dpci, NULL,
 					    &vk->descriptorPool ) )
@@ -459,27 +485,37 @@ void destroyModule( plvkState* vk, VkShaderModule sm ){
 }
 
 
-VkDescriptorSetLayout createUBOLayout( plvkState* vk ){
+VkDescriptorSetLayout createLayout( plvkState* vk ){
   VkDescriptorSetLayout ret;
-  VkDescriptorSetLayoutBinding dslb = {};
-  dslb.binding = 0;
-  dslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  dslb.descriptorCount = 1;
-  dslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+  VkDescriptorSetLayoutBinding ubodslb = {};
+  ubodslb.binding = 0;
+  ubodslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  ubodslb.descriptorCount = 1;
+  ubodslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+  VkDescriptorSetLayoutBinding texdslb = {};
+  texdslb.binding = 1;
+  texdslb.descriptorCount = 1;
+  texdslb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  texdslb.pImmutableSamplers = NULL;
+  texdslb.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+  VkDescriptorSetLayoutBinding ls[ 2 ] = { ubodslb, texdslb };
+  
   VkDescriptorSetLayoutCreateInfo dslci = {};
   dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  dslci.bindingCount = 1;
-  dslci.pBindings = &dslb;
+  dslci.bindingCount = sizeof( ls ) / sizeof( ls[ 0 ] ) ;
+  dslci.pBindings = ls;
   if( VK_SUCCESS != vkCreateDescriptorSetLayout( vk->device, &dslci, NULL,
 						 &ret ) ) 
     die( "Descriptor layout creation failed." );
+
   return ret;
 }
 
 
-void destroyUBOLayout( plvkState* vk, VkDescriptorSetLayout dsl ){
-  vkDestroyDescriptorSetLayout( vk->device, dsl, NULL );
+void destroyLayout( plvkState* vk ){
+  vkDestroyDescriptorSetLayout( vk->device, vk->layout, NULL );
 }
 
 
@@ -624,7 +660,7 @@ plvkPipeline* createPipeline( plvkState* vk, const char* frag, u32 fsize,
   VkPipelineLayoutCreateInfo plci = {};
   plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   plci.setLayoutCount = 1;
-  plci.pSetLayouts = &vk->bufferLayout;
+  plci.pSetLayouts = &vk->layout;
   if( VK_SUCCESS !=
       vkCreatePipelineLayout( vk->device, &plci,
 			      NULL, &ret->pipelineLayout ) )
