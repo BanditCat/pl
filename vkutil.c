@@ -203,12 +203,14 @@ plvkBuffer* createBuffer( plvkState* vk, u64 size, VkBufferUsageFlags usage,
     die( "GPU memory allocation failed." );
 
   vkBindBufferMemory( vk->device, ret->buffer, ret->memory, 0 );
+  ret->size = size;
   return ret;
 }
 
 
 void destroyBuffer( plvkState* vk, plvkBuffer* p ){
   vkDestroyBuffer( vk->device, p->buffer, NULL );
+  mark;
   vkFreeMemory( vk->device, p->memory, NULL );
   memfree( p );
 }
@@ -219,9 +221,9 @@ void createUBOs( plvkState* vk ){
   vk->UBOs = newae( plvkBuffer*, vk->swap->numImages );
   for( size_t i = 0; i < vk->swap->numImages; i++ ){
     vk->UBOs[ i ] = createBuffer( vk, size,
-				   VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-				   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+				  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
   }
 }
 
@@ -897,149 +899,190 @@ void destroySurface( plvkState* vk, plvkSurface* surf ){
 }
 
 
+void createImage( plvkState* vk, plvkTexture* tex );
+void copyBufferToImage( plvkState* vk, plvkBuffer* buf, plvkTexture* tex );
+void transitionImageLayout( plvkState* vk, plvkTexture* tex,
+			    VkImageLayout oldLayout, VkImageLayout newLayout );
+plvkTexture* createTextureImage( plvkState* vk, u32 width, u32 height,
+				 u8 channels, VkFormat format ){
+  new( ret, plvkTexture );
+  u8 pixels[] = {
+    0, 0, 0, 255,
+    255, 0, 0, 255,
+    255, 255, 0, 255,
+    0, 0, 255, 255,
+    255, 0, 255, 255,
+    123, 255, 255, 255
+  };
+  ret->width = width;
+  ret->height = height;
+  ret->channels = channels;
+  ret->format = format;
+  ret->size = ret->width * ret->height * ret->channels;
+  ret->tiling = VK_IMAGE_TILING_OPTIMAL;
+  ret->usage =  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  plvkBuffer* buf = createBuffer( vk, ret->size,
+				  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+
+  void* data;
+  vkMapMemory( vk->device, buf->memory, 0, buf->size, 0, &data );
+  memcpy( data, pixels, buf->size );
+  vkUnmapMemory( vk->device, buf->memory );
+  createImage( vk, ret );
+  /* texWidth, texHeight,, */
+  /* VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | */
+  /* VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, */
+  /* textureImage, textureImageMemory); */
+  transitionImageLayout( vk, ret,
+			 VK_IMAGE_LAYOUT_UNDEFINED,
+			 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL );
+  copyBufferToImage( vk, buf, ret );
+  transitionImageLayout( vk, ret, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+  destroyBuffer( vk, buf );
+  mark;
+  return ret;
+}
+
+
+VkCommandBuffer beginSingleTimeCommands( plvkState* vk ) {
+  VkCommandBufferAllocateInfo allocInfo = {};
+  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  allocInfo.commandPool = vk->pool;
+  allocInfo.commandBufferCount = 1;
+
+  VkCommandBuffer commandBuffer;
+  vkAllocateCommandBuffers( vk->device, &allocInfo, &commandBuffer );
+
+  VkCommandBufferBeginInfo beginInfo = {};
+  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  vkBeginCommandBuffer( commandBuffer, &beginInfo );
+
+  return commandBuffer;
+}
+
+
+void endSingleTimeCommands( plvkState* vk, VkCommandBuffer commandBuffer ) {
+  vkEndCommandBuffer( commandBuffer );
+
+  VkSubmitInfo submitInfo = {};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &commandBuffer;
+
+  vkQueueSubmit( vk->queue, 1, &submitInfo, VK_NULL_HANDLE );
+  vkQueueWaitIdle( vk->queue );
+
+  vkFreeCommandBuffers( vk->device, vk->pool, 1, &commandBuffer );
+}
+
+
+void createImage( plvkState* vk, plvkTexture* tex ){
+  /* void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) { */
+  VkImageCreateInfo imageInfo = {};
+  imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imageInfo.imageType = VK_IMAGE_TYPE_2D;
+  imageInfo.extent.width = tex->width;
+  imageInfo.extent.height = tex->height;
+  imageInfo.extent.depth = 1;
+  imageInfo.mipLevels = 1;
+  imageInfo.arrayLayers = 1;
+  imageInfo.format = tex->format;
+  imageInfo.tiling = tex->tiling;
+  imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  imageInfo.usage = tex->usage;
+  imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+  imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  if( VK_SUCCESS != vkCreateImage( vk->device, &imageInfo, NULL,
+				   &tex->image ) )
+    die( "Failed to create vulkan image." );
+  VkMemoryRequirements mreqs;
+  vkGetImageMemoryRequirements( vk->device, tex->image, &mreqs );
+  VkMemoryAllocateInfo mai = {};
+  mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  mai.allocationSize = mreqs.size;
+  mai.memoryTypeIndex = findMemoryType( vk, mreqs.memoryTypeBits,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+  if( VK_SUCCESS !=
+      vkAllocateMemory( vk->device, &mai, NULL, &tex->imageMem  ) )
+    die( "Failed to allocate memory for texture." );
+  vkBindImageMemory( vk->device, tex->image, tex->imageMem, 0 );
+}
+void transitionImageLayout( plvkState* vk, plvkTexture* tex,
+			    VkImageLayout oldLayout, VkImageLayout newLayout ){
+  VkCommandBuffer commandBuffer = beginSingleTimeCommands( vk );
+  VkImageMemoryBarrier barrier = {};
+  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  barrier.oldLayout = oldLayout;
+  barrier.newLayout = newLayout;
+  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  barrier.image = tex->image;
+  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  barrier.subresourceRange.baseMipLevel = 0;
+  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.baseArrayLayer = 0;
+  barrier.subresourceRange.layerCount = 1;
+  VkPipelineStageFlags sourceStage = 0;
+  VkPipelineStageFlags destinationStage = 0;
+  if( oldLayout == VK_IMAGE_LAYOUT_UNDEFINED &&
+      newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ){
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+  } else if ( oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+	      newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ){
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  } else
+    die( "Layout transition failed." );
+  vkCmdPipelineBarrier( commandBuffer, sourceStage, destinationStage, 0,0, NULL,
+			0, NULL, 1, &barrier );
+  endSingleTimeCommands( vk, commandBuffer );
+}
+void copyBufferToImage( plvkState* vk, plvkBuffer* buf, plvkTexture* tex ){
+  VkCommandBuffer commandBuffer = beginSingleTimeCommands( vk );
+  VkBufferImageCopy region = {};
+  region.bufferOffset = 0;
+  region.bufferRowLength = 0;
+  region.bufferImageHeight = 0;
+  region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  region.imageSubresource.mipLevel = 0;
+  region.imageSubresource.baseArrayLayer = 0;
+  region.imageSubresource.layerCount = 1;
+  region.imageExtent.width = tex->width;
+  region.imageExtent.height = tex->height,
+  region.imageExtent.depth = 1;
+  vkCmdCopyBufferToImage( commandBuffer, buf->buffer, tex->image,
+			  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region );
+  mark;
+  endSingleTimeCommands( vk, commandBuffer );
+}
+    
+
 void createTextures( plvkState* vk ){
-  (void)vk;
+  vk->tex = createTextureImage( vk, 3, 2, 4, VK_FORMAT_R8G8B8A8_SRGB ); 
+}
+
+
+void destroyTexture( plvkState* vk, plvkTexture* tex ){
+  vkDestroyImage( vk->device, tex->image, NULL );
+  mark;
+  vkFreeMemory( vk->device, tex->imageMem, NULL );
+  memfree( tex );
 }
 
 
 void destroyTextures( plvkState* vk ){
-  (void)vk;
+  destroyTexture( vk, vk->tex );
 }
-/* void createImage( plvkState* vk, plvkTexture* tex ); */
-/* void copyBufferToImage( plvkState* vk, plvkTexture* tex ); */
-/* void transitionImageLayout( plvkState* vk, plvkTexture* tex, */
-/* 			    VkImageLayout oldLayout, VkImageLayout newLayout ); */
-/* plvkTexture* createTextureImage( plvkState* vk, u32 width, u32 height, */
-/* 				 u8 channels, VkFormat format ){ */
-/*   new( ret, plvkTexture ); */
-/*   u8 pixels[] = { */
-/*     0, 0, 0, 255,  */
-/*     255, 0, 0, 255,  */
-/*     255, 255, 0, 255,  */
-/*     0, 0, 255, 255,  */
-/*     255, 0, 255, 255,  */
-/*     123, 255, 255, 255 */
-/*   }; */
-/*   ret->width = width; */
-/*   ret->height = height; */
-/*   ret->channels = channels; */
-/*   ret->format = format; */
-/*   ret->size = ret->width * ret->height * ret->channels; */
-/*   ret->tiling = VK_IMAGE_TILING_OPTIMAL; */
-/*   ret->usage =  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT; */
-/*   new( buf, plvkBuffer ); */
-/*   buf->usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT; */
-/*   buf->props = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | */
-/*     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; */
-/*   buf->size = ret->size; */
-/*   createBuffer( vk, buf ); */
 
-/*   void* data; */
-/*   vkMapMemory( vk->device, buf->memory, 0, buf->size, 0, &data ); */
-/*   memcpy( data, pixels, buf->size ); */
-/*   vkUnmapMemory( vk->device, buf->memory ); */
-/*   createImage( vk, ret ); */
-/* 	      /\* texWidth, texHeight,, *\/ */
-/* 	       /\* VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | *\/ */
-/* 	       /\* VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, *\/ */
-/* 	       /\* textureImage, textureImageMemory); *\/ */
-/*   transitionImageLayout( vk, ret, */
-/* 			 VK_IMAGE_LAYOUT_UNDEFINED, */
-/* 			 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ); */
-/*   copyBufferToImage( vk, ret ); */
-/*   transitionImageLayout( vk, ret, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, */
-/* 			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ); */
-/*   vkDestroyBuffer( vk->device, buf->buffer, NULL ); */
-/*   vkFreeMemory( vk->device, buf->memory, NULL ); */
-/*   return ret; */
-/* } */
-/* void createImage( plvkState* vk, plvkTexture* tex ){ */
-/* /\* void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) { *\/ */
-/*     VkImageCreateInfo imageInfo = {}; */
-/*     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO; */
-/*     imageInfo.imageType = VK_IMAGE_TYPE_2D; */
-/*     imageInfo.extent.width = tex->width; */
-/*     imageInfo.extent.height = tex->height; */
-/*     imageInfo.extent.depth = 1; */
-/*     imageInfo.mipLevels = 1; */
-/*     imageInfo.arrayLayers = 1; */
-/*     imageInfo.format = tex->format; */
-/*     imageInfo.tiling = tex->tiling; */
-/*     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; */
-/*     imageInfo.usage = tex->usage; */
-/*     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT; */
-/*     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; */
-/*     if( VK_SUCCESS != vkCreateImage( vk->device, &imageInfo, NULL, */
-/* 				     &tex->image ) ) */
-/*       die( "Failed to create vulkan image." ); */
-/*     VkMemoryRequirements mreqs; */
-/*     vkGetImageMemoryRequirements( vk->device, tex->image, &mreqs ); */
-/*     VkMemoryAllocateInfo mai = {}; */
-/*     mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO; */
-/*     mai.allocationSize = mreqs.size; */
-/*     mai.memoryTypeIndex = findMemoryType( memRequirements.memoryTypeBits, */
-/* 					 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT ); */
-/*     if( VK_SUCCESS != vkAllocateMemory( vk->device, &mai, NULL, &tex-memory ) ) */
-/*       die( "Failed to allocate memory for texture." ); */
-/*     vkBindImageMemory( vk->device, tex->image, tex->memory, 0 ); */
-/* } */
-/* void transitionImageLayout( plvkState* vk, plvkTexture* tex, */
-/* 			    VkImageLayout oldLayout, VkImageLayout newLayout ){ */
-/*   VkCommandBuffer commandBuffer = beginSingleTimeCommands(); */
-/*   VkImageMemoryBarrier barrier{}; */
-/*   barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER; */
-/*   barrier.oldLayout = oldLayout; */
-/*   barrier.newLayout = newLayout; */
-/*   barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; */
-/*   barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; */
-/*   barrier.image = tex->image; */
-/*   barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; */
-/*   barrier.subresourceRange.baseMipLevel = 0; */
-/*   barrier.subresourceRange.levelCount = 1; */
-/*   barrier.subresourceRange.baseArrayLayer = 0; */
-/*   barrier.subresourceRange.layerCount = 1; */
-/*   VkPipelineStageFlags sourceStage; */
-/*   VkPipelineStageFlags destinationStage; */
-/*   if( oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && */
-/*       newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ){ */
-/*     barrier.srcAccessMask = 0; */
-/*     barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; */
-/*     sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT; */
-/*     destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT; */
-/*     } else if ( oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && */
-/* 		newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ){ */
-/*     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; */
-/*     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT; */
-/*     sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT; */
-/*     destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT; */
-/*   } else */
-/*     die( "Layout transition failed." ); */
-/*   vkCmdPipelineBarrier( commandBuffer, */
-/* 			sourceStage, destinationStage, */
-/* 			0, */
-/* 			0, NULL, */
-/* 			0, NULL, */
-/* 			1, &barrier */
-/*     ); */
-/*     endSingleTimeCommands(commandBuffer); */
-/* } */
-/* void copyBufferToImage( plvkState* vk, plvkTexture* tex ){ */
-/*   VkCommandBuffer commandBuffer = beginSingleTimeCommands(); */
-/*   VkBufferImageCopy region = {}; */
-/*   region.bufferOffset = 0; */
-/*   region.bufferRowLength = 0; */
-/*   region.bufferImageHeight = 0; */
-/*   region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; */
-/*   region.imageSubresource.mipLevel = 0; */
-/*   region.imageSubresource.baseArrayLayer = 0; */
-/*   region.imageSubresource.layerCount = 1; */
-/*   region.imageExtent = { */
-/*     tex->width, */
-/*     tex->height, */
-/*     1 */
-/*   }; */
-/*   vkCmdCopyBufferToImage( commandBuffer, buffer, image, */
-/* 			  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region ); */
-/*   endSingleTimeCommands( commandBuffer ); */
-/* } */
-    
+

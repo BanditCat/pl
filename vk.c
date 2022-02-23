@@ -102,7 +102,8 @@ void rebuild( plvkState* vk ){
 				     &vsize );
     vk->pipe = createPipeline( vk, frag, fsize, vert, vsize );
     vk->framebuffers = createFramebuffers( vk, vk->pipe, vk->swap );
-    createTextures( vk );
+    if( !vk->tex )
+      createTextures( vk );
     createUBOs( vk );
     createDescriptorPool( vk );
     createDescriptorSets( vk );
@@ -120,12 +121,13 @@ void unbuild( plvkStatep vkp ){
     destroyPipeline( vk, vk->pipe );
     destroyCommandBuffers( vk, vk->commandBuffers );
     destroyUBOs( vk );
-    destroyTextures( vk );
     destroySwap( vk, vk->swap );
   }
 }
 void plvkEnd( plvkStatep vkp ){
+  mark;
   plvkState* vk = vkp;
+    destroyTextures( vk );
   vkDeviceWaitIdle( vk->device );
   {
     u32 ni = vk->swap->numImages;
