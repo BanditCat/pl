@@ -165,6 +165,19 @@ void destroyDescriptorPool( plvkState* vk ){
 }
 
 
+u32 findMemoryType( plvkState* vk, u32 filter, VkMemoryPropertyFlags props ){
+  VkPhysicalDeviceMemoryProperties pdmp;
+  vkGetPhysicalDeviceMemoryProperties( vk->gpu, &pdmp );
+  for( u32 i = 0; i < pdmp.memoryTypeCount; ++i )
+    if( filter & ( 1 << i ) &&
+	( ( pdmp.memoryTypes[ i ].propertyFlags &
+	    props ) == props ) ){
+      return i;
+    }
+  die( "No suitable GPU memory buffer found." );
+  return 0; // DNE
+}
+
 plvkBuffer* createBuffer( plvkState* vk, u64 size, VkBufferUsageFlags usage,
 			  VkMemoryPropertyFlags props ){
   new( ret, plvkBuffer );
@@ -183,22 +196,7 @@ plvkBuffer* createBuffer( plvkState* vk, u64 size, VkBufferUsageFlags usage,
   VkMemoryAllocateInfo mai = {};
   mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   mai.allocationSize = mr.size;
-
-  VkPhysicalDeviceMemoryProperties pdmp;
-  vkGetPhysicalDeviceMemoryProperties( vk->gpu, &pdmp );
-  bool found = 0;
-  u32 memtype;
-  for( u32 i = 0; i < pdmp.memoryTypeCount; ++i )
-    if( mr.memoryTypeBits & ( 1 << i ) &&
-	( ( pdmp.memoryTypes[i].propertyFlags &
-	    props ) == props ) ){
-      memtype = i;
-      found = 1;
-    }
-  if( !found )
-    die( "No suitable GPU memory buffer found." );
-
-  mai.memoryTypeIndex = memtype;
+  mai.memoryTypeIndex = findMemoryType( vk, mr.memoryTypeBits, props );
 
   if( VK_SUCCESS != vkAllocateMemory( vk->device, &mai, NULL,
 				      &ret->memory ) )
