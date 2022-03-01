@@ -139,13 +139,6 @@ typedef struct plvkUnit{
   // must remain valid throughout the lifetime of the plvkUnit.
   plvkInstance* instance;
 
-  // The number of distinct memory regions to store. Sort of like pre-rendering
-  // frames, but not necessarily visible.
-  u32 multiplicity;
-  
-  VkQueue queue;
-  u32 queueFamily;
-
   VkExtent2D size;
 
   VkFramebuffer* framebuffers; 

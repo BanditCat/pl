@@ -154,6 +154,17 @@ plvkInstancep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
   vk->surface = createSurface( vk );
   vk->layout = createLayout( vk );
   rebuild( vk );
+
+  
+  // BUGBUG test units
+  {
+    mark;
+    plvkUnit* t = createUnit( vk, 320, 200 );
+    destroyUnit( t );
+  }
+
+
+
   return vk;
 }
 void updateGPUstate( plvkInstance* vk, f32 time ){

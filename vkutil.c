@@ -1188,15 +1188,290 @@ void createTextureSampler( plvkInstance* vk, plvkTexture* tex ){
 }
 
 
+VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
+  VkDescriptorSetLayout ret;
+  VkDescriptorSetLayoutBinding ubodslb = {};
+  ubodslb.binding = 0;
+  ubodslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  ubodslb.descriptorCount = 1;
+  ubodslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+  VkDescriptorSetLayoutBinding texdslb = {};
+  texdslb.binding = 1;
+  texdslb.descriptorCount = 1;
+  texdslb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  texdslb.pImmutableSamplers = NULL;
+  texdslb.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+  VkDescriptorSetLayoutBinding ls[ 2 ] = { ubodslb, texdslb };
+  
+  VkDescriptorSetLayoutCreateInfo dslci = {};
+  dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  dslci.bindingCount = sizeof( ls ) / sizeof( ls[ 0 ] ) ;
+  dslci.pBindings = ls;
+  if( VK_SUCCESS != vkCreateDescriptorSetLayout( u->instance->device, &dslci,
+						 NULL, &ret ) ) 
+    die( "Descriptor layout creation failed." );
+
+  return ret;
+}
+
+
+void createUnitPoolAndFences( plvkUnit* u ){
+  // Command pool.
+  VkCommandPoolCreateInfo cpci = {};
+  cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  cpci.queueFamilyIndex = u->instance->queueFamily;
+  if( VK_SUCCESS != vkCreateCommandPool( u->instance->device, &cpci, NULL,
+					 &u->pool ) )
+    die( "Command pool creation failed." );
+  // Semaphores and fences.
+  u->imageAvailables = newae( VkSemaphore, 2 );
+  u->renderCompletes = newae( VkSemaphore, 2 );
+  u->fences = newae( VkFence, 2 );
+  u->fenceSyncs = newae( VkFence, 2 );
+  for( u32 i = 0; i < 2; ++i )
+    u->fenceSyncs[ i ] = VK_NULL_HANDLE;
+  VkSemaphoreCreateInfo sci = {};
+  sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+  VkFenceCreateInfo fci = {};
+  fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+  for( u32 i = 0; i < 2; ++i ){
+    if( VK_SUCCESS != vkCreateSemaphore( u->instance->device, &sci, NULL,
+					 &u->imageAvailables[ i ] ) ||
+	VK_SUCCESS != vkCreateSemaphore( u->instance->device, &sci, NULL,
+					 &u->renderCompletes[ i ] ) )
+      die( "Semaphore creation failed." );
+    if( VK_SUCCESS != vkCreateFence( u->instance->device, &fci, NULL,
+				     &u->fences[ i ] ) )
+      die( "Fence creation failed." );
+  }
+}
+
+
+plvkPipeline* createUnitPipeline( plvkUnit* u, const char* frag, u32 fsize,
+				  const char* vert, u32 vsize ){
+  VkShaderModule displayVertexShader;
+  VkShaderModule displayFragmentShader;
+  displayFragmentShader = createModule( u->instance->device, frag, fsize );
+  displayVertexShader = createModule( u->instance->device, vert, vsize );
+
+  new( ret, plvkPipeline );
+  VkPipelineShaderStageCreateInfo pssci[ 2 ];
+  pssci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  pssci[ 0 ].pNext = NULL;
+  pssci[ 0 ].flags = 0;
+  pssci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
+  pssci[ 0 ].module = displayVertexShader;
+  pssci[ 0 ].pName = "main";
+  pssci[ 0 ].pSpecializationInfo = NULL;
+  pssci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  pssci[ 1 ].pNext = NULL;
+  pssci[ 1 ].flags = 0;
+  pssci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  pssci[ 1 ].module = displayFragmentShader;
+  pssci[ 1 ].pName = "main";
+  pssci[ 1 ].pSpecializationInfo = NULL;
+
+
+  VkPipelineVertexInputStateCreateInfo pvici = {};
+  pvici.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+  VkPipelineInputAssemblyStateCreateInfo piasci = {};
+  piasci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+  piasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+  piasci.primitiveRestartEnable = VK_FALSE;
+
+  VkViewport viewport = {};
+  viewport.x = 0.0f;
+  viewport.y = 0.0f;
+  viewport.width = (float) u->size.width;
+  viewport.height = (float) u->size.height;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  VkRect2D scissor = {};
+  scissor.extent = u->size;
+
+  VkPipelineViewportStateCreateInfo pvsci = {};
+  pvsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+  pvsci.viewportCount = 1;
+  pvsci.pViewports = &viewport;
+  pvsci.scissorCount = 1;
+  pvsci.pScissors = &scissor;
+    
+  VkPipelineRasterizationStateCreateInfo prsci = {};
+  prsci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+  prsci.depthClampEnable = VK_FALSE;
+  prsci.rasterizerDiscardEnable = VK_FALSE;
+  prsci.polygonMode = VK_POLYGON_MODE_FILL;
+  prsci.lineWidth = 1.0f;
+  prsci.cullMode = VK_CULL_MODE_BACK_BIT;
+  prsci.frontFace = VK_FRONT_FACE_CLOCKWISE;
+  prsci.depthBiasEnable = VK_FALSE;
+
+  VkPipelineMultisampleStateCreateInfo pmsci = {};
+  pmsci.sType =
+    VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+  pmsci.sampleShadingEnable = VK_FALSE;
+  pmsci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+  pmsci.minSampleShading = 1.0f;
+  pmsci.pSampleMask = NULL;
+  pmsci.alphaToCoverageEnable = VK_FALSE;
+  pmsci.alphaToOneEnable = VK_FALSE;
+
+  VkPipelineColorBlendAttachmentState cba = {};
+  cba.colorWriteMask =
+    VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+    VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  cba.blendEnable = VK_FALSE;
+    
+
+  VkPipelineColorBlendStateCreateInfo pcbsci = {};
+  pcbsci.sType =
+    VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+  pcbsci.logicOpEnable = VK_FALSE;
+  pcbsci.attachmentCount = 1;
+  pcbsci.pAttachments = &cba;
+
+  VkPipelineLayoutCreateInfo plci = {};
+  plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  plci.setLayoutCount = 1;
+  plci.pSetLayouts = &u->layout;
+  if( VK_SUCCESS !=
+      vkCreatePipelineLayout( u->instance->device, &plci,
+			      NULL, &ret->pipelineLayout ) )
+    die( "Pipeline creation failed." );
+
+  VkAttachmentDescription colorAttachment = {};
+  colorAttachment.format = VK_FORMAT_R8G8B8A8_UINT;
+  colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+  VkAttachmentReference colorAttachmentRef = {};
+  colorAttachmentRef.attachment = 0;
+  colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkSubpassDescription subpass = {};
+  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpass.colorAttachmentCount = 1;
+  subpass.pColorAttachments = &colorAttachmentRef;
+
+  // Render pass creation.
+  VkRenderPassCreateInfo rpci = {};
+  rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  rpci.attachmentCount = 1;
+  rpci.pAttachments = &colorAttachment;
+  rpci.subpassCount = 1;
+  rpci.pSubpasses = &subpass;
+  VkSubpassDependency dependency = {};
+  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+  dependency.dstSubpass = 0;
+  dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.srcAccessMask = 0;
+  dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  rpci.dependencyCount = 1;
+  rpci.pDependencies = &dependency;
+  if( VK_SUCCESS != vkCreateRenderPass( u->instance->device, &rpci,
+					NULL, &ret->renderPass ) ) 
+    die( "Render pass creation failed." );
+
+  VkGraphicsPipelineCreateInfo pipelineInfo = {};
+  pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+  pipelineInfo.stageCount = 2;
+  pipelineInfo.pStages = pssci;
+  pipelineInfo.pVertexInputState = &pvici;
+  pipelineInfo.pInputAssemblyState = &piasci;
+  pipelineInfo.pViewportState = &pvsci;
+  pipelineInfo.pRasterizationState = &prsci;
+  pipelineInfo.pMultisampleState = &pmsci;
+  pipelineInfo.pColorBlendState = &pcbsci;
+  pipelineInfo.layout = ret->pipelineLayout;
+  pipelineInfo.renderPass = ret->renderPass;
+  pipelineInfo.subpass = 0;
+
+
+  if( VK_SUCCESS != vkCreateGraphicsPipelines( u->instance->device, VK_NULL_HANDLE,
+					       1, &pipelineInfo, NULL,
+					       &ret->pipeline ) )
+    die( "Pipeline creation failed." );
+
+  destroyModule( u->instance, displayFragmentShader );
+  destroyModule( u->instance, displayVertexShader );
+  return ret;
+}
+
+
 plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height ){
   new( ret, plvkUnit );
   ret->instance = vk;
   ret->size.width = width;
   ret->size.height = height;
+  ret->layout = createUnitDescriptorLayout( ret );
+  createUnitPoolAndFences( ret );
+  u64 fsize, vsize;
+  const char* frag = htFindString( state.compressedResources,
+				   "shaders\\mainFrag.spv",
+				   &fsize );
+  const char* vert = htFindString( state.compressedResources,
+				   "shaders\\mainVert.spv",
+				   &vsize );
+  ret->pipe = createUnitPipeline( ret, frag, fsize, vert, vsize );
+  /* u->framebuffers = createUnitFramebuffers( vk, vk->pipe, vk->swap ); */
+  /* if( !vk->tex ) */
+  /*   createTextures( vk ); */
+  /* createUBOs( vk ); */
+  /* createDescriptorPool( vk ); */
+  /* createDescriptorSets( vk ); */
+  /* vk->commandBuffers = createCommandBuffers( vk ); */
   return ret;
 }
 
 
+void destroyUnitPoolAndFences( plvkUnit* u ){
+  for( u32 i = 0; i < 2; ++i ){
+    vkDestroySemaphore( u->instance->device, u->imageAvailables[ i ], NULL );
+    vkDestroySemaphore( u->instance->device, u->renderCompletes[ i ], NULL );
+    vkDestroyFence( u->instance->device, u->fences[ i ], NULL );
+  }
+  vkDestroyCommandPool( u->instance->device, u->pool, NULL );
+  memfree( u->imageAvailables );
+  memfree( u->renderCompletes );
+  memfree( u->fences );
+  memfree( u->fenceSyncs );
+}
+
+
+void destroyUnitDescriptorLayout( plvkUnit* u ){
+  vkDestroyDescriptorSetLayout( u->instance->device, u->layout, NULL );
+}
+
+
+void destroyUnitPipeline( plvkUnit* u ){
+  vkDestroyPipeline( u->instance->device, u->pipe->pipeline, NULL );
+  vkDestroyPipelineLayout( u->instance->device, u->pipe->pipelineLayout, NULL );
+  vkDestroyRenderPass( u->instance->device, u->pipe->renderPass, NULL );
+  memfree( u->pipe );
+}
+
+
 void destroyUnit( plvkUnit* u ){
+    /*   vkDeviceWaitIdle( vk->device ); */
+    /* destroyFramebuffers( vk, vk->framebuffers ); */
+    /* destroyDescriptorPool( vk ); */
+    /* destroyPipeline( vk, vk->pipe ); */
+    /* destroyCommandBuffers( vk, vk->commandBuffers ); */
+    /* destroyUBOs( vk ); */
+    /* destroySwap( vk, vk->swap ); */
+  destroyUnitPipeline( u );
+  destroyUnitPoolAndFences( u );
+  destroyUnitDescriptorLayout( u );
   memfree( u );
 }
