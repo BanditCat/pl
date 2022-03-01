@@ -1119,7 +1119,8 @@ plvkTexture* loadTexturePPM( plvkState* vk, const char* name ){
     *cp++ = 255;
   }
   return createTextureImage( vk, pixels, width, height, 4,
-			     VK_FORMAT_R8G8B8A8_SRGB ); 
+			     VK_FORMAT_R8G8B8A8_SRGB );
+  memfree( pixels );
 }
 
 void createTextures( plvkState* vk ){
