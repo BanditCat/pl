@@ -26,7 +26,7 @@
 
 
 void plvkPrintInitInfo( void ){
-  plvkState* vk = state.vk;
+  plvkInstance* vk = state.vk;
   printl( "\nInstance extensions:" );
   for( u32 i = 0; i < vk->numExtensions; ++i ){
     printInt( i ); print( ": " ); printl( vk->extensions[ i ].extensionName );
@@ -64,7 +64,7 @@ void plvkPrintInitInfo( void ){
 }
 
 void plvkPrintGPUs( void ){
-  plvkState* vk = state.vk;
+  plvkInstance* vk = state.vk;
   printl( "GPUs:" );
   u32 best = 0;
   u32 bestScore = 0;
@@ -86,7 +86,7 @@ void plvkPrintGPUs( void ){
   print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
 }
 
-void rebuild( plvkState* vk ){
+void rebuild( plvkInstance* vk ){
   vkDeviceWaitIdle( vk->device );
 
   vk->swap = createSwap( vk, 1, state.frameCount );
@@ -112,8 +112,8 @@ void rebuild( plvkState* vk ){
   }
 }
 
-void unbuild( plvkStatep vkp ){
-  plvkState* vk = vkp;
+void unbuild( plvkInstancep vkp ){
+  plvkInstance* vk = vkp;
   if( vk->swap ){
     vkDeviceWaitIdle( vk->device );
     destroyFramebuffers( vk, vk->framebuffers );
@@ -124,8 +124,8 @@ void unbuild( plvkStatep vkp ){
     destroySwap( vk, vk->swap );
   }
 }
-void plvkEnd( plvkStatep vkp ){
-  plvkState* vk = vkp;
+void plvkEnd( plvkInstancep vkp ){
+  plvkInstance* vk = vkp;
   vkDeviceWaitIdle( vk->device );
   {
     u32 ni = vk->swap->numImages;
@@ -139,16 +139,16 @@ void plvkEnd( plvkStatep vkp ){
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
   destroyDescriptorSets( vk );
-  destroyDevice( vk );
+  destroyInstance( vk );
   if( vk->gui )
     wend( vk->gui );
   memfree( vk );
 }
 
 
-plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
+plvkInstancep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
 		     int width, int height ){
-  plvkState* vk = createDevice( whichGPU, debugLevel, title, x, y,
+  plvkInstance* vk = createInstance( whichGPU, debugLevel, title, x, y,
 				width, height );
   
   vk->surface = createSurface( vk );
@@ -156,7 +156,7 @@ plvkStatep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
   rebuild( vk );
   return vk;
 }
-void updateGPUstate( plvkState* vk, f32 time ){
+void updateGPUstate( plvkInstance* vk, f32 time ){
   vk->UBOcpumem.time = time;
   void* data;
   vkMapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory, 0,
@@ -168,7 +168,7 @@ void draw( void ){
   static u64 firstDrawTime = 0;
   if( !firstDrawTime )
     firstDrawTime = tickCount();
-  plvkState* vk = state.vk;
+  plvkInstance* vk = state.vk;
   bool recreate = 0;
   if( vk->swap ){
     static u64 lasttime = 0;
@@ -249,16 +249,16 @@ void draw( void ){
     rebuild( vk );
   }
 }
-bool plvkeventLoop( plvkStatep p ){
-  plvkState* vk = p;
+bool plvkeventLoop( plvkInstancep p ){
+  plvkInstance* vk = p;
   return weventLoop( vk->gui );
 }
 
-void plvkShow( plvkStatep p ){
-  plvkState* vk = p;
+void plvkShow( plvkInstancep p ){
+  plvkInstance* vk = p;
   guiShow( vk->gui );
 }
-void plvkHide( plvkStatep p ){
-  plvkState* vk = p;
+void plvkHide( plvkInstancep p ){
+  plvkInstance* vk = p;
   guiHide( vk->gui );
 }

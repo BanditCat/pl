@@ -195,7 +195,7 @@ int main( int argc, const char** argv ){
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
-  plvkStatep vk = plvkInit( gpu, debugLevel, TARGET, x, y, w, h );
+  plvkInstancep vk = plvkInit( gpu, debugLevel, TARGET, x, y, w, h );
   // Main loop.
   plvkShow( vk );
   while( plvkeventLoop( vk ) )

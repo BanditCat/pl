@@ -28,9 +28,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb
 ( VkDebugUtilsMessageSeverityFlagBitsEXT severity,
   VkDebugUtilsMessageTypeFlagsEXT type,
   const VkDebugUtilsMessengerCallbackDataEXT* callback,
-  void* user ) {
+  void* user ){
   (void)user;
-  if( (u32)severity >= ((plvkState*)state.vk)->debugLevel ){
+  if( (u32)severity >= ((plvkInstance*)state.vk)->debugLevel ){
     print( "validation " );
     printInt( type );
     print( ", " );
@@ -91,7 +91,7 @@ u64 scoreGPU( VkPhysicalDeviceProperties* gpu ){
 
 // Function pointer helper function.
 #define FPGET( x ) vk->x = (PFN_##x) vkGetInstanceProcAddr( vk->instance, #x );
-void getFuncPointers( plvkState* vk ){
+void getFuncPointers( plvkInstance* vk ){
   (void)vk;
 #ifdef DEBUG   
   FPGET( vkCreateDebugUtilsMessengerEXT );
@@ -100,7 +100,7 @@ void getFuncPointers( plvkState* vk ){
 }
 
 
-void createDescriptorSets( plvkState* vk ){
+void createDescriptorSets( plvkInstance* vk ){
   newa( tl, VkDescriptorSetLayout, vk->swap->numImages );
   for( u32 i = 0; i < vk->swap->numImages; ++i )
     tl[ i ] = vk->layout;
@@ -163,12 +163,12 @@ void createDescriptorSets( plvkState* vk ){
 }
 
 
-void destroyDescriptorSets( plvkState* vk ){
+void destroyDescriptorSets( plvkInstance* vk ){
   memfree( vk->descriptorSets );
 }
 
 
-void createDescriptorPool( plvkState* vk ) {
+void createDescriptorPool( plvkInstance* vk ){
   VkDescriptorPoolSize dps[ 2 ] = {};
   dps[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   dps[ 0 ].descriptorCount = vk->swap->numImages;
@@ -186,12 +186,12 @@ void createDescriptorPool( plvkState* vk ) {
 }
 
 
-void destroyDescriptorPool( plvkState* vk ){
+void destroyDescriptorPool( plvkInstance* vk ){
   vkDestroyDescriptorPool( vk->device, vk->descriptorPool, NULL );
 }
 
 
-u32 findMemoryType( plvkState* vk, u32 filter, VkMemoryPropertyFlags props ){
+u32 findMemoryType( plvkInstance* vk, u32 filter, VkMemoryPropertyFlags props ){
   VkPhysicalDeviceMemoryProperties pdmp;
   vkGetPhysicalDeviceMemoryProperties( vk->gpu, &pdmp );
   for( u32 i = 0; i < pdmp.memoryTypeCount; ++i )
@@ -204,7 +204,7 @@ u32 findMemoryType( plvkState* vk, u32 filter, VkMemoryPropertyFlags props ){
   return 0; // DNE
 }
 
-plvkBuffer* createBuffer( plvkState* vk, u64 size, VkBufferUsageFlags usage,
+plvkBuffer* createBuffer( plvkInstance* vk, u64 size, VkBufferUsageFlags usage,
 			  VkMemoryPropertyFlags props ){
   new( ret, plvkBuffer );
   VkBufferCreateInfo bci = {};
@@ -234,14 +234,14 @@ plvkBuffer* createBuffer( plvkState* vk, u64 size, VkBufferUsageFlags usage,
 }
 
 
-void destroyBuffer( plvkState* vk, plvkBuffer* p ){
+void destroyBuffer( plvkInstance* vk, plvkBuffer* p ){
   vkDestroyBuffer( vk->device, p->buffer, NULL );
   vkFreeMemory( vk->device, p->memory, NULL );
   memfree( p );
 }
 
 
-void createUBOs( plvkState* vk ){
+void createUBOs( plvkInstance* vk ){
   VkDeviceSize size = sizeof( gpuState );
   vk->UBOs = newae( plvkBuffer*, vk->swap->numImages );
   for( size_t i = 0; i < vk->swap->numImages; i++ ){
@@ -253,14 +253,14 @@ void createUBOs( plvkState* vk ){
 }
 
 
-void destroyUBOs( plvkState* vk ){
+void destroyUBOs( plvkInstance* vk ){
   for( u32 i = 0; i < vk->swap->numImages; ++i )
     destroyBuffer( vk, vk->UBOs[ i ] );
   memfree( vk->UBOs );
 }
-plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
+plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel,
 			  char* title, int x, int y, int width, int height ){
-  new( vk, plvkState );
+  new( vk, plvkInstance );
   state.vk = vk;
   vk->gui = wsetup( title, x, y, width, height );
   vk->debugLevel = debugLevel;
@@ -423,7 +423,7 @@ plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
 }
 
 
-void destroyDevice( plvkState* vk ){
+void destroyInstance( plvkInstance* vk ){
   if( vk->device )
     vkDestroyDevice( vk->device, NULL);
   if( vk->instance )
@@ -444,7 +444,7 @@ void destroyDevice( plvkState* vk ){
 }
 
 
-VkExtent2D getExtent( plvkState* vk ){
+VkExtent2D getExtent( plvkInstance* vk ){
   VkExtent2D wh = {};
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface->surface,
 					     &vk->surface->surfaceCapabilities );
@@ -480,12 +480,12 @@ VkShaderModule createModule( VkDevice vkd, const char* data, u32 size ){
 }
 
 
-void destroyModule( plvkState* vk, VkShaderModule sm ){
+void destroyModule( plvkInstance* vk, VkShaderModule sm ){
   vkDestroyShaderModule( vk->device, sm, NULL );
 }
 
 
-VkDescriptorSetLayout createLayout( plvkState* vk ){
+VkDescriptorSetLayout createLayout( plvkInstance* vk ){
   VkDescriptorSetLayout ret;
   VkDescriptorSetLayoutBinding ubodslb = {};
   ubodslb.binding = 0;
@@ -514,12 +514,12 @@ VkDescriptorSetLayout createLayout( plvkState* vk ){
 }
 
 
-void destroyLayout( plvkState* vk ){
+void destroyLayout( plvkInstance* vk ){
   vkDestroyDescriptorSetLayout( vk->device, vk->layout, NULL );
 }
 
 
-plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
+plvkSwapchain* createSwap( plvkInstance* vk, bool vsync, u32 minFrames ){
   VkExtent2D wh = getExtent( vk );
   if( wh.width && wh.height ){
     vk->extent = wh;
@@ -562,7 +562,7 @@ plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames ){
 }
 
 
-void destroySwap( plvkState* vk, plvkSwapchain* swap ){
+void destroySwap( plvkInstance* vk, plvkSwapchain* swap ){
   for( u32 i = 0; i < swap->numImages; ++i )
     vkDestroyImageView( vk->device, swap->imageViews[ i ], NULL );
   vkDestroySwapchainKHR( vk->device, swap->swap, NULL );
@@ -572,7 +572,7 @@ void destroySwap( plvkState* vk, plvkSwapchain* swap ){
 }
 
 
-plvkPipeline* createPipeline( plvkState* vk, const char* frag, u32 fsize,
+plvkPipeline* createPipeline( plvkInstance* vk, const char* frag, u32 fsize,
 			      const char* vert, u32 vsize ){
   VkShaderModule displayVertexShader;
   VkShaderModule displayFragmentShader;
@@ -731,7 +731,7 @@ plvkPipeline* createPipeline( plvkState* vk, const char* frag, u32 fsize,
 }
 
 
-void destroyPipeline( plvkState* vk, plvkPipeline* p ){
+void destroyPipeline( plvkInstance* vk, plvkPipeline* p ){
   vkDestroyPipeline( vk->device, p->pipeline, NULL );
   vkDestroyPipelineLayout( vk->device, p->pipelineLayout, NULL );
   vkDestroyRenderPass( vk->device, p->renderPass, NULL );
@@ -739,7 +739,7 @@ void destroyPipeline( plvkState* vk, plvkPipeline* p ){
 }
 
 
-VkFramebuffer* createFramebuffers( plvkState* vk, plvkPipeline* pipe,
+VkFramebuffer* createFramebuffers( plvkInstance* vk, plvkPipeline* pipe,
 				   plvkSwapchain* swap ){
   newa( ret, VkFramebuffer, vk->swap->numImages );
   for( u32 i = 0; i < swap->numImages; ++i ){
@@ -761,14 +761,14 @@ VkFramebuffer* createFramebuffers( plvkState* vk, plvkPipeline* pipe,
 }
 
 
-void destroyFramebuffers( plvkState* vk, VkFramebuffer* fbs ){
+void destroyFramebuffers( plvkInstance* vk, VkFramebuffer* fbs ){
   for( u32 i = 0; i < vk->swap->numImages; ++i )
     vkDestroyFramebuffer( vk->device, fbs[ i ], NULL );
   memfree( fbs );
 }
 
 
-VkCommandBuffer* createCommandBuffers( plvkState* vk ){
+VkCommandBuffer* createCommandBuffers( plvkInstance* vk ){
   newa( ret, VkCommandBuffer, vk->swap->numImages );
 
   VkCommandBufferAllocateInfo cbai = {};
@@ -815,14 +815,14 @@ VkCommandBuffer* createCommandBuffers( plvkState* vk ){
 }
 
 
-void destroyCommandBuffers( plvkState* vk, VkCommandBuffer* cbs ){
+void destroyCommandBuffers( plvkInstance* vk, VkCommandBuffer* cbs ){
   vkFreeCommandBuffers( vk->device, vk->pool, vk->swap->numImages,
 			cbs );
   memfree( cbs );
 }
 
 
-void createPoolAndFences( plvkState* vk ){
+void createPoolAndFences( plvkInstance* vk ){
   // Command pool.
   VkCommandPoolCreateInfo cpci = {};
   cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -855,7 +855,7 @@ void createPoolAndFences( plvkState* vk ){
 }
 
 
-void destroyPoolAndFences( plvkState* vk, u32 numImages ){
+void destroyPoolAndFences( plvkInstance* vk, u32 numImages ){
   for( u32 i = 0; i < numImages; ++i ){
     vkDestroySemaphore( vk->device, vk->imageAvailables[ i ], NULL );
     vkDestroySemaphore( vk->device, vk->renderCompletes[ i ], NULL );
@@ -869,7 +869,7 @@ void destroyPoolAndFences( plvkState* vk, u32 numImages ){
 }
 
 
-plvkSurface* createSurface( plvkState* vk ){
+plvkSurface* createSurface( plvkInstance* vk ){
   new( ret, plvkSurface ); 
   VkWin32SurfaceCreateInfoKHR srfci = {};
   srfci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
@@ -911,7 +911,7 @@ plvkSurface* createSurface( plvkState* vk ){
 }
 
 
-void destroySurface( plvkState* vk, plvkSurface* surf ){
+void destroySurface( plvkInstance* vk, plvkSurface* surf ){
   vkDestroySurfaceKHR( vk->instance, surf->surface, NULL );
   memfree( surf->surfaceFormats );
   memfree( surf->surfacePresentations );
@@ -919,11 +919,11 @@ void destroySurface( plvkState* vk, plvkSurface* surf ){
 }
 
 
-void createImage( plvkState* vk, plvkTexture* tex );
-void copyBufferToImage( plvkState* vk, plvkBuffer* buf, plvkTexture* tex );
-void transitionImageLayout( plvkState* vk, plvkTexture* tex,
+void createImage( plvkInstance* vk, plvkTexture* tex );
+void copyBufferToImage( plvkInstance* vk, plvkBuffer* buf, plvkTexture* tex );
+void transitionImageLayout( plvkInstance* vk, plvkTexture* tex,
 			    VkImageLayout oldLayout, VkImageLayout newLayout );
-plvkTexture* createTextureImage( plvkState* vk, u8* pixels, u32 width,
+plvkTexture* createTextureImage( plvkInstance* vk, u8* pixels, u32 width,
 				 u32 height, u8 channels, VkFormat format ){
   new( ret, plvkTexture );
   ret->width = width;
@@ -958,7 +958,7 @@ plvkTexture* createTextureImage( plvkState* vk, u8* pixels, u32 width,
 }
 
 
-VkCommandBuffer beginSingleTimeCommands( plvkState* vk ) {
+VkCommandBuffer beginSingleTimeCommands( plvkInstance* vk ){
   VkCommandBufferAllocateInfo allocInfo = {};
   allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -978,7 +978,7 @@ VkCommandBuffer beginSingleTimeCommands( plvkState* vk ) {
 }
 
 
-void endSingleTimeCommands( plvkState* vk, VkCommandBuffer commandBuffer ) {
+void endSingleTimeCommands( plvkInstance* vk, VkCommandBuffer commandBuffer ){
   vkEndCommandBuffer( commandBuffer );
 
   VkSubmitInfo submitInfo = {};
@@ -993,7 +993,7 @@ void endSingleTimeCommands( plvkState* vk, VkCommandBuffer commandBuffer ) {
 }
 
 
-void createImage( plvkState* vk, plvkTexture* tex ){
+void createImage( plvkInstance* vk, plvkTexture* tex ){
   VkImageCreateInfo imageInfo = {};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -1023,7 +1023,7 @@ void createImage( plvkState* vk, plvkTexture* tex ){
     die( "Failed to allocate memory for texture." );
   vkBindImageMemory( vk->device, tex->image, tex->imageMem, 0 );
 }
-void transitionImageLayout( plvkState* vk, plvkTexture* tex,
+void transitionImageLayout( plvkInstance* vk, plvkTexture* tex,
 			    VkImageLayout oldLayout, VkImageLayout newLayout ){
   VkCommandBuffer commandBuffer = beginSingleTimeCommands( vk );
   VkImageMemoryBarrier barrier = {};
@@ -1058,7 +1058,7 @@ void transitionImageLayout( plvkState* vk, plvkTexture* tex,
 			0, NULL, 1, &barrier );
   endSingleTimeCommands( vk, commandBuffer );
 }
-void copyBufferToImage( plvkState* vk, plvkBuffer* buf, plvkTexture* tex ){
+void copyBufferToImage( plvkInstance* vk, plvkBuffer* buf, plvkTexture* tex ){
   VkCommandBuffer commandBuffer = beginSingleTimeCommands( vk );
   VkBufferImageCopy region = {};
   region.bufferOffset = 0;
@@ -1077,7 +1077,7 @@ void copyBufferToImage( plvkState* vk, plvkBuffer* buf, plvkTexture* tex ){
 }
     
 
-plvkTexture* loadTexturePPM( plvkState* vk, const char* name ){
+plvkTexture* loadTexturePPM( plvkInstance* vk, const char* name ){
   u64 sz;
   const char* t = htFindString( state.compressedResources,
 				name, &sz );
@@ -1124,12 +1124,12 @@ plvkTexture* loadTexturePPM( plvkState* vk, const char* name ){
   return ret;
 }
 
-void createTextures( plvkState* vk ){
+void createTextures( plvkInstance* vk ){
   vk->tex = loadTexturePPM( vk, "graphics\\lc.ppm" );
 }
 
 
-void destroyTexture( plvkState* vk, plvkTexture* tex ){
+void destroyTexture( plvkInstance* vk, plvkTexture* tex ){
   vkDestroyImageView( vk->device, tex->view, NULL );
   vkDestroyImage( vk->device, tex->image, NULL );
   vkDestroySampler( vk->device, tex->sampler, NULL );
@@ -1138,12 +1138,12 @@ void destroyTexture( plvkState* vk, plvkTexture* tex ){
 }
 
 
-void destroyTextures( plvkState* vk ){
+void destroyTextures( plvkInstance* vk ){
   destroyTexture( vk, vk->tex );
 }
 
 
-VkImageView createView( plvkState* vk, VkImage img, VkFormat format ){
+VkImageView createView( plvkInstance* vk, VkImage img, VkFormat format ){
   VkImageView ret;
   VkImageViewCreateInfo ivci = {};
   ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1165,7 +1165,7 @@ VkImageView createView( plvkState* vk, VkImage img, VkFormat format ){
 }
 
 
-void createTextureSampler( plvkState* vk, plvkTexture* tex ){
+void createTextureSampler( plvkInstance* vk, plvkTexture* tex ){
   VkPhysicalDeviceProperties properties = {};
   vkGetPhysicalDeviceProperties( vk->gpu, &properties );
   VkSamplerCreateInfo samplerInfo = {};
@@ -1185,4 +1185,18 @@ void createTextureSampler( plvkState* vk, plvkTexture* tex ){
   if( VK_SUCCESS != vkCreateSampler( vk->device, &samplerInfo, NULL,
 				     &tex->sampler ) )
     die( "Failed to create texture sampler." );
+}
+
+
+plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height ){
+  new( ret, plvkUnit );
+  ret->instance = vk;
+  ret->size.width = width;
+  ret->size.height = height;
+  return ret;
+}
+
+
+void destroyUnit( plvkUnit* u ){
+  memfree( u );
 }

@@ -73,7 +73,7 @@ typedef struct plvkTexture{
   VkSampler sampler;
 } plvkTexture;
 // Instance wide state.
-typedef struct plvkState{
+typedef struct plvkIntance{
   VkInstance instance;
   guiInfo* gui;
   u32 numGPUs;
@@ -129,45 +129,87 @@ typedef struct plvkState{
   FPDEFINE( vkDestroyDebugUtilsMessengerEXT );
   VkDebugUtilsMessengerEXT vkdbg;
 #endif
-} plvkState;
+} plvkInstance;
 
 
-plvkState* createDevice(  s32 whichGPU, u32 debugLevel,
+// This is the fundamental unit of GPU computation. This can be used for graphics
+// or standalone.
+typedef struct plvkUnit{
+  // The logical device and instance that this unit will be run on. These
+  // must remain valid throughout the lifetime of the plvkUnit.
+  plvkInstance* instance;
+
+  // The number of distinct memory regions to store. Sort of like pre-rendering
+  // frames, but not necessarily visible.
+  u32 multiplicity;
+  
+  VkQueue queue;
+  u32 queueFamily;
+
+  VkExtent2D size;
+
+  VkFramebuffer* framebuffers; 
+
+  plvkPipeline* pipe;
+
+  VkCommandPool pool;
+  VkCommandBuffer* commandBuffers;
+
+  VkSemaphore* imageAvailables;
+  VkSemaphore* renderCompletes;
+  VkFence* fences;
+  VkFence* fenceSyncs;
+  u32 currentImage;
+
+  plvkTexture* tex;
+  
+  VkDescriptorSetLayout layout;
+  plvkBuffer** UBOs;
+  gpuState UBOcpumem;
+  VkDescriptorPool descriptorPool;
+  VkDescriptorSet* descriptorSets;
+
+} plvkUnit;
+
+plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height );
+void destroyUnit( plvkUnit* u );
+
+plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel,
 			  char* title, int x, int y, int width, int height );
-void destroyDevice( plvkState* vk );
-void createDescriptorPool( plvkState* vk );
-void destroyDescriptorPool( plvkState* vk );
+void destroyInstance( plvkInstance* vk );
+void createDescriptorPool( plvkInstance* vk );
+void destroyDescriptorPool( plvkInstance* vk );
 // Descriptor sets are cleaned up along with the descriptor pool.
-void createDescriptorSets( plvkState* vk );
-void destroyDescriptorSets( plvkState* vk );
-void getFuncPointers( plvkState* vk );
-plvkBuffer* createBuffer( plvkState* vk, u64 size, VkBufferUsageFlags usage,
+void createDescriptorSets( plvkInstance* vk );
+void destroyDescriptorSets( plvkInstance* vk );
+void getFuncPointers( plvkInstance* vk );
+plvkBuffer* createBuffer( plvkInstance* vk, u64 size, VkBufferUsageFlags usage,
 			  VkMemoryPropertyFlags props );
-void destroyBuffer( plvkState* vk, plvkBuffer* p );
-void createUBOs( plvkState* vk );
-void destroyUBOs( plvkState* vk );
-VkExtent2D getExtent( plvkState* vk );
+void destroyBuffer( plvkInstance* vk, plvkBuffer* p );
+void createUBOs( plvkInstance* vk );
+void destroyUBOs( plvkInstance* vk );
+VkExtent2D getExtent( plvkInstance* vk );
 VkShaderModule createModule( VkDevice vkd, const char* data, u32 size );
-void destroyModule( plvkState* vk, VkShaderModule sm );
-VkDescriptorSetLayout createLayout( plvkState* vk );
-void destroyLayout( plvkState* vk );
+void destroyModule( plvkInstance* vk, VkShaderModule sm );
+VkDescriptorSetLayout createLayout( plvkInstance* vk );
+void destroyLayout( plvkInstance* vk );
 u64 scoreGPU( VkPhysicalDeviceProperties* gpu );
-plvkSwapchain* createSwap( plvkState* vk, bool vsync, u32 minFrames );
-void destroySwap( plvkState* vk, plvkSwapchain* swap );
-plvkPipeline* createPipeline( plvkState* vk, const char* frag, u32 fsize,
+plvkSwapchain* createSwap( plvkInstance* vk, bool vsync, u32 minFrames );
+void destroySwap( plvkInstance* vk, plvkSwapchain* swap );
+plvkPipeline* createPipeline( plvkInstance* vk, const char* frag, u32 fsize,
 			      const char* vert, u32 vsize );
-void destroyPipeline( plvkState* vk, plvkPipeline* p );
-VkFramebuffer* createFramebuffers( plvkState* vk, plvkPipeline* p,
+void destroyPipeline( plvkInstance* vk, plvkPipeline* p );
+VkFramebuffer* createFramebuffers( plvkInstance* vk, plvkPipeline* p,
 				   plvkSwapchain* swap );
-void destroyFramebuffers( plvkState* vk, VkFramebuffer* fbs );
-VkCommandBuffer* createCommandBuffers( plvkState* vk );
-void destroyCommandBuffers( plvkState* vk, VkCommandBuffer* cbs );
+void destroyFramebuffers( plvkInstance* vk, VkFramebuffer* fbs );
+VkCommandBuffer* createCommandBuffers( plvkInstance* vk );
+void destroyCommandBuffers( plvkInstance* vk, VkCommandBuffer* cbs );
 // Command pool, semaphores, and fences.
-void createPoolAndFences( plvkState* vk );
-void destroyPoolAndFences( plvkState* vk, u32 numImages );
-plvkSurface* createSurface( plvkState* vk );
-void destroySurface( plvkState* vk, plvkSurface* surf );
-void createTextures( plvkState* vk );
-void destroyTextures( plvkState* vk );  
-VkImageView createView( plvkState* vk, VkImage img, VkFormat format );
-void createTextureSampler( plvkState* vk, plvkTexture* tex );
+void createPoolAndFences( plvkInstance* vk );
+void destroyPoolAndFences( plvkInstance* vk, u32 numImages );
+plvkSurface* createSurface( plvkInstance* vk );
+void destroySurface( plvkInstance* vk, plvkSurface* surf );
+void createTextures( plvkInstance* vk );
+void destroyTextures( plvkInstance* vk );  
+VkImageView createView( plvkInstance* vk, VkImage img, VkFormat format );
+void createTextureSampler( plvkInstance* vk, plvkTexture* tex );

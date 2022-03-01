@@ -56,7 +56,7 @@ typedef int bool;
 #define true 1
 #define false 0
 
-typedef void* plvkStatep;
+typedef void* plvkInstancep;
 typedef void* guiStatep;
 
 // Types sanity check.
@@ -106,7 +106,7 @@ typedef struct {
   // Print fps every second.
   bool fps;
   const u32 frameCount;
-  plvkStatep vk;
+  plvkInstancep vk;
   bool ended;
   void* compressedResources;
   
