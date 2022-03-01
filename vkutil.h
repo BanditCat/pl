@@ -23,13 +23,13 @@
 #include "pl.h"
 #include "gui.h"
 
-typedef struct {
+typedef struct gpuState{
   f32 time;
 } gpuState;
 
 
 // Win32/vulkan surface
-typedef struct{
+typedef struct plvkSurface{
   VkSurfaceKHR surface;
   VkSurfaceCapabilitiesKHR surfaceCapabilities;
   u32 numSurfaceFormats;
@@ -39,20 +39,20 @@ typedef struct{
   VkPresentModeKHR* surfacePresentations;
 } plvkSurface;
 // Pipeline and associated state.
-typedef struct{
+typedef struct plvkPipeline{
   VkPipelineLayout pipelineLayout;
   VkRenderPass renderPass;
   VkPipeline pipeline;
 } plvkPipeline;
 // Swapchain and associated state.
-typedef struct{
+typedef struct plvkSwapchain{
   VkSwapchainKHR swap;
   u32 numImages;
   VkImage* images;
   VkImageView* imageViews;
 } plvkSwapchain;
 // A GPU buffer.
-typedef struct{
+typedef struct plvkBuffer{
   VkBuffer buffer;
   VkDeviceMemory memory;
   VkMemoryPropertyFlags props;
@@ -60,7 +60,7 @@ typedef struct{
   VkDeviceSize size;
 } plvkBuffer;
 // Textures.
-typedef struct{
+typedef struct plvkTexture{
   u32 size;
   u32 width, height;
   u8 channels;
@@ -73,7 +73,7 @@ typedef struct{
   VkSampler sampler;
 } plvkTexture;
 // Instance wide state.
-typedef struct {
+typedef struct plvkState{
   VkInstance instance;
   guiInfo* gui;
   u32 numGPUs;

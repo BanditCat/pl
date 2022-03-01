@@ -60,7 +60,7 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr );
 
 
 // Hash tables.
-typedef struct{
+typedef struct bucket{
   u32 hash;
   char* key;
   u64 keySize;
@@ -68,7 +68,7 @@ typedef struct{
   u64 valueSize;
   u32 index;
 } bucket;
-typedef struct{
+typedef struct hasht{
   u32 bits;
   bucket* data;
   u32 size;

@@ -1124,7 +1124,6 @@ plvkTexture* loadTexturePPM( plvkState* vk, const char* name ){
 
 void createTextures( plvkState* vk ){
   vk->tex = loadTexturePPM( vk, "graphics\\lc.ppm" );
-  //  vk->tex = createTextureImage( vk, pixels, 3, 2, 4, VK_FORMAT_R8G8B8A8_SRGB ); 
 }
 
 

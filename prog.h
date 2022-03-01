@@ -19,12 +19,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-typedef struct{
+typedef struct function{
   u32* data;
   u32 mask;
 } function;
 
-typedef struct{
+typedef struct program{
   u32 stateSize;
   u32* ping;
   u32* pong;

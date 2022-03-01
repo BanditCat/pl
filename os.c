@@ -32,7 +32,7 @@
 #define MEMCONST2 0xDEADBEEFDEADBEEF
 #define MEMCONST3 254
 #ifdef DEBUG
-typedef struct{
+typedef struct memtag{
   const char* tag;
   u64 index;
   u64 check;

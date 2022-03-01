@@ -33,7 +33,7 @@
 #define className ( L"plClassName" )
 
 
-typedef struct{
+typedef struct guiState{
   WNDCLASS wc;
   u16* title;
   HDC hDC;
