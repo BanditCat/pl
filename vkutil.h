@@ -69,6 +69,7 @@ typedef struct plvkTexture{
   VkFormat format;    
   VkImage image;
   VkDeviceMemory imageMem;
+  u64 deviceSize;
   VkImageView view;
   VkSampler sampler;
 } plvkTexture;
@@ -146,26 +147,40 @@ typedef struct plvkUnit{
   plvkPipeline* pipe;
 
   VkCommandPool pool;
-  VkCommandBuffer* commandBuffers;
+  VkCommandBuffer commandBuffers[ 2 ];
 
-  VkSemaphore* imageAvailables;
-  VkSemaphore* renderCompletes;
   VkFence* fences;
-  VkFence* fenceSyncs;
-  u32 currentImage;
 
-  plvkTexture* tex;
+  plvkTexture* textures[ 2 ];
   
   VkDescriptorSetLayout layout;
-  plvkBuffer** UBOs;
-  gpuState UBOcpumem;
-  VkDescriptorPool descriptorPool;
-  VkDescriptorSet* descriptorSets;
 
+  plvkBuffer* ubo;
+  u8* uboCpuMem;
+  u32 uboSize;
+  void (*uboFunc)( u8* );
+  
+  VkDescriptorPool descriptorPool;
+  VkDescriptorSet descriptorSets[ 2 ];
+
+  // This is 0 or 1. Write to ping, read from pong, then write to pong, read
+  // from ping.
+  bool pingpong;
 } plvkUnit;
 
-plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height );
+plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
+		      VkFormat format, u8 components,
+		      const char* frag, u32 fragSize,
+		      const char* vert, u32 vertSize,
+		      u32 uboSize, void (uboFunc)( u8* ) );
+
 void destroyUnit( plvkUnit* u );
+void tickUnit( plvkUnit* u );
+void waitUnit( plvkUnit* u );
+// The data returned must be memfree'd by the caller.  This is an expensive
+// operation.
+const u8* copyUnit( plvkUnit* u );
+
 
 plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel,
 			  char* title, int x, int y, int width, int height );

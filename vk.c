@@ -159,8 +159,48 @@ plvkInstancep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
   // BUGBUG test units
   {
     mark;
-    plvkUnit* t = createUnit( vk, 320, 200 );
+    u64 fsize, vsize;
+    const char* frag = htFindString( state.compressedResources,
+				     "shaders\\mainFrag.spv",
+				     &fsize );
+    const char* vert = htFindString( state.compressedResources,
+				     "shaders\\mainVert.spv",
+				     &vsize );
+    plvkUnit* t = createUnit( vk, 320, 200,
+			      VK_FORMAT_R8G8B8A8_UNORM, 4,
+			      frag, fsize, vert, vsize,
+			      0, NULL );
+    mark;
+    const char* d = (const char*)copyUnit( t );
+    printRaw( d, 100 );
+    memfree( (void*)d );
+    mark;
+    tickUnit( t );
+    mark;
+    d = (const char*)copyUnit( t );
+    printRaw( d, 100 );
+    memfree( (void*)d );
+    mark;
+    tickUnit( t );
+    mark;
+    d = (const char*)copyUnit( t );
+    printRaw( d, 100 );
+    memfree( (void*)d );
+    mark;
+    tickUnit( t );
+    mark;
+    d = (const char*)copyUnit( t );
+    printRaw( d, 100 );
+    memfree( (void*)d );
+    mark;
+    tickUnit( t );
+    mark;
+    d = (const char*)copyUnit( t );
+    printRaw( d, 100 );
+    memfree( (void*)d );
+    mark;
     destroyUnit( t );
+    mark;
   }
 
 

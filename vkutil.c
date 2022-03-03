@@ -124,16 +124,6 @@ void createDescriptorSets( plvkInstance* vk ){
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof( gpuState );
 
-    /* VkWriteDescriptorSet descriptorWrite = {}; */
-    /* descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; */
-    /* descriptorWrite.dstSet = vk->descriptorSets[ i ]; */
-    /* descriptorWrite.dstBinding = 0; */
-    /* descriptorWrite.dstArrayElement = 0; */
-    /* descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; */
-    /* descriptorWrite.descriptorCount = 1; */
-    /* descriptorWrite.pBufferInfo = &bufferInfo; */
-    /* vkUpdateDescriptorSets( vk->device, 1, &descriptorWrite, 0, NULL ); */
-
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imageInfo.imageView = vk->tex->view;
@@ -259,7 +249,7 @@ void destroyUBOs( plvkInstance* vk ){
   memfree( vk->UBOs );
 }
 plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel,
-			  char* title, int x, int y, int width, int height ){
+			       char* title, int x, int y, int width, int height ){
   new( vk, plvkInstance );
   state.vk = vk;
   vk->gui = wsetup( title, x, y, width, height );
@@ -806,7 +796,7 @@ VkCommandBuffer* createCommandBuffers( plvkInstance* vk ){
 			     VK_PIPELINE_BIND_POINT_GRAPHICS,
 			     vk->pipe->pipelineLayout, 0, 1,
 			     &vk->descriptorSets[ i ], 0, NULL );
-    vkCmdDraw( ret[ i ], 3, 1, 0, 0 );
+    vkCmdDraw( ret[ i ], 4, 1, 0, 0 );
     vkCmdEndRenderPass( ret[ i ] );
     if( VK_SUCCESS != vkEndCommandBuffer( ret[ i ] ) )
       die( "Command buffer recording failed." );
@@ -924,7 +914,8 @@ void copyBufferToImage( plvkInstance* vk, plvkBuffer* buf, plvkTexture* tex );
 void transitionImageLayout( plvkInstance* vk, plvkTexture* tex,
 			    VkImageLayout oldLayout, VkImageLayout newLayout );
 plvkTexture* createTextureImage( plvkInstance* vk, u8* pixels, u32 width,
-				 u32 height, u8 channels, VkFormat format ){
+				 u32 height, u8 channels, VkFormat format,
+				 bool writable ){
   new( ret, plvkTexture );
   ret->width = width;
   ret->height = height;
@@ -932,7 +923,9 @@ plvkTexture* createTextureImage( plvkInstance* vk, u8* pixels, u32 width,
   ret->format = format;
   ret->size = ret->width * ret->height * ret->channels;
   ret->tiling = VK_IMAGE_TILING_OPTIMAL;
-  ret->usage =  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  ret->usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+  if( writable )
+    ret->usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   plvkBuffer* buf = createBuffer( vk, ret->size,
 				  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -1013,6 +1006,8 @@ void createImage( plvkInstance* vk, plvkTexture* tex ){
     die( "Failed to create vulkan image." );
   VkMemoryRequirements mreqs;
   vkGetImageMemoryRequirements( vk->device, tex->image, &mreqs );
+  tex->deviceSize = mreqs.size;
+  
   VkMemoryAllocateInfo mai = {};
   mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   mai.allocationSize = mreqs.size;
@@ -1023,6 +1018,8 @@ void createImage( plvkInstance* vk, plvkTexture* tex ){
     die( "Failed to allocate memory for texture." );
   vkBindImageMemory( vk->device, tex->image, tex->imageMem, 0 );
 }
+
+
 void transitionImageLayout( plvkInstance* vk, plvkTexture* tex,
 			    VkImageLayout oldLayout, VkImageLayout newLayout ){
   VkCommandBuffer commandBuffer = beginSingleTimeCommands( vk );
@@ -1052,6 +1049,18 @@ void transitionImageLayout( plvkInstance* vk, plvkTexture* tex,
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  } else if( oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
+	     newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL ){
+    barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+  } else if( oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
+	     newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ){
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
   } else
     die( "Layout transition failed." );
   vkCmdPipelineBarrier( commandBuffer, sourceStage, destinationStage, 0,0, NULL,
@@ -1073,6 +1082,24 @@ void copyBufferToImage( plvkInstance* vk, plvkBuffer* buf, plvkTexture* tex ){
     region.imageExtent.depth = 1;
   vkCmdCopyBufferToImage( commandBuffer, buf->buffer, tex->image,
 			  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region );
+  endSingleTimeCommands( vk, commandBuffer );
+}
+void copyImageToBuffer( plvkInstance* vk, plvkBuffer* buf, plvkTexture* tex ){
+  VkCommandBuffer commandBuffer = beginSingleTimeCommands( vk );
+  VkBufferImageCopy region = {};
+  region.bufferOffset = 0;
+  region.bufferRowLength = 0;
+  region.bufferImageHeight = 0;
+  region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  region.imageSubresource.mipLevel = 0;
+  region.imageSubresource.baseArrayLayer = 0;
+  region.imageSubresource.layerCount = 1;
+  region.imageExtent.width = tex->width;
+  region.imageExtent.height = tex->height,
+    region.imageExtent.depth = 1;
+  vkCmdCopyImageToBuffer( commandBuffer, tex->image,
+			  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			  buf->buffer, 1, &region );
   endSingleTimeCommands( vk, commandBuffer );
 }
     
@@ -1119,7 +1146,7 @@ plvkTexture* loadTexturePPM( plvkInstance* vk, const char* name ){
     *cp++ = 255;
   }
   plvkTexture* ret = createTextureImage( vk, pixels, width, height, 4,
-					 VK_FORMAT_R8G8B8A8_SRGB );
+					 VK_FORMAT_R8G8B8A8_UNORM, false );
   memfree( pixels );
   return ret;
 }
@@ -1226,23 +1253,13 @@ void createUnitPoolAndFences( plvkUnit* u ){
 					 &u->pool ) )
     die( "Command pool creation failed." );
   // Semaphores and fences.
-  u->imageAvailables = newae( VkSemaphore, 2 );
-  u->renderCompletes = newae( VkSemaphore, 2 );
   u->fences = newae( VkFence, 2 );
-  u->fenceSyncs = newae( VkFence, 2 );
-  for( u32 i = 0; i < 2; ++i )
-    u->fenceSyncs[ i ] = VK_NULL_HANDLE;
   VkSemaphoreCreateInfo sci = {};
   sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
   VkFenceCreateInfo fci = {};
   fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
   for( u32 i = 0; i < 2; ++i ){
-    if( VK_SUCCESS != vkCreateSemaphore( u->instance->device, &sci, NULL,
-					 &u->imageAvailables[ i ] ) ||
-	VK_SUCCESS != vkCreateSemaphore( u->instance->device, &sci, NULL,
-					 &u->renderCompletes[ i ] ) )
-      die( "Semaphore creation failed." );
     if( VK_SUCCESS != vkCreateFence( u->instance->device, &fci, NULL,
 				     &u->fences[ i ] ) )
       die( "Fence creation failed." );
@@ -1345,14 +1362,14 @@ plvkPipeline* createUnitPipeline( plvkUnit* u, const char* frag, u32 fsize,
     die( "Pipeline creation failed." );
 
   VkAttachmentDescription colorAttachment = {};
-  colorAttachment.format = VK_FORMAT_R8G8B8A8_UINT;
+  colorAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
   VkAttachmentReference colorAttachmentRef = {};
   colorAttachmentRef.attachment = 0;
@@ -1409,43 +1426,198 @@ plvkPipeline* createUnitPipeline( plvkUnit* u, const char* frag, u32 fsize,
 }
 
 
-plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height ){
+void createUnitTextures( plvkUnit* u, VkFormat format, u8 components ){
+  u64 sz = u->size.width * u->size.height;
+  newa( pixels, u8, sz * components );
+  // BUGBUG
+  for( u64 i = 0; i < sz; ++i ){
+    pixels[ i * 4 + 0 ] = 1;
+    pixels[ i * 4 + 1 ] = 2;
+    pixels[ i * 4 + 2 ] = 3;
+    pixels[ i * 4 + 3 ] = 4;
+  }
+  for( u32 i = 0; i < 2; ++i ){
+    u->textures[ i ] = createTextureImage( u->instance, pixels, u->size.width,
+					   u->size.height, components, 
+					   format, true );
+  }
+  memfree( pixels );
+}
+
+
+void createUnitFramebuffers( plvkUnit* u ){
+  newa( ret, VkFramebuffer, 2 );
+  for( u32 i = 0; i < 2; ++i ){
+    VkImageView attachments[ 1 ] = { u->textures[ i ]->view };
+    VkFramebufferCreateInfo fbci = {};
+    fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fbci.renderPass = u->pipe->renderPass;
+    fbci.attachmentCount = 1;
+    fbci.pAttachments = attachments;
+    fbci.width = u->size.width;
+    fbci.height = u->size.height;
+    fbci.layers = 1;
+    if( VK_SUCCESS != vkCreateFramebuffer( u->instance->device, &fbci,
+					   NULL, &ret[ i ] ) )
+      die( "Framebuffer creation failed." );
+  }
+  u->framebuffers = ret;
+}
+
+
+void createUnitUBO( plvkUnit* u, u64 size ){
+  u->ubo = createBuffer( u->instance, size,
+			 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+}
+
+
+void createUnitCommandBuffers( plvkUnit* u ){
+  VkCommandBufferAllocateInfo cbai = {};
+  cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  cbai.commandPool = u->pool;
+  cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  cbai.commandBufferCount = 2;
+  if( VK_SUCCESS != vkAllocateCommandBuffers( u->instance->device, &cbai,
+					      u->commandBuffers ) )
+    die( "Command buffer creation failed." );
+    
+  // Command buffers and render passes.
+  for( u32 i = 0; i < 2; i++ ){
+    VkCommandBufferBeginInfo cbbi = {};
+    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    if( VK_SUCCESS != vkBeginCommandBuffer( u->commandBuffers[ i ], &cbbi ) )
+      die( "Command buffer begining failed." );
+
+    VkRenderPassBeginInfo rpbi = {};
+    rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpbi.renderPass = u->pipe->renderPass;
+    rpbi.framebuffer = u->framebuffers[ i ];
+    rpbi.renderArea.extent = u->size;
+
+    vkCmdBeginRenderPass( u->commandBuffers[ i ], &rpbi,
+			  VK_SUBPASS_CONTENTS_INLINE );
+    vkCmdBindPipeline( u->commandBuffers[ i ],
+		       VK_PIPELINE_BIND_POINT_GRAPHICS, u->pipe->pipeline );
+    vkCmdBindDescriptorSets( u->commandBuffers[ i ],
+			     VK_PIPELINE_BIND_POINT_GRAPHICS,
+			     u->pipe->pipelineLayout, 0, 1,
+			     &u->descriptorSets[ i ], 0, NULL );
+    vkCmdDraw( u->commandBuffers[ i ], 3, 1, 0, 0 );
+    vkCmdEndRenderPass( u->commandBuffers[ i ] );
+    if( VK_SUCCESS != vkEndCommandBuffer( u->commandBuffers[ i ] ) )
+      die( "Command buffer recording failed." );
+  }
+}
+
+
+void createUnitDescriptorSetsAndPool( plvkUnit* u ){
+  VkDescriptorPoolSize dps[ 2 ] = {};
+  dps[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  dps[ 0 ].descriptorCount = 2;
+  dps[ 1 ].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  dps[ 1 ].descriptorCount = 2;
+
+  VkDescriptorPoolCreateInfo dpci = {};
+  dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  dpci.poolSizeCount = 2;
+  dpci.pPoolSizes = dps;
+  dpci.maxSets = 2;
+  if( VK_SUCCESS != vkCreateDescriptorPool( u->instance->device, &dpci, NULL,
+					    &u->descriptorPool ) )
+    die( "Descriptor pool creation failed." );
+
+  newa( tl, VkDescriptorSetLayout, 2 );
+
+  for( u32 i = 0; i < 2; ++i )
+    tl[ i ] = u->layout;
+  
+  VkDescriptorSetAllocateInfo dsai = {};
+  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  dsai.descriptorPool = u->descriptorPool;
+  dsai.descriptorSetCount = 2;
+  dsai.pSetLayouts = tl;
+
+  if( VK_SUCCESS != vkAllocateDescriptorSets( u->instance->device, &dsai,
+					      u->descriptorSets ) )
+    die( "Failed to allocate descriptor sets." );
+
+  for( u32 i = 0; i < 2; ++i ){
+    VkDescriptorBufferInfo bufferInfo = {};
+    bufferInfo.buffer = u->ubo->buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = u->ubo->size;
+
+    VkDescriptorImageInfo imageInfo = {};
+    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.imageView = u->textures[ i ^ 1 ]->view;
+    imageInfo.sampler = u->textures[ i ^ 1 ]->sampler;
+    VkWriteDescriptorSet dwrites[ 2 ] = {};
+    dwrites[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    dwrites[ 0 ].dstSet = u->descriptorSets[ i ];
+    dwrites[ 0 ].dstBinding = 0;
+    dwrites[ 0 ].dstArrayElement = 0;
+    dwrites[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    dwrites[ 0 ].descriptorCount = 1;
+    dwrites[ 0 ].pBufferInfo = &bufferInfo;
+    
+    dwrites[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    dwrites[ 1 ].dstSet = u->descriptorSets[ i ];
+    dwrites[ 1 ].dstBinding = 1;
+    dwrites[ 1 ].dstArrayElement = 0;
+    dwrites[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    dwrites[ 1 ].descriptorCount = 1;
+    dwrites[ 1 ].pImageInfo = &imageInfo;
+
+    vkUpdateDescriptorSets( u->instance->device,
+			    sizeof( dwrites ) / sizeof( dwrites[ 0 ] ),
+			    dwrites, 0, NULL );
+  }
+  memfree( tl );
+}
+
+
+
+
+// BUGBUG
+typedef struct testubo{
+  u32 x, y;
+} testubo;
+
+plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
+		      VkFormat format, u8 components,
+		      const char* frag, u32 fragSize,
+		      const char* vert, u32 vertSize,
+		      u32 uboSize, void (*uboFunc)( u8* ) ){
+
   new( ret, plvkUnit );
   ret->instance = vk;
   ret->size.width = width;
   ret->size.height = height;
   ret->layout = createUnitDescriptorLayout( ret );
   createUnitPoolAndFences( ret );
-  u64 fsize, vsize;
-  const char* frag = htFindString( state.compressedResources,
-				   "shaders\\mainFrag.spv",
-				   &fsize );
-  const char* vert = htFindString( state.compressedResources,
-				   "shaders\\mainVert.spv",
-				   &vsize );
-  ret->pipe = createUnitPipeline( ret, frag, fsize, vert, vsize );
-  /* u->framebuffers = createUnitFramebuffers( vk, vk->pipe, vk->swap ); */
-  /* if( !vk->tex ) */
-  /*   createTextures( vk ); */
-  /* createUBOs( vk ); */
-  /* createDescriptorPool( vk ); */
-  /* createDescriptorSets( vk ); */
-  /* vk->commandBuffers = createCommandBuffers( vk ); */
+  ret->pipe = createUnitPipeline( ret, frag, fragSize, vert, vertSize );
+  createUnitTextures( ret, format, components );
+  createUnitFramebuffers( ret ); 
+  createUnitUBO( ret, sizeof( testubo ) );
+  createUnitDescriptorSetsAndPool( ret );
+  createUnitCommandBuffers( ret );
+  if( NULL != uboFunc ){
+    ret->uboSize = uboSize;
+    ret->uboCpuMem = mem( uboSize );
+    ret->uboFunc = uboFunc;
+  }
   return ret;
 }
 
 
 void destroyUnitPoolAndFences( plvkUnit* u ){
   for( u32 i = 0; i < 2; ++i ){
-    vkDestroySemaphore( u->instance->device, u->imageAvailables[ i ], NULL );
-    vkDestroySemaphore( u->instance->device, u->renderCompletes[ i ], NULL );
     vkDestroyFence( u->instance->device, u->fences[ i ], NULL );
   }
   vkDestroyCommandPool( u->instance->device, u->pool, NULL );
-  memfree( u->imageAvailables );
-  memfree( u->renderCompletes );
   memfree( u->fences );
-  memfree( u->fenceSyncs );
 }
 
 
@@ -1462,16 +1634,106 @@ void destroyUnitPipeline( plvkUnit* u ){
 }
 
 
+void destroyUnitFramebuffers( plvkUnit* u ){
+  for( u32 i = 0; i < 2; ++i )
+    vkDestroyFramebuffer( u->instance->device, u->framebuffers[ i ], NULL );
+  memfree( u->framebuffers );
+}
+
+
+void destroyUnitTextures( plvkUnit* u ){
+  for( u32 i = 0; i < 2; ++i ){
+    vkDestroyImageView( u->instance->device, u->textures[ i ]->view, NULL );
+    vkDestroyImage( u->instance->device, u->textures[ i ]->image, NULL );
+    vkDestroySampler( u->instance->device, u->textures[ i ]->sampler, NULL );
+    vkFreeMemory( u->instance->device, u->textures[ i ]->imageMem, NULL );
+    memfree( u->textures[ i ] );
+  }
+}
+
+
+void destroyUnitUBO( plvkUnit* u ){
+  destroyBuffer( u->instance, u->ubo );
+}
+
+
+void destroyUnitDescriptorSetsAndPool( plvkUnit* u ){
+  vkDestroyDescriptorPool( u->instance->device, u->descriptorPool, NULL );
+}
+
+
+void destroyUnitCommandBuffers( plvkUnit* u ){
+  vkFreeCommandBuffers( u->instance->device, u->pool, 2,
+			u->commandBuffers );
+}
+
+
 void destroyUnit( plvkUnit* u ){
-    /*   vkDeviceWaitIdle( vk->device ); */
-    /* destroyFramebuffers( vk, vk->framebuffers ); */
-    /* destroyDescriptorPool( vk ); */
-    /* destroyPipeline( vk, vk->pipe ); */
-    /* destroyCommandBuffers( vk, vk->commandBuffers ); */
-    /* destroyUBOs( vk ); */
-    /* destroySwap( vk, vk->swap ); */
+  vkDeviceWaitIdle( u->instance->device ); 
+  destroyUnitCommandBuffers( u );
+  destroyUnitDescriptorSetsAndPool( u );
+  destroyUnitUBO( u ); 
+  destroyUnitFramebuffers( u );
+  destroyUnitTextures( u );
   destroyUnitPipeline( u );
   destroyUnitPoolAndFences( u );
   destroyUnitDescriptorLayout( u );
   memfree( u );
+}
+
+
+
+
+const u8* copyUnit( plvkUnit* u ){
+  u64 size = u->textures[ u->pingpong ]->deviceSize;
+  newa( ret, u8, size );
+  plvkBuffer* buf = createBuffer( u->instance, size,
+				  VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+				  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+  vkWaitForFences( u->instance->device, 1, &u->fences[ u->pingpong ], VK_TRUE,
+		   UINT64_MAX );
+  transitionImageLayout( u->instance, u->textures[ u->pingpong ],
+			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL );
+  copyImageToBuffer( u->instance, buf, u->textures[ u->pingpong ] );
+  transitionImageLayout( u->instance, u->textures[ u->pingpong ],
+			 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+  void* data;
+  vkMapMemory( u->instance->device, buf->memory, 0, size, 0, &data );
+  memcpy( ret, data, size );
+  vkUnmapMemory( u->instance->device, buf->memory );
+  destroyBuffer( u->instance, buf );
+  return ret;
+}
+
+
+void tickUnit( plvkUnit* u ){
+  plvkInstance* vk = u->instance;
+  u32 ping = u->pingpong;
+  u32 pong = ping ^ 1;
+
+  if( u->uboFunc )
+    u->uboFunc( u->uboCpuMem );
+  mark;
+  vkWaitForFences( u->instance->device, 1, &u->fences[ ping ], VK_TRUE,
+		   UINT64_MAX );
+  mark;
+  
+  VkSubmitInfo submitInfo = {};
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+  VkPipelineStageFlags stages[] =
+    { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+  submitInfo.pWaitDstStageMask = stages;
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &u->commandBuffers[ pong ];
+  vkResetFences( u->instance->device, 1, &u->fences[ pong ] );
+  if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo,
+				   u->fences[ pong ] ) )
+    die( "Queue submition failed." );
+  mark;
+
+  u->pingpong = pong;
 }
