@@ -34,7 +34,7 @@ typedef struct{
 
 
 // Returned pointer must be deallocated with wend.
-guiInfo* wsetup( char* title, int x, int y, int width, int height );
+guiInfo* wsetup( const char* title, int x, int y, int width, int height );
 void wend( guiInfo* p );
 bool weventLoop( guiInfo* p );
 

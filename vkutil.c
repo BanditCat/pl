@@ -458,6 +458,42 @@ VkExtent2D getExtent( plvkInstance* vk ){
 }
 
 
+VkExtent2D getUnitExtent( plvkUnit* u ){
+  VkExtent2D wh = {};
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( u->instance->gpu,
+					     u->display->surface->surface,
+					     &u->display->surface
+					     ->surfaceCapabilities );
+  const guiInfo* g = u->display->gui;
+  if( u->display->surface->surfaceCapabilities.currentExtent.width
+      != UINT32_MAX ){
+    wh = u->display->surface->surfaceCapabilities.currentExtent;
+  } else {
+    wh.width = g->clientWidth;
+    wh.height = g->clientHeight;
+    if( wh.width >
+	u->display->surface->surfaceCapabilities.maxImageExtent.width )
+      wh.width = u->display->surface->surfaceCapabilities.maxImageExtent.width;
+    if( wh.width <
+	u->display->surface->surfaceCapabilities.minImageExtent.width )
+      wh.width = u->display->surface->surfaceCapabilities.minImageExtent.width;
+    if( wh.height >
+	u->display->surface->surfaceCapabilities.maxImageExtent.height )
+      wh.height = u->display->surface
+	->surfaceCapabilities.maxImageExtent.height;
+    if( wh.height <
+	u->display->surface->surfaceCapabilities.minImageExtent.height )
+      wh.height = u->display->surface
+	->surfaceCapabilities.minImageExtent.height;
+  }
+  if( wh.width > u->size.width )
+    wh.width = u->size.width;
+  if( wh.height > u->size.height )
+    wh.height = u->size.height;
+  return wh;
+}
+
+
 VkShaderModule createModule( VkDevice vkd, const char* data, u32 size ){
   VkShaderModuleCreateInfo ci = {};
   ci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -945,7 +981,7 @@ plvkTexture* createTextureImage( plvkInstance* vk, u8* pixels, u32 width,
   destroyBuffer( vk, buf );
     
   ret->view = createView( vk, ret->image, format );
-  createTextureSampler( vk, ret );
+  ret->sampler = createSampler( vk );
 
   return ret;
 }
@@ -1192,7 +1228,7 @@ VkImageView createView( plvkInstance* vk, VkImage img, VkFormat format ){
 }
 
 
-void createTextureSampler( plvkInstance* vk, plvkTexture* tex ){
+VkSampler createSampler( plvkInstance* vk ){
   VkPhysicalDeviceProperties properties = {};
   vkGetPhysicalDeviceProperties( vk->gpu, &properties );
   VkSamplerCreateInfo samplerInfo = {};
@@ -1209,9 +1245,11 @@ void createTextureSampler( plvkInstance* vk, plvkTexture* tex ){
   samplerInfo.compareEnable = VK_FALSE;
   samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
   samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  VkSampler ret;
   if( VK_SUCCESS != vkCreateSampler( vk->device, &samplerInfo, NULL,
-				     &tex->sampler ) )
+				     &ret ) )
     die( "Failed to create texture sampler." );
+  return ret;
 }
 
 
@@ -1223,19 +1261,24 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
   ubodslb.descriptorCount = 1;
   ubodslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-  VkDescriptorSetLayoutBinding texdslb = {};
-  texdslb.binding = 1;
-  texdslb.descriptorCount = 1;
-  texdslb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  texdslb.pImmutableSamplers = NULL;
-  texdslb.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-  VkDescriptorSetLayoutBinding ls[ 2 ] = { ubodslb, texdslb };
-  
   VkDescriptorSetLayoutCreateInfo dslci = {};
   dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  dslci.bindingCount = sizeof( ls ) / sizeof( ls[ 0 ] ) ;
+  dslci.bindingCount = 2;
+
+  VkDescriptorSetLayoutBinding texdslb = {};
+  if( !u->display ){
+    texdslb.binding = 1;
+    texdslb.descriptorCount = 1;
+    texdslb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    texdslb.pImmutableSamplers = NULL;
+    texdslb.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  }else
+    dslci.bindingCount = 1;
+
+  
+  VkDescriptorSetLayoutBinding ls[ 2 ] = { ubodslb, texdslb };
   dslci.pBindings = ls;
+  
   if( VK_SUCCESS != vkCreateDescriptorSetLayout( u->instance->device, &dslci,
 						 NULL, &ret ) ) 
     die( "Descriptor layout creation failed." );
@@ -1245,6 +1288,7 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
 
 
 void createUnitPoolAndFences( plvkUnit* u ){
+
   // Command pool.
   VkCommandPoolCreateInfo cpci = {};
   cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -1260,6 +1304,11 @@ void createUnitPoolAndFences( plvkUnit* u ){
   fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
   for( u32 i = 0; i < 2; ++i ){
+    if( u->display ){
+      if( VK_SUCCESS != vkCreateSemaphore( u->instance->device, &sci, NULL,
+					   &u->display->imageAvailables[ i ] ) )
+	die( "Semaphore creation failed." );
+    }
     if( VK_SUCCESS != vkCreateFence( u->instance->device, &fci, NULL,
 				     &u->fences[ i ] ) )
       die( "Fence creation failed." );
@@ -1267,10 +1316,15 @@ void createUnitPoolAndFences( plvkUnit* u ){
 }
 
 
-plvkPipeline* createUnitPipeline( plvkUnit* u, const char* frag, u32 fsize,
-				  const char* vert, u32 vsize ){
+plvkPipeline* createUnitPipeline( plvkUnit* u, const char* fragName,
+				  const char* vertName ){
   VkShaderModule displayVertexShader;
   VkShaderModule displayFragmentShader;
+  u64 fsize, vsize;
+  const char* frag = htFindString( state.compressedResources, fragName, &fsize );
+  const char* vert = htFindString( state.compressedResources, vertName, &vsize );
+  if( !frag || !vert )
+    die( "Bad shader name." );
   displayFragmentShader = createModule( u->instance->device, frag, fsize );
   displayVertexShader = createModule( u->instance->device, vert, vsize );
 
@@ -1362,14 +1416,14 @@ plvkPipeline* createUnitPipeline( plvkUnit* u, const char* frag, u32 fsize,
     die( "Pipeline creation failed." );
 
   VkAttachmentDescription colorAttachment = {};
-  colorAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
+  colorAttachment.format = u->format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
   colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
   VkAttachmentReference colorAttachmentRef = {};
   colorAttachmentRef.attachment = 0;
@@ -1415,7 +1469,8 @@ plvkPipeline* createUnitPipeline( plvkUnit* u, const char* frag, u32 fsize,
   pipelineInfo.subpass = 0;
 
 
-  if( VK_SUCCESS != vkCreateGraphicsPipelines( u->instance->device, VK_NULL_HANDLE,
+  if( VK_SUCCESS != vkCreateGraphicsPipelines( u->instance->device,
+					       VK_NULL_HANDLE,
 					       1, &pipelineInfo, NULL,
 					       &ret->pipeline ) )
     die( "Pipeline creation failed." );
@@ -1446,9 +1501,12 @@ void createUnitTextures( plvkUnit* u, VkFormat format, u8 components ){
 
 
 void createUnitFramebuffers( plvkUnit* u ){
-  newa( ret, VkFramebuffer, 2 );
   for( u32 i = 0; i < 2; ++i ){
-    VkImageView attachments[ 1 ] = { u->textures[ i ]->view };
+    VkImageView attachments[ 1 ];
+    if( u->display )
+      attachments[ 0 ] = u->display->swap->imageViews[ i ];
+    else
+      attachments[ 0 ] = u->textures[ i ]->view;
     VkFramebufferCreateInfo fbci = {};
     fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     fbci.renderPass = u->pipe->renderPass;
@@ -1458,10 +1516,9 @@ void createUnitFramebuffers( plvkUnit* u ){
     fbci.height = u->size.height;
     fbci.layers = 1;
     if( VK_SUCCESS != vkCreateFramebuffer( u->instance->device, &fbci,
-					   NULL, &ret[ i ] ) )
+					   NULL, u->framebuffers + i ) )
       die( "Framebuffer creation failed." );
   }
-  u->framebuffers = ret;
 }
 
 
@@ -1524,10 +1581,13 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
   dpci.poolSizeCount = 2;
   dpci.pPoolSizes = dps;
   dpci.maxSets = 2;
+    mark;
+
   if( VK_SUCCESS != vkCreateDescriptorPool( u->instance->device, &dpci, NULL,
 					    &u->descriptorPool ) )
     die( "Descriptor pool creation failed." );
 
+  mark;
   newa( tl, VkDescriptorSetLayout, 2 );
 
   for( u32 i = 0; i < 2; ++i )
@@ -1539,21 +1599,27 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
   dsai.descriptorSetCount = 2;
   dsai.pSetLayouts = tl;
 
+  mark;
   if( VK_SUCCESS != vkAllocateDescriptorSets( u->instance->device, &dsai,
 					      u->descriptorSets ) )
     die( "Failed to allocate descriptor sets." );
 
   for( u32 i = 0; i < 2; ++i ){
+  mark;
     VkDescriptorBufferInfo bufferInfo = {};
     bufferInfo.buffer = u->ubo->buffer;
     bufferInfo.offset = 0;
     bufferInfo.range = u->ubo->size;
+  mark;
 
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = u->textures[ i ^ 1 ]->view;
-    imageInfo.sampler = u->textures[ i ^ 1 ]->sampler;
+    if( !u->display ){
+      imageInfo.imageView = u->textures[ i ^ 1 ]->view;
+      imageInfo.sampler = u->textures[ i ^ 1 ]->sampler;
+    }
     VkWriteDescriptorSet dwrites[ 2 ] = {};
+  mark;
     dwrites[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     dwrites[ 0 ].dstSet = u->descriptorSets[ i ];
     dwrites[ 0 ].dstBinding = 0;
@@ -1562,6 +1628,7 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     dwrites[ 0 ].descriptorCount = 1;
     dwrites[ 0 ].pBufferInfo = &bufferInfo;
     
+    mark;
     dwrites[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     dwrites[ 1 ].dstSet = u->descriptorSets[ i ];
     dwrites[ 1 ].dstBinding = 1;
@@ -1569,51 +1636,163 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     dwrites[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     dwrites[ 1 ].descriptorCount = 1;
     dwrites[ 1 ].pImageInfo = &imageInfo;
+  mark;
 
+  if( u->display )
+  vkUpdateDescriptorSets( u->instance->device,
+			    1,
+			    dwrites, 0, NULL );
+  else
     vkUpdateDescriptorSets( u->instance->device,
 			    sizeof( dwrites ) / sizeof( dwrites[ 0 ] ),
 			    dwrites, 0, NULL );
+  mark;
   }
+  mark;
   memfree( tl );
 }
 
 
+void createUnitSurface( plvkUnit* u ){
+  new( ret, plvkSurface ); 
+  VkWin32SurfaceCreateInfoKHR srfci = {};
+  srfci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+  srfci.hwnd = u->display->gui->handle;
+  srfci.hinstance = GetModuleHandle( NULL ); 
+  if( VK_SUCCESS != vkCreateWin32SurfaceKHR( u->instance->instance, &srfci,
+					     NULL, &ret->surface ) )
+    die( "Win32 surface creation failed." );
+  VkBool32 supported = 0;
+  vkGetPhysicalDeviceSurfaceSupportKHR( u->instance->gpu, 0, ret->surface,
+					&supported );
+  if( VK_FALSE == supported )
+    die( "Surface not supported." );
+
+  // Get device surface capabilities.
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( u->instance->gpu, ret->surface,
+					     &ret->surfaceCapabilities );
+  vkGetPhysicalDeviceSurfaceFormatsKHR( u->instance->gpu,
+					ret->surface,
+					&ret->numSurfaceFormats, NULL );
+  ret->surfaceFormats = newae( VkSurfaceFormatKHR, ret->numSurfaceFormats );
+  vkGetPhysicalDeviceSurfaceFormatsKHR( u->instance->gpu, ret->surface,
+					&ret->numSurfaceFormats,
+					ret->surfaceFormats );
+  vkGetPhysicalDeviceSurfacePresentModesKHR( u->instance->gpu, ret->surface,
+					     &ret->numSurfacePresentations,
+					     NULL );
+  ret->surfacePresentations = newae( VkPresentModeKHR,
+				     ret->numSurfacePresentations );
+  vkGetPhysicalDeviceSurfacePresentModesKHR( u->instance->gpu, ret->surface,
+					     &ret->numSurfacePresentations,
+					     ret->surfacePresentations );
+  if( ret->surfaceCapabilities.maxImageCount < 2 )
+    die( "Double buffering not supported." );
+  ret->theSurfaceFormat = ret->surfaceFormats[ 0 ];
+  u->format = ret->theSurfaceFormat.format;
+  u->display->surface = ret;
+}
 
 
-// BUGBUG
-typedef struct testubo{
-  u32 x, y;
-} testubo;
+void createUnitSwap( plvkUnit* u, bool vsync ){
+  VkExtent2D wh = getUnitExtent( u );
+  u->size = wh;
+  new( ret, plvkSwapchain );
+  VkPresentModeKHR pm = vsync ? VK_PRESENT_MODE_FIFO_KHR :
+    VK_PRESENT_MODE_IMMEDIATE_KHR ;
+  VkSwapchainCreateInfoKHR scci = {};
+  scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+  scci.surface = u->display->surface->surface;
+  scci.minImageCount = 2;
+  scci.imageFormat = u->display->surface->theSurfaceFormat.format;
+  scci.imageColorSpace = u->display->surface->theSurfaceFormat.colorSpace;
+  scci.imageExtent = wh;
+  scci.imageArrayLayers = 1;
+  scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+    | VK_IMAGE_USAGE_SAMPLED_BIT ;
+  scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  scci.queueFamilyIndexCount = 0;
+  scci.pQueueFamilyIndices = NULL;
+  scci.preTransform = u->display->surface
+    ->surfaceCapabilities.currentTransform;
+  scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+  scci.presentMode = pm;
+  scci.clipped = VK_TRUE;
+  scci.oldSwapchain = VK_NULL_HANDLE;
+  if( VK_SUCCESS !=
+      vkCreateSwapchainKHR( u->instance->device, &scci, NULL, &ret->swap ) )
+    die( "Swapchain creation failed." );
+  vkGetSwapchainImagesKHR( u->instance->device, ret->swap, &ret->numImages,
+			   NULL );
+  ret->images = newae( VkImage, ret->numImages );
+  vkGetSwapchainImagesKHR( u->instance->device, ret->swap, &ret->numImages,
+			   ret->images );
+  // Image views.
+  ret->imageViews = newae( VkImageView, ret->numImages );
+  for( u32 i = 0; i < ret->numImages; ++i ){
+    ret->imageViews[ i ] = createView( u->instance, ret->images[ i ],
+				       u->display->surface
+				       ->theSurfaceFormat.format );
+  }
+  u->display->swap = ret;
+}
+
 
 plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      VkFormat format, u8 components,
-		      const char* frag, u32 fragSize,
-		      const char* vert, u32 vertSize,
-		      u32 uboSize, void (*uboFunc)( u8* ) ){
-
+		      const char* fragName, const char* vertName,
+		      u32 uboSize, void (*uboFunc)( u8* ),
+		      bool displayed, const char* title, int x, int y ){
+  mark;
+  vkDeviceWaitIdle( vk->device );
+  mark;
   new( ret, plvkUnit );
+  if( displayed )
+    ret->display = newe( plvkUnitDisplay );
   ret->instance = vk;
   ret->size.width = width;
   ret->size.height = height;
   ret->layout = createUnitDescriptorLayout( ret );
+  ret->format = format;
+  if( displayed ){
+    ret->display->gui = wsetup( title, x, y, width, height );
+    // This sets u->format
+    createUnitSurface( ret );
+    createUnitSwap( ret, true );
+    // BUGBUG
+    guiShow( ret->display->gui );
+  } else
+    createUnitTextures( ret, format, components );
+  mark;
   createUnitPoolAndFences( ret );
-  ret->pipe = createUnitPipeline( ret, frag, fragSize, vert, vertSize );
-  createUnitTextures( ret, format, components );
+  
+  ret->pipe = createUnitPipeline( ret, fragName, vertName );
+  mark;
   createUnitFramebuffers( ret ); 
-  createUnitUBO( ret, sizeof( testubo ) );
-  createUnitDescriptorSetsAndPool( ret );
-  createUnitCommandBuffers( ret );
+  mark;
+  // BUGBUG make optional;
+  createUnitUBO( ret, 1 );
   if( NULL != uboFunc ){
     ret->uboSize = uboSize;
     ret->uboCpuMem = mem( uboSize );
     ret->uboFunc = uboFunc;
   }
+  mark;
+  createUnitDescriptorSetsAndPool( ret );
+   mark;
+
+  createUnitCommandBuffers( ret );
+  mark;
+
   return ret;
 }
 
 
 void destroyUnitPoolAndFences( plvkUnit* u ){
   for( u32 i = 0; i < 2; ++i ){
+    if( u->display )
+      vkDestroySemaphore( u->instance->device,
+			  u->display->imageAvailables[ i ], NULL );
     vkDestroyFence( u->instance->device, u->fences[ i ], NULL );
   }
   vkDestroyCommandPool( u->instance->device, u->pool, NULL );
@@ -1637,7 +1816,6 @@ void destroyUnitPipeline( plvkUnit* u ){
 void destroyUnitFramebuffers( plvkUnit* u ){
   for( u32 i = 0; i < 2; ++i )
     vkDestroyFramebuffer( u->instance->device, u->framebuffers[ i ], NULL );
-  memfree( u->framebuffers );
 }
 
 
@@ -1668,17 +1846,47 @@ void destroyUnitCommandBuffers( plvkUnit* u ){
 }
 
 
+void destroyUnitSurface( plvkUnit* u ){
+  vkDestroySurfaceKHR( u->instance->instance, u->display->surface->surface,
+		       NULL );
+  memfree( u->display->surface->surfaceFormats );
+  memfree( u->display->surface->surfacePresentations );
+  memfree( u->display->surface );
+}
+
+
+void destroyUnitSwap( plvkUnit* u ){
+  for( u32 i = 0; i < 2; ++i ){
+    vkDestroyImageView( u->instance->device,
+			u->display->swap->imageViews[ i ], NULL );
+  }
+  vkDestroySwapchainKHR( u->instance->device, u->display->swap->swap, NULL );
+  memfree( u->display->swap->images );
+  memfree( u->display->swap->imageViews );
+  memfree( u->display->swap );
+}
+
+
 void destroyUnit( plvkUnit* u ){
+  mark;
   vkDeviceWaitIdle( u->instance->device ); 
+  if( u->display ){
+    destroyUnitSwap( u );
+    destroyUnitSurface( u );
+    wend( u->display->gui );
+    memfree( u->display );
+  }
   destroyUnitCommandBuffers( u );
   destroyUnitDescriptorSetsAndPool( u );
   destroyUnitUBO( u ); 
   destroyUnitFramebuffers( u );
-  destroyUnitTextures( u );
+  if( u->textures[ 0 ] )
+    destroyUnitTextures( u );
   destroyUnitPipeline( u );
   destroyUnitPoolAndFences( u );
   destroyUnitDescriptorLayout( u );
   memfree( u );
+  mark;
 }
 
 
@@ -1710,30 +1918,65 @@ const u8* copyUnit( plvkUnit* u ){
 
 
 void tickUnit( plvkUnit* u ){
-  plvkInstance* vk = u->instance;
+    mark;
+
   u32 ping = u->pingpong;
   u32 pong = ping ^ 1;
+  uint32_t index = 0;
 
   if( u->uboFunc )
     u->uboFunc( u->uboCpuMem );
-  mark;
-  vkWaitForFences( u->instance->device, 1, &u->fences[ ping ], VK_TRUE,
+  vkWaitForFences( u->instance->device, 1, &u->fences[ pong ], VK_TRUE,
 		   UINT64_MAX );
+  bool draw = 0;
+  if( u->display ){
+    VkResult res =
+      vkAcquireNextImageKHR( u->instance->device, u->display->swap->swap,
+			     100000000,
+			     u->display->imageAvailables[ ping ],
+			     VK_NULL_HANDLE, &index );
+    if( res == VK_SUCCESS || res == VK_NOT_READY || res == VK_TIMEOUT ||
+	res == VK_SUBOPTIMAL_KHR )
+      draw = 1;
+    endl();endl();
+    printInt( ping ); printInt( index );
+    endl();endl();
+    
+  }
   mark;
-  
   VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-  VkPipelineStageFlags stages[] =
+   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
+  mark;
+  if( u->display && draw ){
+    mark;
+    VkSemaphore semaphores[] = { u->display->imageAvailables[ ping ] };
+    VkPipelineStageFlags stages[] =
     { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-  submitInfo.pWaitDstStageMask = stages;
+    submitInfo.pWaitDstStageMask = stages;
+    submitInfo.pWaitSemaphores = semaphores;
+    submitInfo.waitSemaphoreCount = 0;
+  }
+  mark;
+
   submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &u->commandBuffers[ pong ];
-  vkResetFences( u->instance->device, 1, &u->fences[ pong ] );
-  if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo,
-				   u->fences[ pong ] ) )
+  submitInfo.pCommandBuffers = &u->commandBuffers[ ping ];
+  vkResetFences( u->instance->device, 1, &u->fences[ ping ] );
+  if( VK_SUCCESS != vkQueueSubmit( u->instance->queue, 1, &submitInfo,
+				   u->fences[ ping ] ) )
     die( "Queue submition failed." );
   mark;
 
+  if( u->display && draw ){
+    VkPresentInfoKHR presentation = {};
+    presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    VkSwapchainKHR swaps[] = { u->display->swap->swap };
+    presentation.swapchainCount = 1;
+    presentation.pSwapchains = swaps;
+    presentation.pImageIndices = &index;
+    vkQueuePresentKHR( u->instance->queue, &presentation );
+  }
+  
   u->pingpong = pong;
+    mark;
+
 }

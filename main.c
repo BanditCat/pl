@@ -196,6 +196,13 @@ int main( int argc, const char** argv ){
   printl( "Initializing vulkan..." );
 #endif
   plvkInstancep vk = plvkInit( gpu, debugLevel, TARGET, x, y, w, h );
+    // BUGBUG test units
+  {
+    plvkCreateUnit( vk, 320, 200, VK_FORMAT_R8G8B8A8_UNORM, 4,
+		    "shaders\\unitFrag.spv", "shaders\\mainVert.spv", 0, NULL,
+		    true, "foo", 100, 100 );
+  }
+
   // Main loop.
   plvkShow( vk );
   while( plvkeventLoop( vk ) )

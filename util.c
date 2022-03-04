@@ -21,7 +21,8 @@
 #include "pl.h"
 #include "os.h"
 #include "util.h"
-void printRaw( const char* s, u32 size ){
+void printRaw( const char* sa, u32 size ){
+  const u8* s = (const u8*)sa;
   char pa[ 2 ] = {};
   bool raw = 0;
   for( u32 i = 0; i < size; ++i ){

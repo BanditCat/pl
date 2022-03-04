@@ -112,7 +112,7 @@ void rebuild( plvkInstance* vk ){
   }
 }
 
-void unbuild( plvkInstancep vkp ){
+void unbuild( plvkInstance* vkp ){
   plvkInstance* vk = vkp;
   if( vk->swap ){
     vkDeviceWaitIdle( vk->device );
@@ -124,15 +124,25 @@ void unbuild( plvkInstancep vkp ){
     destroySwap( vk, vk->swap );
   }
 }
-void plvkEnd( plvkInstancep vkp ){
+void plvkEnd( plvkInstance* vkp ){
   plvkInstance* vk = vkp;
   vkDeviceWaitIdle( vk->device );
+
+  // Destroy units.
+  {
+    plvkUnit* p = vk->unit;
+    while( p ){
+      plvkUnit* q = p->next;
+      destroyUnit( p );
+      p = q;
+    }
+  }
   {
     u32 ni = vk->swap->numImages;
     unbuild( vkp );
     destroyPoolAndFences( vk, ni );
   }
-    destroyTextures( vk );
+  destroyTextures( vk );
   destroyLayout( vk );
   destroySurface( vk, vk->surface );
 #ifdef DEBUG
@@ -146,62 +156,16 @@ void plvkEnd( plvkInstancep vkp ){
 }
 
 
-plvkInstancep plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
-		     int width, int height ){
+plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
+			int width, int height ){
   plvkInstance* vk = createInstance( whichGPU, debugLevel, title, x, y,
-				width, height );
+				     width, height );
   
   vk->surface = createSurface( vk );
   vk->layout = createLayout( vk );
   rebuild( vk );
 
   
-  // BUGBUG test units
-  {
-    mark;
-    u64 fsize, vsize;
-    const char* frag = htFindString( state.compressedResources,
-				     "shaders\\mainFrag.spv",
-				     &fsize );
-    const char* vert = htFindString( state.compressedResources,
-				     "shaders\\mainVert.spv",
-				     &vsize );
-    plvkUnit* t = createUnit( vk, 320, 200,
-			      VK_FORMAT_R8G8B8A8_UNORM, 4,
-			      frag, fsize, vert, vsize,
-			      0, NULL );
-    mark;
-    const char* d = (const char*)copyUnit( t );
-    printRaw( d, 100 );
-    memfree( (void*)d );
-    mark;
-    tickUnit( t );
-    mark;
-    d = (const char*)copyUnit( t );
-    printRaw( d, 100 );
-    memfree( (void*)d );
-    mark;
-    tickUnit( t );
-    mark;
-    d = (const char*)copyUnit( t );
-    printRaw( d, 100 );
-    memfree( (void*)d );
-    mark;
-    tickUnit( t );
-    mark;
-    d = (const char*)copyUnit( t );
-    printRaw( d, 100 );
-    memfree( (void*)d );
-    mark;
-    tickUnit( t );
-    mark;
-    d = (const char*)copyUnit( t );
-    printRaw( d, 100 );
-    memfree( (void*)d );
-    mark;
-    destroyUnit( t );
-    mark;
-  }
 
 
 
@@ -221,6 +185,17 @@ void draw( void ){
     firstDrawTime = tickCount();
   plvkInstance* vk = state.vk;
   bool recreate = 0;
+  // BUGBUG
+  {
+    plvkUnit* t = vk->unit;
+    while( t ){
+      mark;
+      tickUnit( t );
+  mark;
+      
+      t = t->next;
+    }
+  }
   if( vk->swap ){
     static u64 lasttime = 0;
     static u64 frameCount = 0;
@@ -300,16 +275,37 @@ void draw( void ){
     rebuild( vk );
   }
 }
-bool plvkeventLoop( plvkInstancep p ){
-  plvkInstance* vk = p;
-  return weventLoop( vk->gui );
+bool plvkeventLoop( plvkInstance* vk ){
+  bool quit = 0;
+  plvkUnit* t = vk->unit;
+  while( t ){
+    if( t->display ){
+      if( !weventLoop( t->display->gui ) )
+	quit = 1;
+    }
+    t = t->next;
+  }
+  if( !weventLoop( vk->gui ) )
+    quit = 1;
+  return !quit;
 }
 
-void plvkShow( plvkInstancep p ){
-  plvkInstance* vk = p;
+void plvkShow( plvkInstance* vk ){
   guiShow( vk->gui );
 }
-void plvkHide( plvkInstancep p ){
-  plvkInstance* vk = p;
+void plvkHide( plvkInstance* vk ){
   guiHide( vk->gui );
+}
+
+void plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
+		     VkFormat format, u8 components,
+		     const char* fragName, const char* vertName,
+		     u32 uboSize, void (*uboFunc)( u8* ),
+		     bool displayed, const char* title, int x, int y ){
+  
+  plvkUnit* top = vk->unit;
+  vk->unit = createUnit( vk, width, height, (VkFormat)format, components,
+			 fragName, vertName, uboSize, uboFunc, displayed,
+			 title, x, y );
+  vk->unit->next = top;
 }

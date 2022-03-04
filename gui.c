@@ -48,8 +48,7 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
   
 
 // Returned pointer must be deallocated with wend.
-guiInfo* wsetup( char* title, int x, int y, int width, int height ){
-  (void)title;(void)x;(void)y;(void)width;(void)height;
+guiInfo* wsetup( const char* title, int x, int y, int width, int height ){
   new( ret, guiInfo );
   new( gui, guiState );
   ret->gui = gui;

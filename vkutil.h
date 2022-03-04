@@ -27,6 +27,7 @@ typedef struct gpuState{
   f32 time;
 } gpuState;
 
+typedef struct plvkUnit plvkUnit;
 
 // Win32/vulkan surface
 typedef struct plvkSurface{
@@ -122,6 +123,9 @@ typedef struct plvkIntance{
   gpuState UBOcpumem;
   VkDescriptorPool descriptorPool;
   VkDescriptorSet* descriptorSets;
+
+  // A tree of units.
+  plvkUnit* unit;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -131,6 +135,15 @@ typedef struct plvkIntance{
   VkDebugUtilsMessengerEXT vkdbg;
 #endif
 } plvkInstance;
+#define PLVKINSTANCE_DEFINED 1
+
+
+typedef struct plvkUnitDisplay{
+  guiInfo* gui;
+  plvkSwapchain* swap;
+  plvkSurface* surface;
+  VkSemaphore imageAvailables[ 2 ];
+} plvkUnitDisplay;
 
 
 // This is the fundamental unit of GPU computation. This can be used for graphics
@@ -142,7 +155,7 @@ typedef struct plvkUnit{
 
   VkExtent2D size;
 
-  VkFramebuffer* framebuffers; 
+  VkFramebuffer framebuffers[ 2 ]; 
 
   plvkPipeline* pipe;
 
@@ -166,13 +179,24 @@ typedef struct plvkUnit{
   // This is 0 or 1. Write to ping, read from pong, then write to pong, read
   // from ping.
   bool pingpong;
+
+  // Null if the unit isn't displayed.
+  plvkUnitDisplay* display;
+
+  // The next unit.
+  plvkUnit* next;
+
+  VkFormat format;
 } plvkUnit;
 
+// ubofunc may be NULL. title, x and y are ignored if displayed is false.
+// title may be NULL if displayed == 0. format is ignored for displayed units,
+// the format will be whatever the surfae supports.
 plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      VkFormat format, u8 components,
-		      const char* frag, u32 fragSize,
-		      const char* vert, u32 vertSize,
-		      u32 uboSize, void (uboFunc)( u8* ) );
+		      const char* fragName, const char* vertName,
+		      u32 uboSize, void (*uboFunc)( u8* ),
+		      bool displayed, const char* title, int x, int y );
 
 void destroyUnit( plvkUnit* u );
 void tickUnit( plvkUnit* u );
@@ -220,4 +244,4 @@ void destroySurface( plvkInstance* vk, plvkSurface* surf );
 void createTextures( plvkInstance* vk );
 void destroyTextures( plvkInstance* vk );  
 VkImageView createView( plvkInstance* vk, VkImage img, VkFormat format );
-void createTextureSampler( plvkInstance* vk, plvkTexture* tex );
+VkSampler createSampler( plvkInstance* vk );
