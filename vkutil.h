@@ -143,6 +143,7 @@ typedef struct plvkUnitDisplay{
   plvkSwapchain* swap;
   plvkSurface* surface;
   VkSemaphore imageAvailables[ 2 ];
+  VkSemaphore renderCompletes[ 2 ];
 } plvkUnitDisplay;
 
 

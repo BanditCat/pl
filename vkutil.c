@@ -1918,8 +1918,6 @@ const u8* copyUnit( plvkUnit* u ){
 
 
 void tickUnit( plvkUnit* u ){
-    mark;
-
   u32 ping = u->pingpong;
   u32 pong = ping ^ 1;
   uint32_t index = 0;
@@ -1938,25 +1936,20 @@ void tickUnit( plvkUnit* u ){
     if( res == VK_SUCCESS || res == VK_NOT_READY || res == VK_TIMEOUT ||
 	res == VK_SUBOPTIMAL_KHR )
       draw = 1;
-    endl();endl();
-    printInt( ping ); printInt( index );
-    endl();endl();
-    
+   
   }
-  mark;
   VkSubmitInfo submitInfo = {};
    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
-  mark;
   if( u->display && draw ){
-    mark;
     VkSemaphore semaphores[] = { u->display->imageAvailables[ ping ] };
+    /* VkSemaphore finishedSemaphores[] = */
+    /*   { vk->renderCompletes[ vk->currentImage };  */
     VkPipelineStageFlags stages[] =
     { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     submitInfo.pWaitDstStageMask = stages;
     submitInfo.pWaitSemaphores = semaphores;
-    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.waitSemaphoreCount = 1;
   }
-  mark;
 
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &u->commandBuffers[ ping ];
@@ -1964,7 +1957,6 @@ void tickUnit( plvkUnit* u ){
   if( VK_SUCCESS != vkQueueSubmit( u->instance->queue, 1, &submitInfo,
 				   u->fences[ ping ] ) )
     die( "Queue submition failed." );
-  mark;
 
   if( u->display && draw ){
     VkPresentInfoKHR presentation = {};
@@ -1977,6 +1969,4 @@ void tickUnit( plvkUnit* u ){
   }
   
   u->pingpong = pong;
-    mark;
-
 }

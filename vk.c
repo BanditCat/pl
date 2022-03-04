@@ -189,10 +189,7 @@ void draw( void ){
   {
     plvkUnit* t = vk->unit;
     while( t ){
-      mark;
       tickUnit( t );
-  mark;
-      
       t = t->next;
     }
   }
@@ -229,7 +226,8 @@ void draw( void ){
       submitInfo.pWaitDstStageMask = stages;
       submitInfo.commandBufferCount = 1;
       submitInfo.pCommandBuffers = &vk->commandBuffers[ index ];
-      VkSemaphore finishedSemaphores[] = { vk->renderCompletes[ vk->currentImage ] };
+      VkSemaphore finishedSemaphores[] =
+	{ vk->renderCompletes[ vk->currentImage ] };
       submitInfo.signalSemaphoreCount = 1;
       submitInfo.pSignalSemaphores = finishedSemaphores;
       vkResetFences( vk->device, 1, &vk->fences[ vk->currentImage ] );
