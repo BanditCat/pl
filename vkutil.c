@@ -1581,13 +1581,11 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
   dpci.poolSizeCount = 2;
   dpci.pPoolSizes = dps;
   dpci.maxSets = 2;
-    mark;
 
   if( VK_SUCCESS != vkCreateDescriptorPool( u->instance->device, &dpci, NULL,
 					    &u->descriptorPool ) )
     die( "Descriptor pool creation failed." );
 
-  mark;
   newa( tl, VkDescriptorSetLayout, 2 );
 
   for( u32 i = 0; i < 2; ++i )
@@ -1599,18 +1597,15 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
   dsai.descriptorSetCount = 2;
   dsai.pSetLayouts = tl;
 
-  mark;
   if( VK_SUCCESS != vkAllocateDescriptorSets( u->instance->device, &dsai,
 					      u->descriptorSets ) )
     die( "Failed to allocate descriptor sets." );
 
   for( u32 i = 0; i < 2; ++i ){
-  mark;
     VkDescriptorBufferInfo bufferInfo = {};
     bufferInfo.buffer = u->ubo->buffer;
     bufferInfo.offset = 0;
     bufferInfo.range = u->ubo->size;
-  mark;
 
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1619,7 +1614,6 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
       imageInfo.sampler = u->textures[ i ^ 1 ]->sampler;
     }
     VkWriteDescriptorSet dwrites[ 2 ] = {};
-  mark;
     dwrites[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     dwrites[ 0 ].dstSet = u->descriptorSets[ i ];
     dwrites[ 0 ].dstBinding = 0;
@@ -1628,7 +1622,6 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     dwrites[ 0 ].descriptorCount = 1;
     dwrites[ 0 ].pBufferInfo = &bufferInfo;
     
-    mark;
     dwrites[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     dwrites[ 1 ].dstSet = u->descriptorSets[ i ];
     dwrites[ 1 ].dstBinding = 1;
@@ -1636,19 +1629,16 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     dwrites[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     dwrites[ 1 ].descriptorCount = 1;
     dwrites[ 1 ].pImageInfo = &imageInfo;
-  mark;
 
-  if( u->display )
-  vkUpdateDescriptorSets( u->instance->device,
-			    1,
-			    dwrites, 0, NULL );
-  else
-    vkUpdateDescriptorSets( u->instance->device,
-			    sizeof( dwrites ) / sizeof( dwrites[ 0 ] ),
-			    dwrites, 0, NULL );
-  mark;
+    if( u->display )
+      vkUpdateDescriptorSets( u->instance->device,
+			      1,
+			      dwrites, 0, NULL );
+    else
+      vkUpdateDescriptorSets( u->instance->device,
+			      sizeof( dwrites ) / sizeof( dwrites[ 0 ] ),
+			      dwrites, 0, NULL );
   }
-  mark;
   memfree( tl );
 }
 
@@ -1743,9 +1733,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      const char* fragName, const char* vertName,
 		      u32 uboSize, void (*uboFunc)( u8* ),
 		      bool displayed, const char* title, int x, int y ){
-  mark;
   vkDeviceWaitIdle( vk->device );
-  mark;
   new( ret, plvkUnit );
   if( displayed )
     ret->display = newe( plvkUnitDisplay );
@@ -1763,13 +1751,10 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
     guiShow( ret->display->gui );
   } else
     createUnitTextures( ret, format, components );
-  mark;
   createUnitPoolAndFences( ret );
   
   ret->pipe = createUnitPipeline( ret, fragName, vertName );
-  mark;
   createUnitFramebuffers( ret ); 
-  mark;
   // BUGBUG make optional;
   createUnitUBO( ret, 1 );
   if( NULL != uboFunc ){
@@ -1777,12 +1762,9 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
     ret->uboCpuMem = mem( uboSize );
     ret->uboFunc = uboFunc;
   }
-  mark;
   createUnitDescriptorSetsAndPool( ret );
-   mark;
 
   createUnitCommandBuffers( ret );
-  mark;
 
   return ret;
 }
@@ -1868,7 +1850,6 @@ void destroyUnitSwap( plvkUnit* u ){
 
 
 void destroyUnit( plvkUnit* u ){
-  mark;
   vkDeviceWaitIdle( u->instance->device ); 
   if( u->display ){
     destroyUnitSwap( u );
@@ -1886,7 +1867,6 @@ void destroyUnit( plvkUnit* u ){
   destroyUnitPoolAndFences( u );
   destroyUnitDescriptorLayout( u );
   memfree( u );
-  mark;
 }
 
 
@@ -1939,13 +1919,13 @@ void tickUnit( plvkUnit* u ){
    
   }
   VkSubmitInfo submitInfo = {};
-   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
+  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
   if( u->display && draw ){
     VkSemaphore semaphores[] = { u->display->imageAvailables[ ping ] };
     /* VkSemaphore finishedSemaphores[] = */
     /*   { vk->renderCompletes[ vk->currentImage };  */
     VkPipelineStageFlags stages[] =
-    { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+      { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     submitInfo.pWaitDstStageMask = stages;
     submitInfo.pWaitSemaphores = semaphores;
     submitInfo.waitSemaphoreCount = 1;
