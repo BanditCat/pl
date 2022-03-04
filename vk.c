@@ -298,12 +298,10 @@ void plvkHide( plvkInstance* vk ){
 void plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 		     VkFormat format, u8 components,
 		     const char* fragName, const char* vertName,
-		     u32 uboSize, void (*uboFunc)( u8* ),
 		     bool displayed, const char* title, int x, int y ){
   
   plvkUnit* top = vk->unit;
   vk->unit = createUnit( vk, width, height, (VkFormat)format, components,
-			 fragName, vertName, uboSize, uboFunc, displayed,
-			 title, x, y );
+			 fragName, vertName, displayed, title, x, y );
   vk->unit->next = top;
 }

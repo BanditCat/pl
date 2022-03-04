@@ -169,16 +169,11 @@ typedef struct plvkUnit{
   
   VkDescriptorSetLayout layout;
 
-  plvkBuffer* ubo;
-  u8* uboCpuMem;
-  u32 uboSize;
-  void (*uboFunc)( u8* );
-  
   VkDescriptorPool descriptorPool;
   VkDescriptorSet descriptorSets[ 2 ];
 
-  // This is 0 or 1. Write to ping, read from pong, then write to pong, read
-  // from ping.
+  // This is 0 or 1. Write to ping, read from pong, then write to pong,
+  // read from ping.
   bool pingpong;
 
   // Null if the unit isn't displayed.
@@ -196,7 +191,6 @@ typedef struct plvkUnit{
 plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      VkFormat format, u8 components,
 		      const char* fragName, const char* vertName,
-		      u32 uboSize, void (*uboFunc)( u8* ),
 		      bool displayed, const char* title, int x, int y );
 
 void destroyUnit( plvkUnit* u );

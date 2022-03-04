@@ -197,9 +197,9 @@ int main( int argc, const char** argv ){
   plvkInstancep vk = plvkInit( gpu, debugLevel, TARGET, x, y, w, h );
     // BUGBUG test units
   {
-    plvkCreateUnit( vk, 320, 200, VK_FORMAT_R8G8B8A8_UNORM, 4,
-		    "shaders\\unitFrag.spv", "shaders\\mainVert.spv", 0, NULL,
-		    true, "foo", 100, 100 );
+    plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+		    "shaders\\unitFrag.spv", "shaders\\mainVert.spv",
+		    true, "foo", 300, 300 );
   }
 
   // Main loop.

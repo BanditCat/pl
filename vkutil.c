@@ -1525,14 +1525,6 @@ void createUnitFramebuffers( plvkUnit* u ){
 }
 
 
-void createUnitUBO( plvkUnit* u, u64 size ){
-  u->ubo = createBuffer( u->instance, size,
-			 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-			 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
-}
-
-
 void createUnitCommandBuffers( plvkUnit* u ){
   VkCommandBufferAllocateInfo cbai = {};
   cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1606,9 +1598,9 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 
   for( u32 i = 0; i < 2; ++i ){
     VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = u->ubo->buffer;
+    bufferInfo.buffer = u->instance->UBOs[ i ]->buffer;
     bufferInfo.offset = 0;
-    bufferInfo.range = u->ubo->size;
+    bufferInfo.range = sizeof( gpuState );
 
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1734,7 +1726,6 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
 plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      VkFormat format, u8 components,
 		      const char* fragName, const char* vertName,
-		      u32 uboSize, void (*uboFunc)( u8* ),
 		      bool displayed, const char* title, int x, int y ){
   vkDeviceWaitIdle( vk->device );
   new( ret, plvkUnit );
@@ -1758,13 +1749,6 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   
   ret->pipe = createUnitPipeline( ret, fragName, vertName );
   createUnitFramebuffers( ret ); 
-  // BUGBUG make optional;
-  createUnitUBO( ret, 1 );
-  if( NULL != uboFunc ){
-    ret->uboSize = uboSize;
-    ret->uboCpuMem = mem( uboSize );
-    ret->uboFunc = uboFunc;
-  }
   createUnitDescriptorSetsAndPool( ret );
 
   createUnitCommandBuffers( ret );
@@ -1818,11 +1802,6 @@ void destroyUnitTextures( plvkUnit* u ){
 }
 
 
-void destroyUnitUBO( plvkUnit* u ){
-  destroyBuffer( u->instance, u->ubo );
-}
-
-
 void destroyUnitDescriptorSetsAndPool( plvkUnit* u ){
   vkDestroyDescriptorPool( u->instance->device, u->descriptorPool, NULL );
 }
@@ -1865,7 +1844,6 @@ void destroyUnit( plvkUnit* u ){
   }
   destroyUnitCommandBuffers( u );
   destroyUnitDescriptorSetsAndPool( u );
-  destroyUnitUBO( u ); 
   destroyUnitFramebuffers( u );
   if( u->textures[ 0 ] )
     destroyUnitTextures( u );
@@ -1908,8 +1886,6 @@ void tickUnit( plvkUnit* u ){
   u32 pong = ping ^ 1;
   uint32_t index = 0;
 
-  if( u->uboFunc )
-    u->uboFunc( u->uboCpuMem );
   vkWaitForFences( u->instance->device, 1, &u->fences[ pong ], VK_TRUE,
 		   UINT64_MAX );
   bool draw = 0;
