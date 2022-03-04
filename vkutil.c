@@ -1306,7 +1306,10 @@ void createUnitPoolAndFences( plvkUnit* u ){
   for( u32 i = 0; i < 2; ++i ){
     if( u->display ){
       if( VK_SUCCESS != vkCreateSemaphore( u->instance->device, &sci, NULL,
-					   &u->display->imageAvailables[ i ] ) )
+					   &u->display->imageAvailables[ i ] )
+	  ||
+	  VK_SUCCESS != vkCreateSemaphore( u->instance->device, &sci, NULL,
+					   &u->display->renderCompletes[ i ] ))
 	die( "Semaphore creation failed." );
     }
     if( VK_SUCCESS != vkCreateFence( u->instance->device, &fci, NULL,
@@ -1772,9 +1775,12 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 
 void destroyUnitPoolAndFences( plvkUnit* u ){
   for( u32 i = 0; i < 2; ++i ){
-    if( u->display )
+    if( u->display ){
       vkDestroySemaphore( u->instance->device,
 			  u->display->imageAvailables[ i ], NULL );
+      vkDestroySemaphore( u->instance->device,
+			  u->display->renderCompletes[ i ], NULL );
+    }
     vkDestroyFence( u->instance->device, u->fences[ i ], NULL );
   }
   vkDestroyCommandPool( u->instance->device, u->pool, NULL );
@@ -1918,22 +1924,26 @@ void tickUnit( plvkUnit* u ){
       draw = 1;
    
   }
+
   VkSubmitInfo submitInfo = {};
   submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
-  if( u->display && draw ){
-    VkSemaphore semaphores[] = { u->display->imageAvailables[ ping ] };
-    /* VkSemaphore finishedSemaphores[] = */
-    /*   { vk->renderCompletes[ vk->currentImage };  */
-    VkPipelineStageFlags stages[] =
+  VkSemaphore finishedSemaphores[] = 
+    { u->display->renderCompletes[ ping ] };  
+  VkSemaphore semaphores[] = { u->display->imageAvailables[ ping ] };
+  VkPipelineStageFlags stages[] =
       { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+  if( u->display && draw ){
     submitInfo.pWaitDstStageMask = stages;
     submitInfo.pWaitSemaphores = semaphores;
     submitInfo.waitSemaphoreCount = 1;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = finishedSemaphores;
   }
 
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &u->commandBuffers[ ping ];
   vkResetFences( u->instance->device, 1, &u->fences[ ping ] );
+
   if( VK_SUCCESS != vkQueueSubmit( u->instance->queue, 1, &submitInfo,
 				   u->fences[ ping ] ) )
     die( "Queue submition failed." );
@@ -1941,12 +1951,14 @@ void tickUnit( plvkUnit* u ){
   if( u->display && draw ){
     VkPresentInfoKHR presentation = {};
     presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentation.waitSemaphoreCount = 1;
+    presentation.pWaitSemaphores = finishedSemaphores;
     VkSwapchainKHR swaps[] = { u->display->swap->swap };
     presentation.swapchainCount = 1;
     presentation.pSwapchains = swaps;
     presentation.pImageIndices = &index;
     vkQueuePresentKHR( u->instance->queue, &presentation );
   }
-  
+
   u->pingpong = pong;
 }

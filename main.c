@@ -190,7 +190,6 @@ int main( int argc, const char** argv ){
     memfree( (void*)cd );
     return 0;
   }
-
   // Initialize vulkan.
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
