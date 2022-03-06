@@ -41,9 +41,6 @@ const char* clUsage =
   "-info                      List the gpu"
   "s and other information.\n"
   "\n"
-  "-frameCount=<N>            Use n frames"
-  "for rendering, aka pre rendering.\n"
-  "\n"
   "-fps                       Print fps to "
   "stdout every second.\n"
   "\n"
@@ -114,14 +111,6 @@ int main( int argc, const char** argv ){
 	die( "Malformed -gpu= command line option." );
       continue;
     }
-    if( strStartsWith( "-frameCount=", argv[ i ] ) ){
-      const char* opt = argv[ i ] + slen( "-frameCount=" );
-      const char* trackOpt = opt;
-      *((u32*)&state.frameCount) = parseInt( &opt );
-      if( opt == trackOpt || *opt )
-	die( "Malformed -frameCount= command line option." );
-      continue;
-    }
     if( strStartsWith( "-compressorOutput=", argv[ i ] ) ){
       const char* opt = argv[ i ] + slen( "-compressorOutput=" );
       if( !slen( opt ) )
@@ -151,7 +140,7 @@ int main( int argc, const char** argv ){
       continue;
     }
     if( !strcomp( "-info", argv[ i ] ) ){
-      plvkInit( gpu, debugLevel, TARGET, 10, 10, 320, 240 );
+      plvkInit( gpu, debugLevel );
       plvkPrintInitInfo();
       plvkPrintGPUs();
       return 0;
@@ -194,25 +183,24 @@ int main( int argc, const char** argv ){
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
-  plvkInstancep vk = plvkInit( gpu, debugLevel, TARGET, x, y, w, h );
-    // BUGBUG test units
-  {
+  plvkInstance* vk = plvkInit( gpu, debugLevel );
     
     plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
-      plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ) };
-    plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+      plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
+    plvkAddTexture( vk, "graphics\\lc.ppm" )};
+    plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 		    "shaders\\unitFrag.spv", "shaders\\mainVert.spv",
 		    true, "foo", 300, 300, atts, 1 );
-    plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+    plvkUnit* u2 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 		    "shaders\\unitFrag.spv", "shaders\\mainVert.spv",
 		    true, "foo", 400, 400, atts + 1, 1 );
-    plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+    plvkUnit* u3 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 		    "shaders\\unit2Frag.spv", "shaders\\mainVert.spv",
-		    true, "foo", 200, 400, atts, 2 );
-  }
-
+		    true, "foo", 200, 400, atts + 1, 2 );
+  plvkShow( u1 );
+  plvkShow( u2 );
+  plvkShow( u3 );
   // Main loop.
-  plvkShow( vk );
   while( plvkeventLoop( vk ) )
     draw();
   // Run tests.

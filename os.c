@@ -94,7 +94,6 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
 #else
   state.fps = 0;
 #endif
-  *((u32*)&state.frameCount) = 2;
   // Get compressed resources.
   {
     u32 cresSize;

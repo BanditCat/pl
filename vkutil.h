@@ -90,7 +90,6 @@ typedef struct plvkAttachable{
 // Instance wide state.
 typedef struct plvkIntance{
   VkInstance instance;
-  guiInfo* gui;
   u32 numGPUs;
   VkPhysicalDevice* gpus;
   VkPhysicalDeviceProperties* gpuProperties;
@@ -113,23 +112,13 @@ typedef struct plvkIntance{
   VkDevice device;
   u32 debugLevel;
 
-  // swap WILL BE NULL IF NOT RENDERING!!!
-  //  plvkSwapchain* swap;
-  VkFramebuffer* framebuffers; 
-
   VkExtent2D extent;
   plvkPipeline* pipe;
 
   VkCommandPool pool;
-  VkCommandBuffer* commandBuffers;
 
-  VkSemaphore* imageAvailables;
-  VkSemaphore* renderCompletes;
-  VkFence* fences;
-  VkFence* fenceSyncs;
   u32 currentImage;
 
-  plvkTexture* tex;
   
   // A linked list of attachable items, which will be referenced during
   // unit creation. Adding a texture, unit, or compute unit puts a new element
@@ -139,8 +128,6 @@ typedef struct plvkIntance{
   //  VkDescriptorSetLayout layout;
   plvkBuffer** UBOs;
   gpuState UBOcpumem;
-  VkDescriptorPool descriptorPool;
-  VkDescriptorSet* descriptorSets;
 
   // A tree of units.
   plvkUnit* unit;
@@ -225,43 +212,16 @@ void waitUnit( plvkUnit* u );
 const u8* copyUnit( plvkUnit* u );
 
 
-plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel,
-			  char* title, int x, int y, int width, int height );
+plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel );
 void destroyInstance( plvkInstance* vk );
-void createDescriptorPool( plvkInstance* vk );
-void destroyDescriptorPool( plvkInstance* vk );
-// Descriptor sets are cleaned up along with the descriptor pool.
-void createDescriptorSets( plvkInstance* vk );
-void destroyDescriptorSets( plvkInstance* vk );
-void getFuncPointers( plvkInstance* vk );
-plvkBuffer* createBuffer( plvkInstance* vk, u64 size, VkBufferUsageFlags usage,
-			  VkMemoryPropertyFlags props );
-void destroyBuffer( plvkInstance* vk, plvkBuffer* p );
 void createUBOs( plvkInstance* vk );
 void destroyUBOs( plvkInstance* vk );
-VkExtent2D getExtent( plvkInstance* vk );
-VkShaderModule createModule( VkDevice vkd, const char* data, u32 size );
-void destroyModule( plvkInstance* vk, VkShaderModule sm );
-VkDescriptorSetLayout createLayout( plvkInstance* vk );
-void destroyLayout( plvkInstance* vk );
+
 u64 scoreGPU( VkPhysicalDeviceProperties* gpu );
-plvkSwapchain* createSwap( plvkInstance* vk, bool vsync, u32 minFrames );
-void destroySwap( plvkInstance* vk, plvkSwapchain* swap );
-plvkPipeline* createPipeline( plvkInstance* vk, const char* frag, u32 fsize,
-			      const char* vert, u32 vsize );
-void destroyPipeline( plvkInstance* vk, plvkPipeline* p );
-VkFramebuffer* createFramebuffers( plvkInstance* vk, plvkPipeline* p,
-				   plvkSwapchain* swap );
-void destroyFramebuffers( plvkInstance* vk, VkFramebuffer* fbs );
-VkCommandBuffer* createCommandBuffers( plvkInstance* vk );
-void destroyCommandBuffers( plvkInstance* vk, VkCommandBuffer* cbs );
-// Command pool, semaphores, and fences.
+
 void createPool( plvkInstance* vk );
-void destroyPool( plvkInstance* vk, u32 numImages );
-plvkSurface* createSurface( plvkInstance* vk );
-void destroySurface( plvkInstance* vk, plvkSurface* surf );
-void createTextures( plvkInstance* vk );
-void destroyTextures( plvkInstance* vk );  
+void destroyPool( plvkInstance* vk );
+
 VkImageView createView( plvkInstance* vk, VkImage img, VkFormat format );
 VkSampler createSampler( plvkInstance* vk );
 plvkTexture* loadTexturePPM( plvkInstance* vk, const char* name );

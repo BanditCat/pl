@@ -47,20 +47,6 @@ void plvkPrintInitInfo( void ){
     printInt( i ); print( ": " );
     printl( vk->deviceExtensions[ i ].extensionName );
   }
-  /* printl( "\nSurface formats:" ); */
-  /* for( u32 i = 0; i < vk->surface->numSurfaceFormats; ++i ){ */
-  /*   printInt( i ); printl( ": " ); */
-  /*   print( "       format: " ); */
-  /*   printInt( vk->surface->surfaceFormats[ i ].format ); endl(); */
-  /*   print( "  color space: " ); */
-  /*   printInt( vk->surface->surfaceFormats[ i ].colorSpace ); endl(); */
-  /* } */
-  /* printl( "\nSurface presentations:" ); */
-  /* for( u32 i = 0; i < vk->surface->numSurfacePresentations; ++i ){ */
-  /*   printInt( i ); print( ": " ); */
-  /*   printInt( vk->surface->surfacePresentations[ i ] ); endl(); */
-  /* } */
-
 }
 
 void plvkPrintGPUs( void ){
@@ -86,43 +72,6 @@ void plvkPrintGPUs( void ){
   print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
 }
 
-/* void rebuild( plvkInstance* vk ){ */
-/*   vkDeviceWaitIdle( vk->device ); */
-
-/*   vk->swap = createSwap( vk, 1, state.frameCount ); */
-/*   if( vk->swap ){ */
-/*     if( !vk->pool ) */
-/*       createPoolAndFences( vk ); */
-/*     u64 fsize, vsize; */
-/*     const char* frag = htFindString( state.compressedResources, */
-/* 				     "shaders\\mainFrag.spv", */
-/* 				     &fsize ); */
-/*     const char* vert = htFindString( state.compressedResources, */
-/* 				     "shaders\\mainVert.spv", */
-/* 				     &vsize ); */
-/*     vk->pipe = createPipeline( vk, frag, fsize, vert, vsize ); */
-/*     vk->framebuffers = createFramebuffers( vk, vk->pipe, vk->swap ); */
-/*     if( !vk->tex ) */
-/*       createTextures( vk ); */
-/*     createUBOs( vk ); */
-/*     createDescriptorPool( vk ); */
-/*     createDescriptorSets( vk ); */
-/*     vk->commandBuffers = createCommandBuffers( vk ); */
-
-/*   } */
-/* } */
-
-/* void unbuild( plvkInstance* vk ){ */
-/*   if( vk->swap ){ */
-/*     vkDeviceWaitIdle( vk->device ); */
-/*     destroyFramebuffers( vk, vk->framebuffers ); */
-/*     destroyDescriptorPool( vk ); */
-/*     destroyPipeline( vk, vk->pipe ); */
-/*     destroyCommandBuffers( vk, vk->commandBuffers ); */
-/*     destroyUBOs( vk ); */
-/*     destroySwap( vk, vk->swap ); */
-/*   } */
-/* } */
 void plvkEnd( plvkInstance* vk ){
   vkDeviceWaitIdle( vk->device );
 
@@ -136,39 +85,21 @@ void plvkEnd( plvkInstance* vk ){
       p = q;
     }
   }
-  /* { */
-  /*   u32 ni = vk->swap->numImages; */
-  /*   unbuild( vk ); */
-  /*   destroyPoolAndFences( vk, ni ); */
-  /* } */
-  destroyTextures( vk );
-  //destroyLayout( vk );
-  //  destroySurface( vk, vk->surface );
+    
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
-  //destroyDescriptorSets( vk );
+  destroyUBOs( vk );
+  destroyPool( vk );
   destroyInstance( vk );
-  if( vk->gui )
-    wend( vk->gui );
   memfree( vk );
 }
 
 
-plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
-			int width, int height ){
-  plvkInstance* vk = createInstance( whichGPU, debugLevel, title, x, y,
-				     width, height );
+plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel ){
+  plvkInstance* vk = createInstance( whichGPU, debugLevel );
   createPool( vk );
   createUBOs( vk ); 
-
-  //  vk->surface = createSurface( vk );
-  //  vk->layout = createLayout( vk );
-  //rebuild( vk );
-
-  
-
-
 
   return vk;
 }
@@ -181,13 +112,11 @@ void updateGPUstate( plvkInstance* vk, f32 time ){
   vkUnmapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory );
 }
 void draw( void ){
-        mark;
 
   static u64 firstDrawTime = 0;
   if( !firstDrawTime )
     firstDrawTime = tickCount();
   plvkInstance* vk = state.vk;
-  bool recreate = 0;
   {
     plvkUnit* t = vk->unit;
     while( t ){
@@ -195,92 +124,31 @@ void draw( void ){
       t = t->next;
     }
   }
-  mark;
-  if( 1 ){//vk->swap ){
-    static u64 lasttime = 0;
-    static u64 frameCount = 0;
+  static u64 lasttime = 0;
+  static u64 frameCount = 0;
 
-    /* vkWaitForFences( vk->device, 1, &vk->fences[ vk->currentImage ], VK_TRUE, */
-    /* 		     UINT64_MAX ); */
 
-    // uint32_t index = 0;
-    /* if( VK_ERROR_OUT_OF_DATE_KHR == */
-    /* 	vkAcquireNextImageKHR( vk->device, vk->swap->swap, 1000000000, */
-    /* 			       vk->imageAvailables[ vk->currentImage ], */
-    /* 			       VK_NULL_HANDLE, &index ) ) */
-    /*   recreate = 1; */
-    /* else{ */
-      mark;
-      {      //if( vk->fenceSyncs[ index ] != VK_NULL_HANDLE )
-	//	vkWaitForFences( vk->device, 1, &vk->fenceSyncs[ index ], VK_TRUE,
-	//		 UINT64_MAX );
-      mark;
-      //vk->fenceSyncs[ index ] = vk->fences[ vk->currentImage ];
-      mark;
-
-      updateGPUstate( vk, 0.1 * (f32)( tickCount() - firstDrawTime )
-		      / (f32)tickFrequency() );
+  updateGPUstate( vk, 0.1 * (f32)( tickCount() - firstDrawTime )
+		  / (f32)tickFrequency() );
       
-      mark;
-      VkSubmitInfo submitInfo = {};
-      submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-      /* VkSemaphore semaphores[] = { vk->imageAvailables[ vk->currentImage ] }; */
-      /* VkPipelineStageFlags stages[] = */
-      /* 	{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }; */
-      /* submitInfo.waitSemaphoreCount = 1; */
-      /* submitInfo.pWaitSemaphores = semaphores; */
-      /* submitInfo.pWaitDstStageMask = stages; */
-      /* submitInfo.commandBufferCount = 1; */
-      /* submitInfo.pCommandBuffers = &vk->commandBuffers[ index ]; */
-      /* VkSemaphore finishedSemaphores[] = */
-      /* 	{ vk->renderCompletes[ vk->currentImage ] }; */
-      /* submitInfo.signalSemaphoreCount = 1; */
-      /* submitInfo.pSignalSemaphores = finishedSemaphores; */
-      /* vkResetFences( vk->device, 1, &vk->fences[ vk->currentImage ] ); */
-      /* if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo, */
-      /* 				       vk->fences[ vk->currentImage ] ) ) */
-      /* 	die( "Queue submition failed." ); */
-
-      /* VkPresentInfoKHR presentation = {}; */
-      /* presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR; */
-
-      /* presentation.waitSemaphoreCount = 1; */
-      /* presentation.pWaitSemaphores = finishedSemaphores; */
-      /* VkSwapchainKHR swaps[] = { vk->swap->swap }; */
-      /* presentation.swapchainCount = 1; */
-      /* presentation.pSwapchains = swaps; */
-      /* presentation.pImageIndices = &index; */
-      /* if( VK_ERROR_OUT_OF_DATE_KHR == */
-      /* 	  vkQueuePresentKHR( vk->queue, &presentation ) ) */
-      /* 	recreate = 1; */
-      ++vk->currentImage;
-      vk->currentImage %= 2;//vk->swap->numImages; 
-    }
-    if( state.fps ){
-      if( 0 == lasttime  )
-	lasttime = tickCount();
-      else{
-	u64 now = tickCount();
-	f64 elapsed = (f64)( now - lasttime ) / tickFrequency();
-	if( elapsed > 1.0 ){
-	  print( "FPS: " );
-	  printFloat( (f64)frameCount / elapsed );
-	  endl();
-	  lasttime = now;
-	  frameCount = 0;
-	}
+  ++vk->currentImage;
+  vk->currentImage %= 2;//vk->swap->numImages; 
+  if( state.fps ){
+    if( 0 == lasttime  )
+      lasttime = tickCount();
+    else{
+      u64 now = tickCount();
+      f64 elapsed = (f64)( now - lasttime ) / tickFrequency();
+      if( elapsed > 1.0 ){
+	print( "FPS: " );
+	printFloat( (f64)frameCount / elapsed );
+	endl();
+	lasttime = now;
+	frameCount = 0;
       }
-      ++frameCount;
     }
-  }else
-    recreate = 1;
-  if( recreate ){
-    //unbuild( vk );
-    //rebuild( vk );
+    ++frameCount;
   }
-        mark;
-
 }
 bool plvkeventLoop( plvkInstance* vk ){
   bool quit = 0;
@@ -292,19 +160,21 @@ bool plvkeventLoop( plvkInstance* vk ){
     }
     t = t->next;
   }
-  if( !weventLoop( vk->gui ) )
-    quit = 1;
   return !quit;
 }
 
-void plvkShow( plvkInstance* vk ){
-  guiShow( vk->gui );
+
+void plvkShow( plvkUnit* u ){
+  if( u->display )
+    guiShow( u->display->gui );
 }
-void plvkHide( plvkInstance* vk ){
-  guiHide( vk->gui );
+void plvkHide( plvkUnit* u ){
+  if( u->display )
+    guiHide( u->display->gui );
 }
 
-void plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
+
+plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 		     VkFormat format, u8 components,
 		     const char* fragName, const char* vertName,
 		     bool displayed, const char* title, int x, int y,
@@ -315,6 +185,7 @@ void plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 			 fragName, vertName, displayed, title, x, y,
 			 attachments, numAttachments );
   vk->unit->next = top;
+  return vk->unit;
 }
 plvkAttachable* plvkAddTexture( plvkInstance* vk, const char* name ){
   new( ret, plvkAttachable );

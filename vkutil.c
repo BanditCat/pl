@@ -100,87 +100,6 @@ void getFuncPointers( plvkInstance* vk ){
 }
 
 
-/* void createDescriptorSets( plvkInstance* vk ){ */
-/*   newa( tl, VkDescriptorSetLayout, vk->swap->numImages ); */
-/*   for( u32 i = 0; i < vk->swap->numImages; ++i ) */
-/*     tl[ i ] = vk->layout; */
-/*   VkDescriptorSetAllocateInfo dsai = {}; */
-/*   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO; */
-/*   dsai.descriptorPool = vk->descriptorPool; */
-/*   dsai.descriptorSetCount = vk->swap->numImages; */
-/*   dsai.pSetLayouts = tl; */
-
-  
-/*   if( !vk->descriptorSets ) */
-/*     vk->descriptorSets = newae( VkDescriptorSet, vk->swap->numImages ); */
-
-/*   if( VK_SUCCESS != vkAllocateDescriptorSets( vk->device, &dsai, */
-/* 					      vk->descriptorSets ) ) */
-/*     die( "Failed to allocate descriptor sets." ); */
-
-/*   for( u32 i = 0; i < vk->swap->numImages; ++i ){ */
-/*     VkDescriptorBufferInfo bufferInfo = {}; */
-/*     bufferInfo.buffer = vk->UBOs[ i ]->buffer; */
-/*     bufferInfo.offset = 0; */
-/*     bufferInfo.range = sizeof( gpuState ); */
-
-/*     VkDescriptorImageInfo imageInfo = {}; */
-/*     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; */
-/*     imageInfo.imageView = vk->tex->view; */
-/*     imageInfo.sampler = vk->tex->sampler; */
-/*     VkWriteDescriptorSet dwrites[ 2 ] = {}; */
-/*     dwrites[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; */
-/*     dwrites[ 0 ].dstSet = vk->descriptorSets[ i ]; */
-/*     dwrites[ 0 ].dstBinding = 0; */
-/*     dwrites[ 0 ].dstArrayElement = 0; */
-/*     dwrites[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; */
-/*     dwrites[ 0 ].descriptorCount = 1; */
-/*     dwrites[ 0 ].pBufferInfo = &bufferInfo; */
-    
-/*     dwrites[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; */
-/*     dwrites[ 1 ].dstSet = vk->descriptorSets[ i ]; */
-/*     dwrites[ 1 ].dstBinding = 1; */
-/*     dwrites[ 1 ].dstArrayElement = 0; */
-/*     dwrites[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; */
-/*     dwrites[ 1 ].descriptorCount = 1; */
-/*     dwrites[ 1 ].pImageInfo = &imageInfo; */
-
-/*     vkUpdateDescriptorSets( vk->device, */
-/* 			    sizeof( dwrites ) / sizeof( dwrites[ 0 ] ), */
-/* 			    dwrites, 0, NULL ); */
-/*   } */
-/*   memfree( tl ); */
-/* } */
-
-
-/* void destroyDescriptorSets( plvkInstance* vk ){ */
-/*   memfree( vk->descriptorSets ); */
-/* } */
-
-
-/* void createDescriptorPool( plvkInstance* vk ){ */
-/*   VkDescriptorPoolSize dps[ 2 ] = {}; */
-/*   dps[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; */
-/*   dps[ 0 ].descriptorCount = vk->swap->numImages; */
-/*   dps[ 1 ].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; */
-/*   dps[ 1 ].descriptorCount = vk->swap->numImages; */
-
-/*   VkDescriptorPoolCreateInfo dpci = {}; */
-/*   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO; */
-/*   dpci.poolSizeCount = sizeof( dps ) / sizeof( dps[ 0 ] ); */
-/*   dpci.pPoolSizes = dps; */
-/*   dpci.maxSets = vk->swap->numImages; */
-/*   if( VK_SUCCESS != vkCreateDescriptorPool( vk->device, &dpci, NULL, */
-/* 					    &vk->descriptorPool ) ) */
-/*     die( "Descriptor pool creation failed." ); */
-/* } */
-
-
-void destroyDescriptorPool( plvkInstance* vk ){
-  vkDestroyDescriptorPool( vk->device, vk->descriptorPool, NULL );
-}
-
-
 u32 findMemoryType( plvkInstance* vk, u32 filter, VkMemoryPropertyFlags props ){
   VkPhysicalDeviceMemoryProperties pdmp;
   vkGetPhysicalDeviceMemoryProperties( vk->gpu, &pdmp );
@@ -248,11 +167,11 @@ void destroyUBOs( plvkInstance* vk ){
     destroyBuffer( vk, vk->UBOs[ i ] );
   memfree( vk->UBOs );
 }
-plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel,
-			       char* title, int x, int y, int width, int height ){
+
+
+plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel ){
   new( vk, plvkInstance );
   state.vk = vk;
-  vk->gui = wsetup( title, x, y, width, height );
   vk->debugLevel = debugLevel;
 
   // Get extensions.
@@ -434,30 +353,6 @@ void destroyInstance( plvkInstance* vk ){
 }
 
 
-/* VkExtent2D getExtent( plvkInstance* vk ){ */
-/*   VkExtent2D wh = {}; */
-/*   vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, vk->surface->surface, */
-/* 					     &vk->surface->surfaceCapabilities ); */
-/*   const guiInfo* g = vk->gui; */
-/*   if( vk->surface->surfaceCapabilities.currentExtent.width != UINT32_MAX ){ */
-/*     wh = vk->surface->surfaceCapabilities.currentExtent; */
-/*   } else { */
-/*     wh.width = g->clientWidth; */
-/*     wh.height = g->clientHeight; */
-/*     if( wh.width > vk->surface->surfaceCapabilities.maxImageExtent.width ) */
-/*       wh.width = vk->surface->surfaceCapabilities.maxImageExtent.width; */
-/*     if( wh.width < vk->surface->surfaceCapabilities.minImageExtent.width ) */
-/*       wh.width = vk->surface->surfaceCapabilities.minImageExtent.width; */
-/*     if( wh.height > vk->surface->surfaceCapabilities.maxImageExtent.height ) */
-/*       wh.height = vk->surface->surfaceCapabilities.maxImageExtent.height; */
-/*     if( wh.height < vk->surface->surfaceCapabilities.minImageExtent.height ) */
-/*       wh.height = vk->surface->surfaceCapabilities.minImageExtent.height; */
-/*   } */
-
-/*   return wh; */
-/* } */
-
-
 VkExtent2D getUnitExtent( plvkUnit* u ){
   VkExtent2D wh = {};
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR( u->instance->gpu,
@@ -534,315 +429,7 @@ VkDescriptorSetLayout createLayout( plvkInstance* vk ){
 
   return ret;
 }
-
-
-/* void destroyLayout( plvkInstance* vk ){ */
-/*   vkDestroyDescriptorSetLayout( vk->device, vk->layout, NULL ); */
-/* } */
-
-
-/* plvkSwapchain* createSwap( plvkInstance* vk, bool vsync, u32 minFrames ){ */
-/*   VkExtent2D wh = getExtent( vk ); */
-/*   if( wh.width && wh.height ){ */
-/*     vk->extent = wh; */
-  
-/*     new( ret, plvkSwapchain ); */
-/*     VkPresentModeKHR pm = vsync ? VK_PRESENT_MODE_FIFO_KHR : */
-/*       VK_PRESENT_MODE_IMMEDIATE_KHR ; */
-/*     VkSwapchainCreateInfoKHR scci = {}; */
-/*     scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR; */
-/*     scci.surface = vk->surface->surface; */
-/*     scci.minImageCount = minFrames; */
-/*     scci.imageFormat = vk->surface->theSurfaceFormat.format; */
-/*     scci.imageColorSpace = vk->surface->theSurfaceFormat.colorSpace; */
-/*     scci.imageExtent = vk->extent; */
-/*     scci.imageArrayLayers = 1; */
-/*     scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; */
-/*     scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; */
-/*     scci.queueFamilyIndexCount = 0; */
-/*     scci.pQueueFamilyIndices = NULL; */
-/*     scci.preTransform = vk->surface->surfaceCapabilities.currentTransform; */
-/*     scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; */
-/*     scci.presentMode = pm; */
-/*     scci.clipped = VK_TRUE; */
-/*     scci.oldSwapchain = VK_NULL_HANDLE; */
-/*     if( VK_SUCCESS != */
-/* 	vkCreateSwapchainKHR( vk->device, &scci, NULL, &ret->swap ) ) */
-/*       die( "Swapchain creation failed." ); */
-/*     vkGetSwapchainImagesKHR( vk->device, ret->swap, &ret->numImages, NULL ); */
-/*     ret->images = newae( VkImage, ret->numImages ); */
-/*     vkGetSwapchainImagesKHR( vk->device, ret->swap, &ret->numImages, */
-/* 			     ret->images ); */
-/*     // Image views. */
-/*     ret->imageViews = newae( VkImageView, ret->numImages ); */
-/*     for( u32 i = 0; i < ret->numImages; ++i ) */
-/*       ret->imageViews[ i ] = createView( vk, ret->images[ i ], */
-/* 					 vk->surface->theSurfaceFormat.format ); */
-/*     return ret; */
-/*   } else */
-/*     return NULL; */
-/* } */
-
-
-void destroySwap( plvkInstance* vk, plvkSwapchain* swap ){
-  for( u32 i = 0; i < swap->numImages; ++i )
-    vkDestroyImageView( vk->device, swap->imageViews[ i ], NULL );
-  vkDestroySwapchainKHR( vk->device, swap->swap, NULL );
-  memfree( swap->images );
-  memfree( swap->imageViews );
-  memfree( swap );
-}
-
-
-/* plvkPipeline* createPipeline( plvkInstance* vk, const char* frag, u32 fsize, */
-/* 			      const char* vert, u32 vsize ){ */
-/*   VkShaderModule displayVertexShader; */
-/*   VkShaderModule displayFragmentShader; */
-/*   displayFragmentShader = createModule( vk->device, frag, fsize ); */
-/*   displayVertexShader = createModule( vk->device, vert, vsize ); */
-
-/*   new( ret, plvkPipeline ); */
-/*   VkPipelineShaderStageCreateInfo pssci[ 2 ]; */
-/*   pssci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; */
-/*   pssci[ 0 ].pNext = NULL; */
-/*   pssci[ 0 ].flags = 0; */
-/*   pssci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT; */
-/*   pssci[ 0 ].module = displayVertexShader; */
-/*   pssci[ 0 ].pName = "main"; */
-/*   pssci[ 0 ].pSpecializationInfo = NULL; */
-/*   pssci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO; */
-/*   pssci[ 1 ].pNext = NULL; */
-/*   pssci[ 1 ].flags = 0; */
-/*   pssci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT; */
-/*   pssci[ 1 ].module = displayFragmentShader; */
-/*   pssci[ 1 ].pName = "main"; */
-/*   pssci[ 1 ].pSpecializationInfo = NULL; */
-
-
-/*   VkPipelineVertexInputStateCreateInfo pvici = {}; */
-/*   pvici.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO; */
-
-/*   VkPipelineInputAssemblyStateCreateInfo piasci = {}; */
-/*   piasci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO; */
-/*   piasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP; */
-/*   piasci.primitiveRestartEnable = VK_FALSE; */
-
-/*   VkViewport viewport = {}; */
-/*   viewport.x = 0.0f; */
-/*   viewport.y = 0.0f; */
-/*   viewport.width = (float) vk->extent.width; */
-/*   viewport.height = (float) vk->extent.height; */
-/*   viewport.minDepth = 0.0f; */
-/*   viewport.maxDepth = 1.0f; */
-
-/*   VkRect2D scissor = {}; */
-/*   scissor.extent = vk->extent; */
-
-/*   VkPipelineViewportStateCreateInfo pvsci = {}; */
-/*   pvsci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO; */
-/*   pvsci.viewportCount = 1; */
-/*   pvsci.pViewports = &viewport; */
-/*   pvsci.scissorCount = 1; */
-/*   pvsci.pScissors = &scissor; */
-    
-/*   VkPipelineRasterizationStateCreateInfo prsci = {}; */
-/*   prsci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO; */
-/*   prsci.depthClampEnable = VK_FALSE; */
-/*   prsci.rasterizerDiscardEnable = VK_FALSE; */
-/*   prsci.polygonMode = VK_POLYGON_MODE_FILL; */
-/*   prsci.lineWidth = 1.0f; */
-/*   prsci.cullMode = VK_CULL_MODE_BACK_BIT; */
-/*   prsci.frontFace = VK_FRONT_FACE_CLOCKWISE; */
-/*   prsci.depthBiasEnable = VK_FALSE; */
-
-/*   VkPipelineMultisampleStateCreateInfo pmsci = {}; */
-/*   pmsci.sType = */
-/*     VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO; */
-/*   pmsci.sampleShadingEnable = VK_FALSE; */
-/*   pmsci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT; */
-/*   pmsci.minSampleShading = 1.0f; */
-/*   pmsci.pSampleMask = NULL; */
-/*   pmsci.alphaToCoverageEnable = VK_FALSE; */
-/*   pmsci.alphaToOneEnable = VK_FALSE; */
-
-/*   VkPipelineColorBlendAttachmentState cba = {}; */
-/*   cba.colorWriteMask = */
-/*     VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | */
-/*     VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT; */
-/*   cba.blendEnable = VK_FALSE; */
-    
-
-/*   VkPipelineColorBlendStateCreateInfo pcbsci = {}; */
-/*   pcbsci.sType = */
-/*     VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO; */
-/*   pcbsci.logicOpEnable = VK_FALSE; */
-/*   pcbsci.attachmentCount = 1; */
-/*   pcbsci.pAttachments = &cba; */
-
-/*   VkPipelineLayoutCreateInfo plci = {}; */
-/*   plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO; */
-/*   plci.setLayoutCount = 1; */
-/*   plci.pSetLayouts = &vk->layout; */
-/*   if( VK_SUCCESS != */
-/*       vkCreatePipelineLayout( vk->device, &plci, */
-/* 			      NULL, &ret->pipelineLayout ) ) */
-/*     die( "Pipeline creation failed." ); */
-
-/*   VkAttachmentDescription colorAttachment = {}; */
-/*   colorAttachment.format = vk->surface->theSurfaceFormat.format; */
-/*   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT; */
-/*   colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; */
-/*   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; */
-/*   colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; */
-/*   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; */
-/*   colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; */
-/*   colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; */
-
-/*   VkAttachmentReference colorAttachmentRef = {}; */
-/*   colorAttachmentRef.attachment = 0; */
-/*   colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; */
-
-/*   VkSubpassDescription subpass = {}; */
-/*   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; */
-/*   subpass.colorAttachmentCount = 1; */
-/*   subpass.pColorAttachments = &colorAttachmentRef; */
-
-/*   // Render pass creation. */
-/*   VkRenderPassCreateInfo rpci = {}; */
-/*   rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO; */
-/*   rpci.attachmentCount = 1; */
-/*   rpci.pAttachments = &colorAttachment; */
-/*   rpci.subpassCount = 1; */
-/*   rpci.pSubpasses = &subpass; */
-/*   VkSubpassDependency dependency = {}; */
-/*   dependency.srcSubpass = VK_SUBPASS_EXTERNAL; */
-/*   dependency.dstSubpass = 0; */
-/*   dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; */
-/*   dependency.srcAccessMask = 0; */
-/*   dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; */
-/*   dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT; */
-/*   rpci.dependencyCount = 1; */
-/*   rpci.pDependencies = &dependency; */
-/*   if( VK_SUCCESS != vkCreateRenderPass( vk->device, &rpci, */
-/* 					NULL, &ret->renderPass ) )  */
-/*     die( "Render pass creation failed." ); */
-
-/*   VkGraphicsPipelineCreateInfo pipelineInfo = {}; */
-/*   pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO; */
-/*   pipelineInfo.stageCount = 2; */
-/*   pipelineInfo.pStages = pssci; */
-/*   pipelineInfo.pVertexInputState = &pvici; */
-/*   pipelineInfo.pInputAssemblyState = &piasci; */
-/*   pipelineInfo.pViewportState = &pvsci; */
-/*   pipelineInfo.pRasterizationState = &prsci; */
-/*   pipelineInfo.pMultisampleState = &pmsci; */
-/*   pipelineInfo.pColorBlendState = &pcbsci; */
-/*   pipelineInfo.layout = ret->pipelineLayout; */
-/*   pipelineInfo.renderPass = ret->renderPass; */
-/*   pipelineInfo.subpass = 0; */
-
-
-/*   if( VK_SUCCESS != vkCreateGraphicsPipelines( vk->device, VK_NULL_HANDLE, */
-/* 					       1, &pipelineInfo, NULL, */
-/* 					       &ret->pipeline ) ) */
-/*     die( "Pipeline creation failed." ); */
-
-/*   destroyModule( vk, displayFragmentShader ); */
-/*   destroyModule( vk, displayVertexShader ); */
-/*   return ret; */
-/* } */
-
-
-/* void destroyPipeline( plvkInstance* vk, plvkPipeline* p ){ */
-/*   vkDestroyPipeline( vk->device, p->pipeline, NULL ); */
-/*   vkDestroyPipelineLayout( vk->device, p->pipelineLayout, NULL ); */
-/*   vkDestroyRenderPass( vk->device, p->renderPass, NULL ); */
-/*   memfree( p ); */
-/* } */
-
-
-/* VkFramebuffer* createFramebuffers( plvkInstance* vk, plvkPipeline* pipe, */
-/* 				   plvkSwapchain* swap ){ */
-/*   newa( ret, VkFramebuffer, vk->swap->numImages ); */
-/*   for( u32 i = 0; i < swap->numImages; ++i ){ */
-/*     VkImageView attachments[ 1 ] = { swap->imageViews[ i ] }; */
-/*     VkFramebufferCreateInfo fbci = {}; */
-/*     fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO; */
-/*     fbci.renderPass = pipe->renderPass; */
-/*     fbci.attachmentCount = 1; */
-/*     fbci.pAttachments = attachments; */
-/*     fbci.width = vk->extent.width; */
-/*     fbci.height = vk->extent.height; */
-/*     fbci.layers = 1; */
-/*     if( VK_SUCCESS != vkCreateFramebuffer( vk->device, &fbci, */
-/* 					   NULL, &ret[ i ] ) ) */
-/*       die( "Framebuffer creation failed." ); */
-/*   } */
-
-/*   return ret; */
-/* } */
-
-
-/* void destroyFramebuffers( plvkInstance* vk, VkFramebuffer* fbs ){ */
-/*   for( u32 i = 0; i < vk->swap->numImages; ++i ) */
-/*     vkDestroyFramebuffer( vk->device, fbs[ i ], NULL ); */
-/*   memfree( fbs ); */
-/* } */
-
-
-/* VkCommandBuffer* createCommandBuffers( plvkInstance* vk ){ */
-/*   newa( ret, VkCommandBuffer, vk->swap->numImages ); */
-
-/*   VkCommandBufferAllocateInfo cbai = {}; */
-/*   cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO; */
-/*   cbai.commandPool = vk->pool; */
-/*   cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; */
-/*   cbai.commandBufferCount = vk->swap->numImages; */
-/*   if( VK_SUCCESS != vkAllocateCommandBuffers( vk->device, &cbai, */
-/* 					      ret ) ) */
-/*     die( "Command buffer creation failed." ); */
-    
-/*   // Command buffers and render passes. */
-/*   for( u32 i = 0; i < vk->swap->numImages; i++ ){ */
-/*     VkCommandBufferBeginInfo cbbi = {}; */
-/*     cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO; */
-/*     if( VK_SUCCESS != vkBeginCommandBuffer( ret[ i ], &cbbi ) ) */
-/*       die( "Command buffer begining failed." ); */
-
-/*     VkRenderPassBeginInfo rpbi = {}; */
-/*     rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO; */
-/*     rpbi.renderPass = vk->pipe->renderPass; */
-/*     rpbi.framebuffer = vk->framebuffers[ i ]; */
-/*     rpbi.renderArea.extent = vk->extent; */
-
-/*     VkClearValue cc = {}; */
-/*     cc.color.float32[ 3 ] = 1.0f; */
-/*     rpbi.clearValueCount = 1; */
-/*     rpbi.pClearValues = &cc; */
-
-/*     vkCmdBeginRenderPass( ret[ i ], &rpbi, */
-/* 			  VK_SUBPASS_CONTENTS_INLINE ); */
-/*     vkCmdBindPipeline( ret[ i ], */
-/* 		       VK_PIPELINE_BIND_POINT_GRAPHICS, vk->pipe->pipeline ); */
-/*     vkCmdBindDescriptorSets( ret[ i ], */
-/* 			     VK_PIPELINE_BIND_POINT_GRAPHICS, */
-/* 			     vk->pipe->pipelineLayout, 0, 1, */
-/* 			     &vk->descriptorSets[ i ], 0, NULL ); */
-/*     vkCmdDraw( ret[ i ], 4, 1, 0, 0 ); */
-/*     vkCmdEndRenderPass( ret[ i ] ); */
-/*     if( VK_SUCCESS != vkEndCommandBuffer( ret[ i ] ) ) */
-/*       die( "Command buffer recording failed." ); */
-/*   } */
-/*   return ret; */
-/* } */
-
-
-/* void destroyCommandBuffers( plvkInstance* vk, VkCommandBuffer* cbs ){ */
-/*   vkFreeCommandBuffers( vk->device, vk->pool, vk->swap->numImages, */
-/* 			cbs ); */
-/*   memfree( cbs ); */
-/* } */
-
+ 
 
 void createPool( plvkInstance* vk ){
   // Command pool.
@@ -852,92 +439,11 @@ void createPool( plvkInstance* vk ){
   if( VK_SUCCESS != vkCreateCommandPool( vk->device, &cpci, NULL,
 					 &vk->pool ) )
     die( "Command pool creation failed." );
-  /* // Semaphores and fences. */
-  /* vk->imageAvailables = newae( VkSemaphore, vk->swap->numImages ); */
-  /* vk->renderCompletes = newae( VkSemaphore, vk->swap->numImages ); */
-  /* vk->fences = newae( VkFence, vk->swap->numImages ); */
-  /* vk->fenceSyncs = newae( VkFence, vk->swap->numImages ); */
-  /* for( u32 i = 0; i < vk->swap->numImages; ++i ) */
-  /*   vk->fenceSyncs[ i ] = VK_NULL_HANDLE; */
-  /* VkSemaphoreCreateInfo sci = {}; */
-  /* sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO; */
-  /* VkFenceCreateInfo fci = {}; */
-  /* fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; */
-  /* fci.flags = VK_FENCE_CREATE_SIGNALED_BIT; */
-  /* for( u32 i = 0; i < vk->swap->numImages; ++i ){ */
-  /*   if( VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL, */
-  /* 					 &vk->imageAvailables[ i ] ) || */
-  /* 	VK_SUCCESS != vkCreateSemaphore( vk->device, &sci, NULL, */
-  /* 					 &vk->renderCompletes[ i ] ) ) */
-  /*     die( "Semaphore creation failed." ); */
-  /*   if( VK_SUCCESS != vkCreateFence( vk->device, &fci, NULL, */
-  /* 				     &vk->fences[ i ] ) ) */
-  /*     die( "Fence creation failed." ); */
-  /* } */
 }
 
 
-void destroyPoolAndFences( plvkInstance* vk, u32 numImages ){
-  for( u32 i = 0; i < numImages; ++i ){
-    vkDestroySemaphore( vk->device, vk->imageAvailables[ i ], NULL );
-    vkDestroySemaphore( vk->device, vk->renderCompletes[ i ], NULL );
-    vkDestroyFence( vk->device, vk->fences[ i ], NULL );
-  }
+void destroyPool( plvkInstance* vk ){
   vkDestroyCommandPool( vk->device, vk->pool, NULL );
-  memfree( vk->imageAvailables );
-  memfree( vk->renderCompletes );
-  memfree( vk->fences );
-  memfree( vk->fenceSyncs );
-}
-
-
-plvkSurface* createSurface( plvkInstance* vk ){
-  new( ret, plvkSurface ); 
-  VkWin32SurfaceCreateInfoKHR srfci = {};
-  srfci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-  srfci.hwnd = vk->gui->handle;
-  srfci.hinstance = GetModuleHandle( NULL ); 
-  if( VK_SUCCESS != vkCreateWin32SurfaceKHR( vk->instance, &srfci, NULL,
-					     &ret->surface ) )
-    die( "Win32 surface creation failed." );
-  VkBool32 supported = 0;
-  vkGetPhysicalDeviceSurfaceSupportKHR( vk->gpu, 0, ret->surface, &supported );
-  if( VK_FALSE == supported )
-    die( "Surface not supported." );
-
-  // Get device surface capabilities.
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR( vk->gpu, ret->surface,
-					     &ret->surfaceCapabilities );
-  vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu,
-					ret->surface,
-					&ret->numSurfaceFormats, NULL );
-  ret->surfaceFormats = newae( VkSurfaceFormatKHR, ret->numSurfaceFormats );
-  vkGetPhysicalDeviceSurfaceFormatsKHR( vk->gpu, ret->surface,
-					&ret->numSurfaceFormats,
-					ret->surfaceFormats );
-  vkGetPhysicalDeviceSurfacePresentModesKHR( vk->gpu, ret->surface,
-					     &ret->numSurfacePresentations,
-					     NULL );
-  ret->surfacePresentations = newae( VkPresentModeKHR,
-				     ret->numSurfacePresentations );
-  vkGetPhysicalDeviceSurfacePresentModesKHR( vk->gpu, ret->surface,
-					     &ret->numSurfacePresentations,
-					     ret->surfacePresentations );
-  if( ret->surfaceCapabilities.maxImageCount < 2 &&
-      ret->surfaceCapabilities.minImageCount < 2 )
-    die( "Double buffering not supported." );
-  if( state.frameCount > ret->surfaceCapabilities.maxImageCount )
-    die( "The requested number of frames is not supported." );
-  ret->theSurfaceFormat = ret->surfaceFormats[ 0 ];
-  return ret;
-}
-
-
-void destroySurface( plvkInstance* vk, plvkSurface* surf ){
-  vkDestroySurfaceKHR( vk->instance, surf->surface, NULL );
-  memfree( surf->surfaceFormats );
-  memfree( surf->surfacePresentations );
-  memfree( surf );
 }
 
 
@@ -1185,10 +691,6 @@ plvkTexture* loadTexturePPM( plvkInstance* vk, const char* name ){
   return ret;
 }
 
-void createTextures( plvkInstance* vk ){
-  vk->tex = loadTexturePPM( vk, "graphics\\lc.ppm" );
-}
-
 
 void destroyTexture( plvkInstance* vk, plvkTexture* tex ){
   vkDestroyImageView( vk->device, tex->view, NULL );
@@ -1209,11 +711,6 @@ void destroyAttachables( plvkInstance* vk ){
     memfree( t );
   }
   vk->attachables = p;
-}
-
-
-void destroyTextures( plvkInstance* vk ){
-  destroyTexture( vk, vk->tex );
 }
 
 
@@ -1594,58 +1091,46 @@ void createUnitCommandBuffers( plvkUnit* u ){
 
 
 void createUnitDescriptorSetsAndPool( plvkUnit* u ){
-  mark;
   VkDescriptorPoolSize dps[ 2 ] = {};
   dps[ 0 ].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   dps[ 0 ].descriptorCount = 2;
   dps[ 1 ].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
   dps[ 1 ].descriptorCount = 2;
 
-  mark;
   VkDescriptorPoolCreateInfo dpci = {};
   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
   dpci.poolSizeCount = 2;
   dpci.pPoolSizes = dps;
   dpci.maxSets = 2;
 
-  mark;
   if( VK_SUCCESS != vkCreateDescriptorPool( u->instance->device, &dpci, NULL,
 					    &u->descriptorPool ) )
     die( "Descriptor pool creation failed." );
-  mark;
-
+  
   newa( tl, VkDescriptorSetLayout, 2 );
-    mark;
-
+    
   for( u32 i = 0; i < 2; ++i )
     tl[ i ] = u->layout;
-    mark;
-
+    
   VkDescriptorSetAllocateInfo dsai = {};
   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   dsai.descriptorPool = u->descriptorPool;
   dsai.descriptorSetCount = 2;
   dsai.pSetLayouts = tl;
-  mark;
-
+  
   if( VK_SUCCESS != vkAllocateDescriptorSets( u->instance->device, &dsai,
 					      u->descriptorSets ) )
     die( "Failed to allocate descriptor sets." );
-    mark;
-
+    
   for( u32 i = 0; i < 2; ++i ){
-     mark;
- 
+      
     VkDescriptorBufferInfo bufferInfo = {};
-      mark;
-
+      
     bufferInfo.buffer = u->instance->UBOs[ i ]->buffer;
-  mark;
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof( gpuState );
 
-  mark;
-    
+      
     VkWriteDescriptorSet* dwrites = newae( VkWriteDescriptorSet,
 					   u->numAttachments + 2 );
     dwrites[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1655,12 +1140,10 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     dwrites[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     dwrites[ 0 ].descriptorCount = 1;
     dwrites[ 0 ].pBufferInfo = &bufferInfo;
-  mark;
-    
+      
     VkDescriptorImageInfo* imageInfo = newae( VkDescriptorImageInfo,
 					      u->numAttachments + 1 );
-      mark;
-
+      
     u64 count = 1;
     if( !u->display ){
       imageInfo[ 0 ].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1677,7 +1160,6 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
       dwrites[ count ].pImageInfo = imageInfo;
       ++count;
     }
-      mark;
     for( u64 j = 0; j < u->numAttachments; ++j ){
       if( u->attachments[ j ]->type == PLVK_ATTACH_TEXTURE ){
 	imageInfo[ count - 1 ].imageLayout =
@@ -1696,10 +1178,8 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
       }
     }
                 
-      mark;
     vkUpdateDescriptorSets( u->instance->device, count, dwrites, 0, NULL );
-      mark;
-    
+          
     memfree( imageInfo );
     memfree( dwrites );
   }
@@ -1829,8 +1309,6 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
     ret->display->gui = wsetup( title, x, y, width, height );
     // This sets u->format
     createUnitSurface( ret );
-    // BUGBUG
-    guiShow( ret->display->gui );
   } else
     createUnitTextures( ret, format, components );
   buildUnit( ret );
@@ -1974,12 +1452,9 @@ const u8* copyUnit( plvkUnit* u ){
 
 
 void tickUnit( plvkUnit* u ){
-      mark;
   if( u->display )
     u->size = getUnitExtent( u );
-      mark;
   if( u->size.width && u->size.height ){
-      mark;
     u32 ping = u->pingpong;
     u32 pong = ping ^ 1;
     uint32_t index = 0;
@@ -2001,8 +1476,7 @@ void tickUnit( plvkUnit* u ){
 	buildUnit( u );
       }
     }
-      mark;
-
+      
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
     VkSemaphore finishedSemaphores[] = 
@@ -2026,7 +1500,6 @@ void tickUnit( plvkUnit* u ){
 				     u->fences[ ping ] ) )
       die( "Queue submition failed." );
 
-      mark;
     if( u->display && draw ){
       VkPresentInfoKHR presentation = {};
       presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -2038,8 +1511,7 @@ void tickUnit( plvkUnit* u ){
       presentation.pImageIndices = &index;
       vkQueuePresentKHR( u->instance->queue, &presentation );
     }
-      mark;
-
+      
     u->pingpong = pong;
   }
 }

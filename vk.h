@@ -217,18 +217,17 @@ typedef enum VkFormat {
 typedef struct plvkAttachable plvkAttachable;
 
 // Scores and picks gpus to pick one, unless whichGPU is a positive, in which case it picks that one.
-plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
-			int width, int height );
+plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel );
 void plvkEnd( plvkInstance* vk );
 
 plvkAttachable* plvkAddTexture( plvkInstance* vk, const char* name );
 
 // Creates a unit and attaches it to the instance.
-void plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
-		     VkFormat format, u8 components,
-		     const char* fragName, const char* vertName,
-		     bool displayed, const char* title, int x, int y,
-		     plvkAttachable** attachments, u64 numAttachments );
+plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
+			  VkFormat format, u8 components,
+			  const char* fragName, const char* vertName,
+			  bool displayed, const char* title, int x, int y,
+			  plvkAttachable** attachments, u64 numAttachments );
 
 void draw( void );
 
@@ -237,5 +236,5 @@ void plvkPrintInitInfo( void );
 
 bool plvkeventLoop( plvkInstance* p );
 
-void plvkShow( plvkInstance* g );
-void plvkHide( plvkInstance* g );
+void plvkShow( plvkUnit* u );
+void plvkHide( plvkUnit* u );

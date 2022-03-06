@@ -105,7 +105,6 @@ typedef struct {
   int argc;
   // Print fps every second.
   bool fps;
-  const u32 frameCount;
   plvkInstancep vk;
   bool ended;
   void* compressedResources;
