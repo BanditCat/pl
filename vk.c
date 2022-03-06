@@ -47,19 +47,19 @@ void plvkPrintInitInfo( void ){
     printInt( i ); print( ": " );
     printl( vk->deviceExtensions[ i ].extensionName );
   }
-  printl( "\nSurface formats:" );
-  for( u32 i = 0; i < vk->surface->numSurfaceFormats; ++i ){
-    printInt( i ); printl( ": " );
-    print( "       format: " );
-    printInt( vk->surface->surfaceFormats[ i ].format ); endl();
-    print( "  color space: " );
-    printInt( vk->surface->surfaceFormats[ i ].colorSpace ); endl();
-  }
-  printl( "\nSurface presentations:" );
-  for( u32 i = 0; i < vk->surface->numSurfacePresentations; ++i ){
-    printInt( i ); print( ": " );
-    printInt( vk->surface->surfacePresentations[ i ] ); endl();
-  }
+  /* printl( "\nSurface formats:" ); */
+  /* for( u32 i = 0; i < vk->surface->numSurfaceFormats; ++i ){ */
+  /*   printInt( i ); printl( ": " ); */
+  /*   print( "       format: " ); */
+  /*   printInt( vk->surface->surfaceFormats[ i ].format ); endl(); */
+  /*   print( "  color space: " ); */
+  /*   printInt( vk->surface->surfaceFormats[ i ].colorSpace ); endl(); */
+  /* } */
+  /* printl( "\nSurface presentations:" ); */
+  /* for( u32 i = 0; i < vk->surface->numSurfacePresentations; ++i ){ */
+  /*   printInt( i ); print( ": " ); */
+  /*   printInt( vk->surface->surfacePresentations[ i ] ); endl(); */
+  /* } */
 
 }
 
@@ -86,43 +86,43 @@ void plvkPrintGPUs( void ){
   print( vk->selectedGpuProperties->deviceName ); printl( " (this can be changed with the -gpu=x command line option)" );
 }
 
-void rebuild( plvkInstance* vk ){
-  vkDeviceWaitIdle( vk->device );
+/* void rebuild( plvkInstance* vk ){ */
+/*   vkDeviceWaitIdle( vk->device ); */
 
-  vk->swap = createSwap( vk, 1, state.frameCount );
-  if( vk->swap ){
-    if( !vk->pool )
-      createPoolAndFences( vk );
-    u64 fsize, vsize;
-    const char* frag = htFindString( state.compressedResources,
-				     "shaders\\mainFrag.spv",
-				     &fsize );
-    const char* vert = htFindString( state.compressedResources,
-				     "shaders\\mainVert.spv",
-				     &vsize );
-    vk->pipe = createPipeline( vk, frag, fsize, vert, vsize );
-    vk->framebuffers = createFramebuffers( vk, vk->pipe, vk->swap );
-    if( !vk->tex )
-      createTextures( vk );
-    createUBOs( vk );
-    createDescriptorPool( vk );
-    createDescriptorSets( vk );
-    vk->commandBuffers = createCommandBuffers( vk );
+/*   vk->swap = createSwap( vk, 1, state.frameCount ); */
+/*   if( vk->swap ){ */
+/*     if( !vk->pool ) */
+/*       createPoolAndFences( vk ); */
+/*     u64 fsize, vsize; */
+/*     const char* frag = htFindString( state.compressedResources, */
+/* 				     "shaders\\mainFrag.spv", */
+/* 				     &fsize ); */
+/*     const char* vert = htFindString( state.compressedResources, */
+/* 				     "shaders\\mainVert.spv", */
+/* 				     &vsize ); */
+/*     vk->pipe = createPipeline( vk, frag, fsize, vert, vsize ); */
+/*     vk->framebuffers = createFramebuffers( vk, vk->pipe, vk->swap ); */
+/*     if( !vk->tex ) */
+/*       createTextures( vk ); */
+/*     createUBOs( vk ); */
+/*     createDescriptorPool( vk ); */
+/*     createDescriptorSets( vk ); */
+/*     vk->commandBuffers = createCommandBuffers( vk ); */
 
-  }
-}
+/*   } */
+/* } */
 
-void unbuild( plvkInstance* vk ){
-  if( vk->swap ){
-    vkDeviceWaitIdle( vk->device );
-    destroyFramebuffers( vk, vk->framebuffers );
-    destroyDescriptorPool( vk );
-    destroyPipeline( vk, vk->pipe );
-    destroyCommandBuffers( vk, vk->commandBuffers );
-    destroyUBOs( vk );
-    destroySwap( vk, vk->swap );
-  }
-}
+/* void unbuild( plvkInstance* vk ){ */
+/*   if( vk->swap ){ */
+/*     vkDeviceWaitIdle( vk->device ); */
+/*     destroyFramebuffers( vk, vk->framebuffers ); */
+/*     destroyDescriptorPool( vk ); */
+/*     destroyPipeline( vk, vk->pipe ); */
+/*     destroyCommandBuffers( vk, vk->commandBuffers ); */
+/*     destroyUBOs( vk ); */
+/*     destroySwap( vk, vk->swap ); */
+/*   } */
+/* } */
 void plvkEnd( plvkInstance* vk ){
   vkDeviceWaitIdle( vk->device );
 
@@ -136,18 +136,18 @@ void plvkEnd( plvkInstance* vk ){
       p = q;
     }
   }
-  {
-    u32 ni = vk->swap->numImages;
-    unbuild( vk );
-    destroyPoolAndFences( vk, ni );
-  }
+  /* { */
+  /*   u32 ni = vk->swap->numImages; */
+  /*   unbuild( vk ); */
+  /*   destroyPoolAndFences( vk, ni ); */
+  /* } */
   destroyTextures( vk );
-  destroyLayout( vk );
-  destroySurface( vk, vk->surface );
+  //destroyLayout( vk );
+  //  destroySurface( vk, vk->surface );
 #ifdef DEBUG
   vk->vkDestroyDebugUtilsMessengerEXT( vk->instance, vk->vkdbg, NULL );
 #endif
-  destroyDescriptorSets( vk );
+  //destroyDescriptorSets( vk );
   destroyInstance( vk );
   if( vk->gui )
     wend( vk->gui );
@@ -159,10 +159,12 @@ plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, char* title, int x, int y,
 			int width, int height ){
   plvkInstance* vk = createInstance( whichGPU, debugLevel, title, x, y,
 				     width, height );
-  
-  vk->surface = createSurface( vk );
-  vk->layout = createLayout( vk );
-  rebuild( vk );
+  createPool( vk );
+  createUBOs( vk ); 
+
+  //  vk->surface = createSurface( vk );
+  //  vk->layout = createLayout( vk );
+  //rebuild( vk );
 
   
 
@@ -179,6 +181,8 @@ void updateGPUstate( plvkInstance* vk, f32 time ){
   vkUnmapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory );
 }
 void draw( void ){
+        mark;
+
   static u64 firstDrawTime = 0;
   if( !firstDrawTime )
     firstDrawTime = tickCount();
@@ -191,28 +195,33 @@ void draw( void ){
       t = t->next;
     }
   }
-  if( vk->swap ){
+  mark;
+  if( 1 ){//vk->swap ){
     static u64 lasttime = 0;
     static u64 frameCount = 0;
 
-    vkWaitForFences( vk->device, 1, &vk->fences[ vk->currentImage ], VK_TRUE,
-		     UINT64_MAX );
+    /* vkWaitForFences( vk->device, 1, &vk->fences[ vk->currentImage ], VK_TRUE, */
+    /* 		     UINT64_MAX ); */
 
-    uint32_t index = 0;
+    // uint32_t index = 0;
     /* if( VK_ERROR_OUT_OF_DATE_KHR == */
     /* 	vkAcquireNextImageKHR( vk->device, vk->swap->swap, 1000000000, */
     /* 			       vk->imageAvailables[ vk->currentImage ], */
     /* 			       VK_NULL_HANDLE, &index ) ) */
     /*   recreate = 1; */
     /* else{ */
-    {      if( vk->fenceSyncs[ index ] != VK_NULL_HANDLE )
-	vkWaitForFences( vk->device, 1, &vk->fenceSyncs[ index ], VK_TRUE,
-			 UINT64_MAX );
-      vk->fenceSyncs[ index ] = vk->fences[ vk->currentImage ];
+      mark;
+      {      //if( vk->fenceSyncs[ index ] != VK_NULL_HANDLE )
+	//	vkWaitForFences( vk->device, 1, &vk->fenceSyncs[ index ], VK_TRUE,
+	//		 UINT64_MAX );
+      mark;
+      //vk->fenceSyncs[ index ] = vk->fences[ vk->currentImage ];
+      mark;
 
       updateGPUstate( vk, 0.1 * (f32)( tickCount() - firstDrawTime )
 		      / (f32)tickFrequency() );
       
+      mark;
       VkSubmitInfo submitInfo = {};
       submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -246,7 +255,7 @@ void draw( void ){
       /* 	  vkQueuePresentKHR( vk->queue, &presentation ) ) */
       /* 	recreate = 1; */
       ++vk->currentImage;
-      vk->currentImage %= vk->swap->numImages; 
+      vk->currentImage %= 2;//vk->swap->numImages; 
     }
     if( state.fps ){
       if( 0 == lasttime  )
@@ -270,6 +279,8 @@ void draw( void ){
     //unbuild( vk );
     //rebuild( vk );
   }
+        mark;
+
 }
 bool plvkeventLoop( plvkInstance* vk ){
   bool quit = 0;
@@ -299,6 +310,7 @@ void plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 		     bool displayed, const char* title, int x, int y,
 		     plvkAttachable** attachments, u64 numAttachments ){  
   plvkUnit* top = vk->unit;
+  
   vk->unit = createUnit( vk, width, height, (VkFormat)format, components,
 			 fragName, vertName, displayed, title, x, y,
 			 attachments, numAttachments );

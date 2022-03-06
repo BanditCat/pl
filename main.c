@@ -197,6 +197,7 @@ int main( int argc, const char** argv ){
   plvkInstancep vk = plvkInit( gpu, debugLevel, TARGET, x, y, w, h );
     // BUGBUG test units
   {
+    
     plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
       plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ) };
     plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,

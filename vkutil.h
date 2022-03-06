@@ -101,7 +101,7 @@ typedef struct plvkIntance{
   u32 numQueues;
   VkQueue queue;
   VkQueueFamilyProperties* queueFamilies;
-  plvkSurface* surface;
+  //  plvkSurface* surface;
   
   u32 gpuIndex;
   VkPhysicalDevice gpu;
@@ -114,7 +114,7 @@ typedef struct plvkIntance{
   u32 debugLevel;
 
   // swap WILL BE NULL IF NOT RENDERING!!!
-  plvkSwapchain* swap;
+  //  plvkSwapchain* swap;
   VkFramebuffer* framebuffers; 
 
   VkExtent2D extent;
@@ -131,12 +131,12 @@ typedef struct plvkIntance{
 
   plvkTexture* tex;
   
-  // A linked list of attachable items, which will be referenced by index during
+  // A linked list of attachable items, which will be referenced during
   // unit creation. Adding a texture, unit, or compute unit puts a new element
   // of this list at the front, pushingdown all other elements.
   plvkAttachable* attachables;
   
-  VkDescriptorSetLayout layout;
+  //  VkDescriptorSetLayout layout;
   plvkBuffer** UBOs;
   gpuState UBOcpumem;
   VkDescriptorPool descriptorPool;
@@ -256,8 +256,8 @@ void destroyFramebuffers( plvkInstance* vk, VkFramebuffer* fbs );
 VkCommandBuffer* createCommandBuffers( plvkInstance* vk );
 void destroyCommandBuffers( plvkInstance* vk, VkCommandBuffer* cbs );
 // Command pool, semaphores, and fences.
-void createPoolAndFences( plvkInstance* vk );
-void destroyPoolAndFences( plvkInstance* vk, u32 numImages );
+void createPool( plvkInstance* vk );
+void destroyPool( plvkInstance* vk, u32 numImages );
 plvkSurface* createSurface( plvkInstance* vk );
 void destroySurface( plvkInstance* vk, plvkSurface* surf );
 void createTextures( plvkInstance* vk );
