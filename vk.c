@@ -112,8 +112,7 @@ void rebuild( plvkInstance* vk ){
   }
 }
 
-void unbuild( plvkInstance* vkp ){
-  plvkInstance* vk = vkp;
+void unbuild( plvkInstance* vk ){
   if( vk->swap ){
     vkDeviceWaitIdle( vk->device );
     destroyFramebuffers( vk, vk->framebuffers );
@@ -124,10 +123,10 @@ void unbuild( plvkInstance* vkp ){
     destroySwap( vk, vk->swap );
   }
 }
-void plvkEnd( plvkInstance* vkp ){
-  plvkInstance* vk = vkp;
+void plvkEnd( plvkInstance* vk ){
   vkDeviceWaitIdle( vk->device );
 
+  destroyAttachables( vk );
   // Destroy units.
   {
     plvkUnit* p = vk->unit;
@@ -139,7 +138,7 @@ void plvkEnd( plvkInstance* vkp ){
   }
   {
     u32 ni = vk->swap->numImages;
-    unbuild( vkp );
+    unbuild( vk );
     destroyPoolAndFences( vk, ni );
   }
   destroyTextures( vk );
@@ -185,7 +184,6 @@ void draw( void ){
     firstDrawTime = tickCount();
   plvkInstance* vk = state.vk;
   bool recreate = 0;
-  // BUGBUG
   {
     plvkUnit* t = vk->unit;
     while( t ){
@@ -298,10 +296,19 @@ void plvkHide( plvkInstance* vk ){
 void plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 		     VkFormat format, u8 components,
 		     const char* fragName, const char* vertName,
-		     bool displayed, const char* title, int x, int y ){
-  
+		     bool displayed, const char* title, int x, int y,
+		     plvkAttachable** attachments, u64 numAttachments ){  
   plvkUnit* top = vk->unit;
   vk->unit = createUnit( vk, width, height, (VkFormat)format, components,
-			 fragName, vertName, displayed, title, x, y );
+			 fragName, vertName, displayed, title, x, y,
+			 attachments, numAttachments );
   vk->unit->next = top;
+}
+plvkAttachable* plvkAddTexture( plvkInstance* vk, const char* name ){
+  new( ret, plvkAttachable );
+  ret->type = PLVK_ATTACH_TEXTURE;
+  ret->texture = loadTexturePPM( vk, name );
+  ret->next = vk->attachables;
+  vk->attachables = ret;
+  return ret;
 }

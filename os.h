@@ -43,8 +43,8 @@ void end( int ecode );
 // Convienience macros.
 #define new( x, y ) y* x = (y*)( mem( sizeof( y ) ) )
 #define newe( y ) ( (y*)( mem( sizeof( y ) ) ) )
-#define newa( x, y, s ) y* x = (y*)( mem( sizeof( y ) * s ) )
-#define newae( y, s ) ( (y*)( mem( sizeof( y )  * s ) ) )
+#define newa( x, y, s ) y* x = (y*)( mem( sizeof( y ) * ( s ) ) )
+#define newae( y, s ) ( (y*)( mem( sizeof( y ) * ( s ) ) ) )
 
 // Allocate permanent memory. The memory that is freed at end.
 void* memperm( u64 size );
@@ -58,7 +58,7 @@ void memfreeSimple( void* p );
 // otherwise 0.
 bool memCheck( bool show );
 // Verifies addr is allocated, otherwise dies with a message about double frees.
-void memCheckAddr( void* addr, const char* tag );
+void memCheckAddr( void* addr, const char* tag, bool show );
 void* memDebug( u64 size, const char* tag );
 void memfreeDebug( void* p, const char* tag );
 #define mem( s ) memDebug( s, AT )

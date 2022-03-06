@@ -486,10 +486,6 @@ VkExtent2D getUnitExtent( plvkUnit* u ){
       wh.height = u->display->surface
 	->surfaceCapabilities.minImageExtent.height;
   }
-  if( wh.width > u->size.width )
-    wh.width = u->size.width;
-  if( wh.height > u->size.height )
-    wh.height = u->size.height;
   return wh;
 }
 
@@ -1144,6 +1140,8 @@ plvkTexture* loadTexturePPM( plvkInstance* vk, const char* name ){
   u64 sz;
   const char* t = htFindString( state.compressedResources,
 				name, &sz );
+  if( !t )
+    die( "Bad ppm name." );
   const char* e = t + sz;
   if( sz < 200 )
     die( "ppm too small." );
@@ -1201,6 +1199,19 @@ void destroyTexture( plvkInstance* vk, plvkTexture* tex ){
 }
 
 
+void destroyAttachables( plvkInstance* vk ){
+  plvkAttachable* p = vk->attachables;
+  while( p ){
+    if( p->type == PLVK_ATTACH_TEXTURE )
+      destroyTexture( vk, p->texture );
+    plvkAttachable* t = p;
+    p = p->next;
+    memfree( t );
+  }
+  vk->attachables = p;
+}
+
+
 void destroyTextures( plvkInstance* vk ){
   destroyTexture( vk, vk->tex );
 }
@@ -1254,35 +1265,52 @@ VkSampler createSampler( plvkInstance* vk ){
 
 
 VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
-  VkDescriptorSetLayout ret;
-  VkDescriptorSetLayoutBinding ubodslb = {};
-  ubodslb.binding = 0;
-  ubodslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  ubodslb.descriptorCount = 1;
-  ubodslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
+  u64 na = u->numAttachments + 1;
+  if( !u->display )
+    ++na;
+  u64 count = 0;
+  VkDescriptorSetLayoutBinding* bindings = newae( VkDescriptorSetLayoutBinding,
+						  na );
   VkDescriptorSetLayoutCreateInfo dslci = {};
   dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  dslci.bindingCount = 2;
+  VkDescriptorSetLayout ret;
 
-  VkDescriptorSetLayoutBinding texdslb = {};
-  if( !u->display ){
-    texdslb.binding = 1;
-    texdslb.descriptorCount = 1;
-    texdslb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    texdslb.pImmutableSamplers = NULL;
-    texdslb.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-  }else
-    dslci.bindingCount = 1;
-
+  bindings[ 0 ].binding = count;
+  bindings[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  bindings[ 0 ].descriptorCount = 1;
+  bindings[ 0 ].stageFlags = VK_SHADER_STAGE_ALL;
+  ++count;
   
-  VkDescriptorSetLayoutBinding ls[ 2 ] = { ubodslb, texdslb };
-  dslci.pBindings = ls;
+  if( !u->display ){
+    bindings[ 1 ].binding = count;
+    bindings[ 1 ].descriptorCount = 1;
+    bindings[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[ 1 ].pImmutableSamplers = NULL;
+    bindings[ 1 ].stageFlags = VK_SHADER_STAGE_ALL;
+    ++count;
+  }
+
+  for( u64 i = 0; i < u->numAttachments; ++i ){
+    if( u->attachments[ i ]->type == PLVK_ATTACH_TEXTURE ){
+      bindings[ count ].binding = count;
+      bindings[ count ].descriptorCount = 1;
+      bindings[ count ].descriptorType =
+	VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      bindings[ count ].pImmutableSamplers = NULL;
+      bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
+      ++count;
+    }
+  }
+    
+  dslci.bindingCount = count;
+  
+  dslci.pBindings = bindings;
   
   if( VK_SUCCESS != vkCreateDescriptorSetLayout( u->instance->device, &dslci,
 						 NULL, &ret ) ) 
     die( "Descriptor layout creation failed." );
-
+  memfree( bindings );
+  
   return ret;
 }
 
@@ -1319,13 +1347,14 @@ void createUnitPoolAndFences( plvkUnit* u ){
 }
 
 
-plvkPipeline* createUnitPipeline( plvkUnit* u, const char* fragName,
-				  const char* vertName ){
+plvkPipeline* createUnitPipeline( plvkUnit* u ){
   VkShaderModule displayVertexShader;
   VkShaderModule displayFragmentShader;
   u64 fsize, vsize;
-  const char* frag = htFindString( state.compressedResources, fragName, &fsize );
-  const char* vert = htFindString( state.compressedResources, vertName, &vsize );
+  const char* frag = htFindString( state.compressedResources, u->fragName,
+				   &fsize );
+  const char* vert = htFindString( state.compressedResources, u->vertName,
+				   &vsize );
   if( !frag || !vert )
     die( "Bad shader name." );
   displayFragmentShader = createModule( u->instance->device, frag, fsize );
@@ -1582,7 +1611,7 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     die( "Descriptor pool creation failed." );
 
   newa( tl, VkDescriptorSetLayout, 2 );
-
+  
   for( u32 i = 0; i < 2; ++i )
     tl[ i ] = u->layout;
   
@@ -1595,20 +1624,16 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
   if( VK_SUCCESS != vkAllocateDescriptorSets( u->instance->device, &dsai,
 					      u->descriptorSets ) )
     die( "Failed to allocate descriptor sets." );
-
+  
   for( u32 i = 0; i < 2; ++i ){
     VkDescriptorBufferInfo bufferInfo = {};
     bufferInfo.buffer = u->instance->UBOs[ i ]->buffer;
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof( gpuState );
 
-    VkDescriptorImageInfo imageInfo = {};
-    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    if( !u->display ){
-      imageInfo.imageView = u->textures[ i ^ 1 ]->view;
-      imageInfo.sampler = u->textures[ i ^ 1 ]->sampler;
-    }
-    VkWriteDescriptorSet dwrites[ 2 ] = {};
+    
+    VkWriteDescriptorSet* dwrites = newae( VkWriteDescriptorSet,
+					   u->numAttachments + 2 );
     dwrites[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     dwrites[ 0 ].dstSet = u->descriptorSets[ i ];
     dwrites[ 0 ].dstBinding = 0;
@@ -1617,22 +1642,46 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     dwrites[ 0 ].descriptorCount = 1;
     dwrites[ 0 ].pBufferInfo = &bufferInfo;
     
-    dwrites[ 1 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    dwrites[ 1 ].dstSet = u->descriptorSets[ i ];
-    dwrites[ 1 ].dstBinding = 1;
-    dwrites[ 1 ].dstArrayElement = 0;
-    dwrites[ 1 ].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    dwrites[ 1 ].descriptorCount = 1;
-    dwrites[ 1 ].pImageInfo = &imageInfo;
+    VkDescriptorImageInfo* imageInfo = newae( VkDescriptorImageInfo,
+					      u->numAttachments + 1 );
+    u64 count = 1;
+    if( !u->display ){
+      imageInfo[ 0 ].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      imageInfo[ 0 ].imageView = u->textures[ i ^ 1 ]->view;
+      imageInfo[ 0 ].sampler = u->textures[ i ^ 1 ]->sampler;
 
-    if( u->display )
-      vkUpdateDescriptorSets( u->instance->device,
-			      1,
-			      dwrites, 0, NULL );
-    else
-      vkUpdateDescriptorSets( u->instance->device,
-			      sizeof( dwrites ) / sizeof( dwrites[ 0 ] ),
-			      dwrites, 0, NULL );
+      dwrites[ count ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      dwrites[ count ].dstSet = u->descriptorSets[ i ];
+      dwrites[ count ].dstBinding = count;
+      dwrites[ count ].dstArrayElement = 0;
+      dwrites[ count ].descriptorType =
+	VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      dwrites[ count ].descriptorCount = 1;
+      dwrites[ count ].pImageInfo = imageInfo;
+      ++count;
+    }
+    for( u64 j = 0; j < u->numAttachments; ++j ){
+      if( u->attachments[ j ]->type == PLVK_ATTACH_TEXTURE ){
+	imageInfo[ count - 1 ].imageLayout =
+	  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo[ count - 1 ].imageView = u->attachments[ j ]->texture->view;
+	imageInfo[ count - 1 ].sampler = u->attachments[ j ]->texture->sampler;
+	dwrites[ count ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	dwrites[ count ].dstSet = u->descriptorSets[ i ];
+	dwrites[ count ].dstBinding = count;
+	dwrites[ count ].dstArrayElement = 0;
+	dwrites[ count ].descriptorType =
+	  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	dwrites[ count ].descriptorCount = 1;
+	dwrites[ count ].pImageInfo = imageInfo + count - 1;
+	++count;
+      }
+    }
+                
+    vkUpdateDescriptorSets( u->instance->device, count, dwrites, 0, NULL );
+    
+    memfree( imageInfo );
+    memfree( dwrites );
   }
   memfree( tl );
 }
@@ -1682,77 +1731,90 @@ void createUnitSurface( plvkUnit* u ){
 void createUnitSwap( plvkUnit* u, bool vsync ){
   VkExtent2D wh = getUnitExtent( u );
   u->size = wh;
-  new( ret, plvkSwapchain );
-  VkPresentModeKHR pm = vsync ? VK_PRESENT_MODE_FIFO_KHR :
-    VK_PRESENT_MODE_IMMEDIATE_KHR ;
-  VkSwapchainCreateInfoKHR scci = {};
-  scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-  scci.surface = u->display->surface->surface;
-  scci.minImageCount = 2;
-  scci.imageFormat = u->display->surface->theSurfaceFormat.format;
-  scci.imageColorSpace = u->display->surface->theSurfaceFormat.colorSpace;
-  scci.imageExtent = wh;
-  scci.imageArrayLayers = 1;
-  scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-    | VK_IMAGE_USAGE_SAMPLED_BIT ;
-  scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  scci.queueFamilyIndexCount = 0;
-  scci.pQueueFamilyIndices = NULL;
-  scci.preTransform = u->display->surface
-    ->surfaceCapabilities.currentTransform;
-  scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-  scci.presentMode = pm;
-  scci.clipped = VK_TRUE;
-  scci.oldSwapchain = VK_NULL_HANDLE;
-  if( VK_SUCCESS !=
-      vkCreateSwapchainKHR( u->instance->device, &scci, NULL, &ret->swap ) )
-    die( "Swapchain creation failed." );
-  vkGetSwapchainImagesKHR( u->instance->device, ret->swap, &ret->numImages,
-			   NULL );
-  ret->images = newae( VkImage, ret->numImages );
-  vkGetSwapchainImagesKHR( u->instance->device, ret->swap, &ret->numImages,
-			   ret->images );
-  // Image views.
-  ret->imageViews = newae( VkImageView, ret->numImages );
-  for( u32 i = 0; i < ret->numImages; ++i ){
-    ret->imageViews[ i ] = createView( u->instance, ret->images[ i ],
-				       u->display->surface
-				       ->theSurfaceFormat.format );
+  plvkSwapchain* ret = NULL;
+  if( u->size.width && u->size.height ){
+    ret = newe( plvkSwapchain );
+    VkPresentModeKHR pm = vsync ? VK_PRESENT_MODE_FIFO_KHR :
+      VK_PRESENT_MODE_IMMEDIATE_KHR ;
+    VkSwapchainCreateInfoKHR scci = {};
+    scci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    scci.surface = u->display->surface->surface;
+    scci.minImageCount = 2;
+    scci.imageFormat = u->display->surface->theSurfaceFormat.format;
+    scci.imageColorSpace = u->display->surface->theSurfaceFormat.colorSpace;
+    scci.imageExtent = wh;
+    scci.imageArrayLayers = 1;
+    scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      | VK_IMAGE_USAGE_SAMPLED_BIT ;
+    scci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    scci.queueFamilyIndexCount = 0;
+    scci.pQueueFamilyIndices = NULL;
+    scci.preTransform = u->display->surface
+      ->surfaceCapabilities.currentTransform;
+    scci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    scci.presentMode = pm;
+    scci.clipped = VK_TRUE;
+    scci.oldSwapchain = VK_NULL_HANDLE;
+    if( VK_SUCCESS !=
+	vkCreateSwapchainKHR( u->instance->device, &scci, NULL, &ret->swap ) )
+      die( "Swapchain creation failed." );
+    vkGetSwapchainImagesKHR( u->instance->device, ret->swap, &ret->numImages,
+			     NULL );
+    ret->images = newae( VkImage, ret->numImages );
+    vkGetSwapchainImagesKHR( u->instance->device, ret->swap, &ret->numImages,
+			     ret->images );
+    // Image views.
+    ret->imageViews = newae( VkImageView, ret->numImages );
+    for( u32 i = 0; i < ret->numImages; ++i ){
+      ret->imageViews[ i ] = createView( u->instance, ret->images[ i ],
+					 u->display->surface
+					 ->theSurfaceFormat.format );
+    }
   }
   u->display->swap = ret;
+}
+
+
+void buildUnit( plvkUnit* u ){
+  if( u->display )
+    createUnitSwap( u, true );
+  createUnitPoolAndFences( u );
+  u->pipe = createUnitPipeline( u );
+  createUnitFramebuffers( u ); 
+  createUnitDescriptorSetsAndPool( u );
+  createUnitCommandBuffers( u );
 }
 
 
 plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      VkFormat format, u8 components,
 		      const char* fragName, const char* vertName,
-		      bool displayed, const char* title, int x, int y ){
+		      bool displayed, const char* title, int x, int y,
+		      plvkAttachable** attachments, u64 numAttachments ){
   vkDeviceWaitIdle( vk->device );
   new( ret, plvkUnit );
   if( displayed )
     ret->display = newe( plvkUnitDisplay );
   ret->instance = vk;
+  ret->numAttachments = numAttachments;
+  ret->attachments = copy( attachments,
+			   sizeof( plvkAttachable* ) * numAttachments );
   ret->size.width = width;
   ret->size.height = height;
   ret->layout = createUnitDescriptorLayout( ret );
   ret->format = format;
+  ret->fragName = fragName;
+  ret->vertName = vertName;
   if( displayed ){
     ret->display->gui = wsetup( title, x, y, width, height );
     // This sets u->format
     createUnitSurface( ret );
-    createUnitSwap( ret, true );
     // BUGBUG
     guiShow( ret->display->gui );
   } else
     createUnitTextures( ret, format, components );
-  createUnitPoolAndFences( ret );
-  
-  ret->pipe = createUnitPipeline( ret, fragName, vertName );
-  createUnitFramebuffers( ret ); 
-  createUnitDescriptorSetsAndPool( ret );
-
-  createUnitCommandBuffers( ret );
-
+  buildUnit( ret );
+    
   return ret;
 }
 
@@ -1834,26 +1896,36 @@ void destroyUnitSwap( plvkUnit* u ){
 }
 
 
+// Only useful for displayed units.
+void unbuildUnit( plvkUnit* u ){
+  vkDeviceWaitIdle( u->instance->device ); 
+  destroyUnitDescriptorSetsAndPool( u );
+  destroyUnitFramebuffers( u );
+  destroyUnitPipeline( u );
+  destroyUnitCommandBuffers( u );
+  if( u->display )
+    destroyUnitSwap( u );
+  destroyUnitPoolAndFences( u );
+}
+
 void destroyUnit( plvkUnit* u ){
   vkDeviceWaitIdle( u->instance->device ); 
+  unbuildUnit( u );
+  //destroyUnitDescriptorSetsAndPool( u );
+  //destroyUnitFramebuffers( u );
+  //destroyUnitPipeline( u );
   if( u->display ){
-    destroyUnitSwap( u );
+    //destroyUnitSwap( u );
     destroyUnitSurface( u );
     wend( u->display->gui );
     memfree( u->display );
   }
-  destroyUnitCommandBuffers( u );
-  destroyUnitDescriptorSetsAndPool( u );
-  destroyUnitFramebuffers( u );
+  destroyUnitDescriptorLayout( u );
   if( u->textures[ 0 ] )
     destroyUnitTextures( u );
-  destroyUnitPipeline( u );
-  destroyUnitPoolAndFences( u );
-  destroyUnitDescriptorLayout( u );
+  memfree( u->attachments );
   memfree( u );
 }
-
-
 
 
 const u8* copyUnit( plvkUnit* u ){
@@ -1882,59 +1954,66 @@ const u8* copyUnit( plvkUnit* u ){
 
 
 void tickUnit( plvkUnit* u ){
-  u32 ping = u->pingpong;
-  u32 pong = ping ^ 1;
-  uint32_t index = 0;
+  if( u->display )
+    u->size = getUnitExtent( u );
+  if( u->size.width && u->size.height ){
+    u32 ping = u->pingpong;
+    u32 pong = ping ^ 1;
+    uint32_t index = 0;
 
-  vkWaitForFences( u->instance->device, 1, &u->fences[ pong ], VK_TRUE,
-		   UINT64_MAX );
-  bool draw = 0;
-  if( u->display ){
-    VkResult res =
-      vkAcquireNextImageKHR( u->instance->device, u->display->swap->swap,
-			     100000000,
-			     u->display->imageAvailables[ ping ],
-			     VK_NULL_HANDLE, &index );
-    if( res == VK_SUCCESS || res == VK_NOT_READY || res == VK_TIMEOUT ||
-	res == VK_SUBOPTIMAL_KHR )
-      draw = 1;
-   
-  }
+    vkWaitForFences( u->instance->device, 1, &u->fences[ pong ], VK_TRUE,
+		     UINT64_MAX );
+    bool draw = 0;
+    if( u->display && u->display->swap ){
+      VkResult res =
+	vkAcquireNextImageKHR( u->instance->device, u->display->swap->swap,
+			       100000000,
+			       u->display->imageAvailables[ ping ],
+			       VK_NULL_HANDLE, &index );
+      if( res == VK_SUCCESS || res == VK_NOT_READY || res == VK_TIMEOUT ||
+	  res == VK_SUBOPTIMAL_KHR )
+	draw = 1;
+      if( res == VK_ERROR_OUT_OF_DATE_KHR ){
+	unbuildUnit( u );
+	buildUnit( u );
+      }
+    }
 
-  VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
-  VkSemaphore finishedSemaphores[] = 
-    { u->display->renderCompletes[ ping ] };  
-  VkSemaphore semaphores[] = { u->display->imageAvailables[ ping ] };
-  VkPipelineStageFlags stages[] =
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
+    VkSemaphore finishedSemaphores[] = 
+      { u->display->renderCompletes[ ping ] };  
+    VkSemaphore semaphores[] = { u->display->imageAvailables[ ping ] };
+    VkPipelineStageFlags stages[] =
       { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-  if( u->display && draw ){
-    submitInfo.pWaitDstStageMask = stages;
-    submitInfo.pWaitSemaphores = semaphores;
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = finishedSemaphores;
+    if( u->display && draw ){
+      submitInfo.pWaitDstStageMask = stages;
+      submitInfo.pWaitSemaphores = semaphores;
+      submitInfo.waitSemaphoreCount = 1;
+      submitInfo.signalSemaphoreCount = 1;
+      submitInfo.pSignalSemaphores = finishedSemaphores;
+    }
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &u->commandBuffers[ ping ];
+    vkResetFences( u->instance->device, 1, &u->fences[ ping ] );
+
+    if( VK_SUCCESS != vkQueueSubmit( u->instance->queue, 1, &submitInfo,
+				     u->fences[ ping ] ) )
+      die( "Queue submition failed." );
+
+    if( u->display && draw ){
+      VkPresentInfoKHR presentation = {};
+      presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+      presentation.waitSemaphoreCount = 1;
+      presentation.pWaitSemaphores = finishedSemaphores;
+      VkSwapchainKHR swaps[] = { u->display->swap->swap };
+      presentation.swapchainCount = 1;
+      presentation.pSwapchains = swaps;
+      presentation.pImageIndices = &index;
+      vkQueuePresentKHR( u->instance->queue, &presentation );
+    }
+
+    u->pingpong = pong;
   }
-
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &u->commandBuffers[ ping ];
-  vkResetFences( u->instance->device, 1, &u->fences[ ping ] );
-
-  if( VK_SUCCESS != vkQueueSubmit( u->instance->queue, 1, &submitInfo,
-				   u->fences[ ping ] ) )
-    die( "Queue submition failed." );
-
-  if( u->display && draw ){
-    VkPresentInfoKHR presentation = {};
-    presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentation.waitSemaphoreCount = 1;
-    presentation.pWaitSemaphores = finishedSemaphores;
-    VkSwapchainKHR swaps[] = { u->display->swap->swap };
-    presentation.swapchainCount = 1;
-    presentation.pSwapchains = swaps;
-    presentation.pImageIndices = &index;
-    vkQueuePresentKHR( u->instance->queue, &presentation );
-  }
-
-  u->pingpong = pong;
 }

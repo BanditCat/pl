@@ -1,4 +1,4 @@
- ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //     Copyright (c) Jon DuBois 2022. This file is part of pseudoluminal.     //
 //                                                                            //
 // This program is free software: you can redistribute it and/or modify       //
@@ -21,10 +21,11 @@
 #version 460
 
 layout(location = 0) in vec2 fragTexCoord;
+layout(binding = 2) uniform sampler2D texSampler;
 
 layout(location = 0) out vec4 outColor;
 
 void main(){ 
-   outColor = vec4( 0.8, 0.2, 0.0, 1.0 );
+   outColor = vec4( 0.8, 0.2, 0.0, 1.0 ) + texture( texSampler, fragTexCoord );
 }
  

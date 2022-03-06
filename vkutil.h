@@ -74,6 +74,19 @@ typedef struct plvkTexture{
   VkImageView view;
   VkSampler sampler;
 } plvkTexture;
+typedef struct plvkAttachable{
+  enum {
+    PLVK_ATTACH_INVALID = 0,
+    PLVK_ATTACH_TEXTURE = 1,
+    PLVK_ATTACH_UNIT = 2,
+    PLVK_ATTACH_BUFFER = 3
+  } type;
+  union {
+    plvkTexture* texture;
+  };
+  struct plvkAttachable* next;
+} plvkAttachable;
+
 // Instance wide state.
 typedef struct plvkIntance{
   VkInstance instance;
@@ -118,6 +131,11 @@ typedef struct plvkIntance{
 
   plvkTexture* tex;
   
+  // A linked list of attachable items, which will be referenced by index during
+  // unit creation. Adding a texture, unit, or compute unit puts a new element
+  // of this list at the front, pushingdown all other elements.
+  plvkAttachable* attachables;
+  
   VkDescriptorSetLayout layout;
   plvkBuffer** UBOs;
   gpuState UBOcpumem;
@@ -153,6 +171,11 @@ typedef struct plvkUnit{
   // The logical device and instance that this unit will be run on. These
   // must remain valid throughout the lifetime of the plvkUnit.
   plvkInstance* instance;
+  const char* fragName;
+  const char* vertName;
+
+  u64 numAttachments;
+  plvkAttachable** attachments;
 
   VkExtent2D size;
 
@@ -185,13 +208,14 @@ typedef struct plvkUnit{
   VkFormat format;
 } plvkUnit;
 
-// ubofunc may be NULL. title, x and y are ignored if displayed is false.
+// title, x and y are ignored if displayed is false.
 // title may be NULL if displayed == 0. format is ignored for displayed units,
-// the format will be whatever the surfae supports.
+// the format will be whatever the surface supports.
 plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      VkFormat format, u8 components,
 		      const char* fragName, const char* vertName,
-		      bool displayed, const char* title, int x, int y );
+		      bool displayed, const char* title, int x, int y,
+		      plvkAttachable** attachments, u64 numAttachments );
 
 void destroyUnit( plvkUnit* u );
 void tickUnit( plvkUnit* u );
@@ -240,3 +264,6 @@ void createTextures( plvkInstance* vk );
 void destroyTextures( plvkInstance* vk );  
 VkImageView createView( plvkInstance* vk, VkImage img, VkFormat format );
 VkSampler createSampler( plvkInstance* vk );
+plvkTexture* loadTexturePPM( plvkInstance* vk, const char* name );
+void destroyAttachables( plvkInstance* vk );
+

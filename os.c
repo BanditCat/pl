@@ -30,7 +30,7 @@
 
 #define MEMCONST1 0x12FEEDFACEC0FFEE
 #define MEMCONST2 0xDEADBEEFDEADBEEF
-#define MEMCONST3 254
+#define MEMCONST3 '~'
 #ifdef DEBUG
 typedef struct memtag{
   const char* tag;
@@ -142,10 +142,10 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
-  if( state.compressedResources )
-    htDestroy( state.compressedResources );
   if( !state.ended ){
     state.ended = 1;
+    if( state.compressedResources )
+      htDestroy( state.compressedResources );
     if( state.vk )
       plvkEnd( state.vk );
 #ifdef DEBUG
@@ -198,11 +198,24 @@ bool memCheck( bool show ){
   }
   return 1;      
 }
-void memCheckAddr( void* addrarg, const char* tag ){
+void memCheckAddr( void* addrarg, const char* tag, bool show ){
   void* addr = ((char*)addrarg) - sizeof( memtag );
+  memtag* mt = addr;
+  if( show ){
+    print( "\nMemCheck on address " );
+    printIntInBase( (u64)addrarg, 16 );
+    print( " {\n  tag:   " );
+    print( mt->tag );
+    print( "\n  check: " );
+    printIntInBase( mt->check, 16 );
+    print( "\n  size:  " );
+    printInt( mt->size );
+    print( "\n  raw:   " );
+    printRaw( (const char*)( mt + 1 ), mt->size - sizeof( memtag ) );
+    print( "\n}\n" );
+  }
   for( u64 i = 0; i < state.memindicesAllocated; ++i ){
     if( state.memallocd[ i ] == addr ){
-      memtag* mt = addr;
       const u8* mtc = (const u8*)mt;
       if( MEMCONST1 != ( mt->check ^ mt->index ) ){
 	die( tag );
@@ -255,7 +268,7 @@ void* memDebug( u64 size, const char* tag ){
 }
 void memfreeDebug( void* vp, const char* tag ){
   memc;
-  memCheckAddr( vp, tag );
+  memCheckAddr( vp, tag, 0 );
   char* p = ((char*)vp) - sizeof( memtag );
   memtag* mt = (memtag*)p;
   if( MEMCONST1 != ( mt->check ^ mt->index ) )
