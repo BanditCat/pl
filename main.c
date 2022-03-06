@@ -201,7 +201,13 @@ int main( int argc, const char** argv ){
       plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ) };
     plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 		    "shaders\\unitFrag.spv", "shaders\\mainVert.spv",
-		    true, "foo", 300, 300, atts, 2 );
+		    true, "foo", 300, 300, atts, 1 );
+    plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+		    "shaders\\unitFrag.spv", "shaders\\mainVert.spv",
+		    true, "foo", 400, 400, atts + 1, 1 );
+    plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+		    "shaders\\unit2Frag.spv", "shaders\\mainVert.spv",
+		    true, "foo", 200, 400, atts, 2 );
   }
 
   // Main loop.

@@ -199,13 +199,13 @@ void draw( void ){
 		     UINT64_MAX );
 
     uint32_t index = 0;
-    if( VK_ERROR_OUT_OF_DATE_KHR ==
-	vkAcquireNextImageKHR( vk->device, vk->swap->swap, 1000000000,
-			       vk->imageAvailables[ vk->currentImage ],
-			       VK_NULL_HANDLE, &index ) )
-      recreate = 1;
-    else{
-      if( vk->fenceSyncs[ index ] != VK_NULL_HANDLE )
+    /* if( VK_ERROR_OUT_OF_DATE_KHR == */
+    /* 	vkAcquireNextImageKHR( vk->device, vk->swap->swap, 1000000000, */
+    /* 			       vk->imageAvailables[ vk->currentImage ], */
+    /* 			       VK_NULL_HANDLE, &index ) ) */
+    /*   recreate = 1; */
+    /* else{ */
+    {      if( vk->fenceSyncs[ index ] != VK_NULL_HANDLE )
 	vkWaitForFences( vk->device, 1, &vk->fenceSyncs[ index ], VK_TRUE,
 			 UINT64_MAX );
       vk->fenceSyncs[ index ] = vk->fences[ vk->currentImage ];
@@ -216,37 +216,37 @@ void draw( void ){
       VkSubmitInfo submitInfo = {};
       submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-      VkSemaphore semaphores[] = { vk->imageAvailables[ vk->currentImage ] };
-      VkPipelineStageFlags stages[] =
-	{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-      submitInfo.waitSemaphoreCount = 1;
-      submitInfo.pWaitSemaphores = semaphores;
-      submitInfo.pWaitDstStageMask = stages;
-      submitInfo.commandBufferCount = 1;
-      submitInfo.pCommandBuffers = &vk->commandBuffers[ index ];
-      VkSemaphore finishedSemaphores[] =
-	{ vk->renderCompletes[ vk->currentImage ] };
-      submitInfo.signalSemaphoreCount = 1;
-      submitInfo.pSignalSemaphores = finishedSemaphores;
-      vkResetFences( vk->device, 1, &vk->fences[ vk->currentImage ] );
-      if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo,
-				       vk->fences[ vk->currentImage ] ) )
-	die( "Queue submition failed." );
+      /* VkSemaphore semaphores[] = { vk->imageAvailables[ vk->currentImage ] }; */
+      /* VkPipelineStageFlags stages[] = */
+      /* 	{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }; */
+      /* submitInfo.waitSemaphoreCount = 1; */
+      /* submitInfo.pWaitSemaphores = semaphores; */
+      /* submitInfo.pWaitDstStageMask = stages; */
+      /* submitInfo.commandBufferCount = 1; */
+      /* submitInfo.pCommandBuffers = &vk->commandBuffers[ index ]; */
+      /* VkSemaphore finishedSemaphores[] = */
+      /* 	{ vk->renderCompletes[ vk->currentImage ] }; */
+      /* submitInfo.signalSemaphoreCount = 1; */
+      /* submitInfo.pSignalSemaphores = finishedSemaphores; */
+      /* vkResetFences( vk->device, 1, &vk->fences[ vk->currentImage ] ); */
+      /* if( VK_SUCCESS != vkQueueSubmit( vk->queue, 1, &submitInfo, */
+      /* 				       vk->fences[ vk->currentImage ] ) ) */
+      /* 	die( "Queue submition failed." ); */
 
-      VkPresentInfoKHR presentation = {};
-      presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+      /* VkPresentInfoKHR presentation = {}; */
+      /* presentation.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR; */
 
-      presentation.waitSemaphoreCount = 1;
-      presentation.pWaitSemaphores = finishedSemaphores;
-      VkSwapchainKHR swaps[] = { vk->swap->swap };
-      presentation.swapchainCount = 1;
-      presentation.pSwapchains = swaps;
-      presentation.pImageIndices = &index;
-      if( VK_ERROR_OUT_OF_DATE_KHR ==
-	  vkQueuePresentKHR( vk->queue, &presentation ) )
-	recreate = 1;
+      /* presentation.waitSemaphoreCount = 1; */
+      /* presentation.pWaitSemaphores = finishedSemaphores; */
+      /* VkSwapchainKHR swaps[] = { vk->swap->swap }; */
+      /* presentation.swapchainCount = 1; */
+      /* presentation.pSwapchains = swaps; */
+      /* presentation.pImageIndices = &index; */
+      /* if( VK_ERROR_OUT_OF_DATE_KHR == */
+      /* 	  vkQueuePresentKHR( vk->queue, &presentation ) ) */
+      /* 	recreate = 1; */
       ++vk->currentImage;
-      vk->currentImage %= vk->swap->numImages;
+      vk->currentImage %= vk->swap->numImages; 
     }
     if( state.fps ){
       if( 0 == lasttime  )
@@ -267,8 +267,8 @@ void draw( void ){
   }else
     recreate = 1;
   if( recreate ){
-    unbuild( vk );
-    rebuild( vk );
+    //unbuild( vk );
+    //rebuild( vk );
   }
 }
 bool plvkeventLoop( plvkInstance* vk ){
