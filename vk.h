@@ -227,7 +227,8 @@ plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 			  VkFormat format, u8 components,
 			  const char* fragName, const char* vertName,
 			  bool displayed, const char* title, int x, int y,
-			  plvkAttachable** attachments, u64 numAttachments );
+			  plvkAttachable** attachments, u64 numAttachments,
+			  u64 drawSize );
 
 void draw( void );
 

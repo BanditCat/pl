@@ -20,26 +20,23 @@
 
 #version 460
 
-layout(binding = 0) uniform UniformBufferObject {
-    float time;
-} ubo; 
+precision mediump int;
+precision mediump float;
 
-layout(location = 0) out vec2 fragTexCoord;
-layout(location = 1) out vec2 pos;
+layout(location = 0) in vec2 fragTexCoord;
+layout(location = 1) in vec2 pos;
 
-vec2 positions[ 4 ] = vec2[](
-			   vec2( -1.0, -1.0 ), 
-			   vec2( 1.0, -1.0 ),
-			   vec2( -1.0, 1.0 ),
-			   vec2( 1.0, 1.0 )
-			   );
-
+layout(location = 0) out vec4 outColor;
 
 void main(){
-  gl_Position = vec4( positions[ gl_VertexIndex ], 0.0, 1.0); 
-  pos = gl_Position.xy;
-  
-  fragTexCoord = vec2( vec4( mod( ubo.time * 10, 2.0 ) - 1.0, 0.0, 0.0, 0.0 ) + gl_Position );
-  
+  vec2 c = pos;
+  vec2 x = c + fragTexCoord;
+  for( int i = 0; i < 27000; ++i ){
+    vec2 t = x;
+    x = vec2( t.x * t.x - t.y * t.y, 2 * t.x * t.y );
+    x += c;
+  }
+  float cl = dot( x, x );
+  outColor = vec4( cl, cl, cl, 1.0 );
 }
-
+ 

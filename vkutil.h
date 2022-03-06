@@ -193,6 +193,9 @@ typedef struct plvkUnit{
   plvkUnit* next;
 
   VkFormat format;
+
+  // The size of the draw command.
+  u64 drawSize;
 } plvkUnit;
 
 // title, x and y are ignored if displayed is false.
@@ -202,7 +205,8 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      VkFormat format, u8 components,
 		      const char* fragName, const char* vertName,
 		      bool displayed, const char* title, int x, int y,
-		      plvkAttachable** attachments, u64 numAttachments );
+		      plvkAttachable** attachments, u64 numAttachments,
+		      u64 drawSize );
 
 void destroyUnit( plvkUnit* u );
 void tickUnit( plvkUnit* u );

@@ -1082,7 +1082,7 @@ void createUnitCommandBuffers( plvkUnit* u ){
 			     VK_PIPELINE_BIND_POINT_GRAPHICS,
 			     u->pipe->pipelineLayout, 0, 1,
 			     &u->descriptorSets[ i ], 0, NULL );
-    vkCmdDraw( u->commandBuffers[ i ], 3, 1, 0, 0 );
+    vkCmdDraw( u->commandBuffers[ i ], u->drawSize, 1, 0, 0 );
     vkCmdEndRenderPass( u->commandBuffers[ i ] );
     if( VK_SUCCESS != vkEndCommandBuffer( u->commandBuffers[ i ] ) )
       die( "Command buffer recording failed." );
@@ -1290,13 +1290,16 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      VkFormat format, u8 components,
 		      const char* fragName, const char* vertName,
 		      bool displayed, const char* title, int x, int y,
-		      plvkAttachable** attachments, u64 numAttachments ){
+		      plvkAttachable** attachments, u64 numAttachments,
+		      u64 drawSize ){  
+
   vkDeviceWaitIdle( vk->device );
   new( ret, plvkUnit );
   if( displayed )
     ret->display = newe( plvkUnitDisplay );
   ret->instance = vk;
   ret->numAttachments = numAttachments;
+  ret->drawSize = drawSize;
   ret->attachments = copy( attachments,
 			   sizeof( plvkAttachable* ) * numAttachments );
   ret->size.width = width;
