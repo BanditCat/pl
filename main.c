@@ -18,6 +18,8 @@
 // Main entry point.                                                          //
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <windows.h>
+
 #include "pl.h"
 #include "os.h"
 #include "prog.h"
@@ -185,32 +187,33 @@ int main( int argc, const char** argv ){
 #endif
   plvkInstance* vk = plvkInit( gpu, debugLevel );
     
-    plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
-      plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
+  plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
+    plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
     plvkAddTexture( vk, "graphics\\lc.ppm" )};
-    plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
-				   "shaders\\unitFrag.spv",
-				   "shaders\\mainVert.spv",
-				   true, "foo", 300, 300, atts, 1, 4 );
-    plvkUnit* u2 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
-				    "shaders\\unitFrag.spv",
-				    "shaders\\mainVert.spv",
-				    true, "foo", 400, 400, atts + 1, 1, 4 );
-    plvkUnit* u3 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
-				    "shaders\\unit2Frag.spv",
-				    "shaders\\mainVert.spv",
-				    true, "foo", 200, 400, atts + 1, 2, 4 );
-    plvkUnit* u4 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
-				    "shaders\\unit3Frag.spv",
-				    "shaders\\mainVert.spv",
-				    true, "foofff", 200, 400, NULL, 0, 4 );
+  plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+				 "shaders\\unitFrag.spv",
+				 "shaders\\mainVert.spv",
+				 true, "foo", 300, 300, atts, 1, 4 );
+  plvkUnit* u2 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+				  "shaders\\unitFrag.spv",
+				  "shaders\\mainVert.spv",
+				  true, "foo", 400, 400, atts + 1, 1, 4 );
+  plvkUnit* u3 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+				  "shaders\\unit2Frag.spv",
+				  "shaders\\mainVert.spv",
+				  true, "foo", 200, 400, atts + 1, 2, 4 );
+  plvkUnit* u4 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
+				  "shaders\\unit3Frag.spv",
+				  "shaders\\mainVert.spv",
+				  true, "foofff", 200, 400, NULL, 0, 4 );
   plvkShow( u1 );
   plvkShow( u2 );
   plvkShow( u3 );
   plvkShow( u4 );
   // Main loop.
+  plvkStartRendering( vk );
   while( plvkeventLoop( vk ) )
-    draw();
+    ;
   // Run tests.
 #ifdef DEBUG
   testPrograms();

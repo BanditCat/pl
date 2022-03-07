@@ -24,6 +24,14 @@
 #include "vk.h"
 
 
+unsigned long renderThread( void* vkp ){
+  plvkInstance* vk = (plvkInstance*)vkp;
+  while( vk->valid ){
+    draw();
+  }
+  return 0;
+}
+
 
 void plvkPrintInitInfo( void ){
   plvkInstance* vk = state.vk;
@@ -73,6 +81,7 @@ void plvkPrintGPUs( void ){
 }
 
 void plvkEnd( plvkInstance* vk ){
+  vk->valid = 0;
   vkDeviceWaitIdle( vk->device );
 
   destroyAttachables( vk );
@@ -101,6 +110,7 @@ plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel ){
   createPool( vk );
   createUBOs( vk ); 
 
+  vk->valid = 1;
   return vk;
 }
 void updateGPUstate( plvkInstance* vk, f32 time ){
@@ -195,4 +205,7 @@ plvkAttachable* plvkAddTexture( plvkInstance* vk, const char* name ){
   ret->next = vk->attachables;
   vk->attachables = ret;
   return ret;
+}
+void plvkStartRendering( plvkInstance* vk ){
+  thread( renderThread, vk );
 }

@@ -139,6 +139,8 @@ typedef struct plvkIntance{
   FPDEFINE( vkDestroyDebugUtilsMessengerEXT );
   VkDebugUtilsMessengerEXT vkdbg;
 #endif
+
+  bool valid;
 } plvkInstance;
 #define PLVKINSTANCE_DEFINED 1
 

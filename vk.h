@@ -239,3 +239,4 @@ bool plvkeventLoop( plvkInstance* p );
 
 void plvkShow( plvkUnit* u );
 void plvkHide( plvkUnit* u );
+void plvkStartRendering( plvkInstance* vk );

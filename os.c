@@ -589,3 +589,6 @@ const char* uncompressOrDie( const char* data, u64 dataSize, u64* outSize ){
   CloseCompressor( decomp );
   return buf;
 }
+void thread( unsigned long (*func)( void* ), void* p ){
+  CreateThread( NULL, 0, func, p, 0, NULL );
+}

@@ -102,3 +102,4 @@ char* loadFileOrDie( const char* filename, u32* outSize );
 void writeFileOrDie( const char* filename, const char* data, u64 dataSize );
 const char* compressOrDie( const char* data, u64 dataSize, u64* outSize );
 const char* uncompressOrDie( const char* data, u64 dataSize, u64* outSize );
+void thread( unsigned long (*func)( void* ), void* p );

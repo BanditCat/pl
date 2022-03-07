@@ -20,9 +20,6 @@
 
 #version 460
 
-precision mediump int;
-precision mediump float;
-
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 1) in vec2 pos;
 
@@ -31,7 +28,7 @@ layout(location = 0) out vec4 outColor;
 void main(){
   vec2 c = pos;
   vec2 x = c + fragTexCoord;
-  for( int i = 0; i < 27000; ++i ){
+  for( int i = 0; i < 200; ++i ){
     vec2 t = x;
     x = vec2( t.x * t.x - t.y * t.y, 2 * t.x * t.y );
     x += c;

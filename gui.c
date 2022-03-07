@@ -29,6 +29,7 @@
 #include "vk.h"
 #include "gui.h"
 #include "os.h"
+#include "util.h"
 
 #define className ( L"plClassName" )
 
@@ -105,10 +106,9 @@ bool weventLoop( guiInfo* vp ){
   guiInfo* p = (guiInfo*)vp;
   guiState* gui = p->gui;
   MSG msg;
-
-  while( PeekMessage( &msg, p->handle, 0, 0, PM_REMOVE )){
+  while( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE )){
     TranslateMessage( &msg );
-    DispatchMessageW( &msg );
+    DispatchMessage( &msg );
   }
   return !gui->quit;
 }
@@ -120,8 +120,7 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
     return (LONG)DefWindowProc( hWnd, uMsg, wParam, lParam );
   guiState* gui = p->gui;
   RECT r;
-
-  switch(uMsg){
+  switch( uMsg ){
   case WM_SIZE:
     p->clientWidth = p->width = LOWORD( lParam );
     p->clientHeight = p->height = HIWORD( lParam );
