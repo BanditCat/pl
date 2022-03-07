@@ -82,6 +82,7 @@ void plvkPrintGPUs( void ){
 
 void plvkEnd( plvkInstance* vk ){
   vk->valid = 0;
+  WaitForMultipleObjects( 1, &vk->renderThread, TRUE, INFINITE );
   vkDeviceWaitIdle( vk->device );
 
   destroyAttachables( vk );
@@ -142,7 +143,7 @@ void draw( void ){
 		  / (f32)tickFrequency() );
       
   ++vk->currentImage;
-  vk->currentImage %= 2;//vk->swap->numImages; 
+  vk->currentImage %= 2;
   if( state.fps ){
     if( 0 == lasttime  )
       lasttime = tickCount();
@@ -207,5 +208,5 @@ plvkAttachable* plvkAddTexture( plvkInstance* vk, const char* name ){
   return ret;
 }
 void plvkStartRendering( plvkInstance* vk ){
-  thread( renderThread, vk );
+  vk->renderThread = thread( renderThread, vk );
 }
