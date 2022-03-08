@@ -121,6 +121,13 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
   guiState* gui = p->gui;
   RECT r;
   switch( uMsg ){
+  case WM_PAINT:
+    static PAINTSTRUCT ps;
+    plvkPauseRendering( state.vk );
+    BeginPaint( hWnd, &ps );
+    EndPaint( hWnd, &ps );
+    plvkResumeRendering( state.vk );
+    return 0;
   case WM_SIZING:
     r = *( (RECT*)lParam );
     p->clientWidth = p->width = r.left - r.right;;
@@ -131,7 +138,7 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
     p->y = r.top;
     p->width = r.left - r.right;
     p->height = r.top - r.bottom;
-    plvkTickRendering( state.vk );
+    PostMessage( hWnd, WM_PAINT, 0, 0 );
     return 0;
   case WM_SIZE:
     p->clientWidth = p->width = LOWORD( lParam );
@@ -144,7 +151,7 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
 		      | WS_CLIPCHILDREN, FALSE );
     p->width = r.right - r.left;
     p->height = r.bottom - r.top;
-    plvkTickRendering( state.vk );
+    PostMessage( hWnd, WM_PAINT, 0, 0 );
     return 0;
 
   case WM_MOVE:
@@ -158,7 +165,7 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
 		      | WS_CLIPCHILDREN, FALSE );
     p->x = r.left;
     p->y = r.top;
-    plvkTickRendering( state.vk );
+    PostMessage( hWnd, WM_PAINT, 0, 0 );
     return 0;
 
 

@@ -218,9 +218,11 @@ void plvkStopRendering( plvkInstance* vk ){
   vkDeviceWaitIdle( vk->device );
 }
 void plvkPauseRendering( plvkInstance* vk ){
-  setSemaphore( vk->rendering );
+  waitSemaphore( vk->rendering );
 }
 void plvkResumeRendering( plvkInstance* vk ){
+  releaseSemaphore( vk->rendering );
+  waitSemaphore( vk->rendering );
   releaseSemaphore( vk->rendering );
 }
 void plvkTickRendering( plvkInstance* vk ){
