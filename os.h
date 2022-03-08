@@ -103,4 +103,10 @@ void writeFileOrDie( const char* filename, const char* data, u64 dataSize );
 const char* compressOrDie( const char* data, u64 dataSize, u64* outSize );
 const char* uncompressOrDie( const char* data, u64 dataSize, u64* outSize );
 typedef void* HANDLE;
+// Threads.
 HANDLE thread( unsigned long (*func)( void* ), void* p );
+HANDLE makeSemaphore( void );
+void waitSemaphore( HANDLE h );
+void setSemaphore( HANDLE h );
+void releaseSemaphore( HANDLE h );
+bool keyDown( u8 code );

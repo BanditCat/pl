@@ -477,21 +477,6 @@ fileNames* getFileNames( const char* nameArg ){
   return ret;
 }
 void delFileNames( fileNames* dn ){
-  /* print( "Directory: " ); print( dn->dirName ); printl( "[" ); */
-  /* print( "  number of files: " ); printInt( dn->numFiles ); endl(); */
-  /* print( "  number of dirs: " ); printInt( dn->numDirs ); endl(); */
-  /* printl( "  dirs[" ); */
-  /* for( u64 i = 0; i < dn->numDirs; ++i ){ */
-  /*   print( "    " ); printl( dn->subDirs[ i ]->dirName ); */
-  /* } */
-  /* printl( "  ]" ); */
-  /* printl( "  files[" ); */
-  /* for( u64 i = 0; i < dn->numFiles; ++i ){ */
-  /*   print( "    " ); print( dn->files[ i ] ); */
-  /*   print( ", size " ); printInt( dn->fileSizes[ i ] ); endl(); */
-  /* } */
-  /* printl( "  ]\n]" ); */
-
   for( u64 i = 0; i < dn->numDirs; ++i )
     delFileNames( dn->subDirs[ i ] );
   for( u64 i = 0; i < dn->numFiles; ++i )
@@ -591,4 +576,23 @@ const char* uncompressOrDie( const char* data, u64 dataSize, u64* outSize ){
 }
 HANDLE thread( unsigned long (*func)( void* ), void* p ){
   return CreateThread( NULL, 0, func, p, 0, NULL );
+}
+HANDLE makeSemaphore( void ){
+  HANDLE ret = CreateSemaphoreW( NULL, 1, 9999, NULL );
+  return ret;
+}
+void waitSemaphore( HANDLE h ){
+  WaitForSingleObject( h, INFINITE );
+}
+void setSemaphore( HANDLE h ){
+  WaitForSingleObject( h, 0 );
+}
+void releaseSemaphore( HANDLE h ){
+  ReleaseSemaphore( h, 1, NULL );
+}
+bool keyDown( u8 code ){
+  if( GetAsyncKeyState( code ) & 32768 )
+    return 1;
+  else
+    return 0;
 }

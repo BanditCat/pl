@@ -212,8 +212,12 @@ int main( int argc, const char** argv ){
   plvkShow( u4 );
   // Main loop.
   plvkStartRendering( vk );
-  while( plvkeventLoop( vk ) )
-    ;
+  while( plvkeventLoop( vk ) ){
+    if( keyDown( 'M' ) )
+      plvkPauseRendering( vk );
+    if( keyDown( 'N' ) )
+     plvkResumeRendering( vk );
+  }
   // Run tests.
 #ifdef DEBUG
   testPrograms();

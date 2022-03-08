@@ -240,3 +240,7 @@ bool plvkeventLoop( plvkInstance* p );
 void plvkShow( plvkUnit* u );
 void plvkHide( plvkUnit* u );
 void plvkStartRendering( plvkInstance* vk );
+void plvkStopRendering( plvkInstance* vk );
+void plvkPauseRendering( plvkInstance* vk );
+void plvkResumeRendering( plvkInstance* vk );
+void plvkTickRendering( plvkInstance* vk );

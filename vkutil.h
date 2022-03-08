@@ -142,6 +142,7 @@ typedef struct plvkIntance{
 
   bool valid;
   HANDLE renderThread;
+  HANDLE rendering;
 } plvkInstance;
 #define PLVKINSTANCE_DEFINED 1
 

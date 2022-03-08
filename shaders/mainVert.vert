@@ -21,18 +21,18 @@
 #version 460
 
 layout(binding = 0) uniform UniformBufferObject {
-    float time;
+  float time;
 } ubo; 
 
 layout(location = 0) out vec2 fragTexCoord;
 layout(location = 1) out vec2 pos;
 
 vec2 positions[ 4 ] = vec2[](
-			   vec2( -1.0, -1.0 ), 
-			   vec2( 1.0, -1.0 ),
-			   vec2( -1.0, 1.0 ),
-			   vec2( 1.0, 1.0 )
-			   );
+			     vec2( -1.0, -1.0 ), 
+			     vec2( 1.0, -1.0 ),
+			     vec2( -1.0, 1.0 ),
+			     vec2( 1.0, 1.0 )
+			     );
 
 
 void main(){

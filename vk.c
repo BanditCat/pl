@@ -27,7 +27,9 @@
 unsigned long renderThread( void* vkp ){
   plvkInstance* vk = (plvkInstance*)vkp;
   while( vk->valid ){
+    waitSemaphore( vk->rendering );
     draw();
+    releaseSemaphore( vk->rendering );
   }
   return 0;
 }
@@ -81,9 +83,7 @@ void plvkPrintGPUs( void ){
 }
 
 void plvkEnd( plvkInstance* vk ){
-  vk->valid = 0;
-  WaitForMultipleObjects( 1, &vk->renderThread, TRUE, INFINITE );
-  vkDeviceWaitIdle( vk->device );
+  plvkStopRendering( vk );
 
   destroyAttachables( vk );
   // Destroy units.
@@ -111,7 +111,6 @@ plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel ){
   createPool( vk );
   createUBOs( vk ); 
 
-  vk->valid = 1;
   return vk;
 }
 void updateGPUstate( plvkInstance* vk, f32 time ){
@@ -208,5 +207,23 @@ plvkAttachable* plvkAddTexture( plvkInstance* vk, const char* name ){
   return ret;
 }
 void plvkStartRendering( plvkInstance* vk ){
+  vk->valid = 1;
+  vk->rendering = makeSemaphore();
+
   vk->renderThread = thread( renderThread, vk );
+}
+void plvkStopRendering( plvkInstance* vk ){
+  vk->valid = 0;
+  WaitForSingleObject( vk->renderThread, INFINITE );
+  vkDeviceWaitIdle( vk->device );
+}
+void plvkPauseRendering( plvkInstance* vk ){
+  setSemaphore( vk->rendering );
+}
+void plvkResumeRendering( plvkInstance* vk ){
+  releaseSemaphore( vk->rendering );
+}
+void plvkTickRendering( plvkInstance* vk ){
+  waitSemaphore( vk->rendering );
+  releaseSemaphore( vk->rendering );
 }

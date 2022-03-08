@@ -1242,7 +1242,7 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
     scci.minImageCount = 2;
     scci.imageFormat = u->display->surface->theSurfaceFormat.format;
     scci.imageColorSpace = u->display->surface->theSurfaceFormat.colorSpace;
-    scci.imageExtent = wh;
+    scci.imageExtent = u->size;
     scci.imageArrayLayers = 1;
     scci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
       | VK_IMAGE_USAGE_SAMPLED_BIT ;
