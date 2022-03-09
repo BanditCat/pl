@@ -83,6 +83,7 @@ typedef struct plvkAttachable{
   } type;
   union {
     plvkTexture* texture;
+    plvkUnit* unit;
   };
   struct plvkAttachable* next;
 } plvkAttachable;

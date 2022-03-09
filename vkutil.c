@@ -796,6 +796,14 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
       bindings[ count ].pImmutableSamplers = NULL;
       bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
       ++count;
+    } else if( u->attachments[ i ]->type == PLVK_ATTACH_UNIT ){
+      bindings[ count ].binding = count;
+      bindings[ count ].descriptorCount = 1;
+      bindings[ count ].descriptorType =
+	VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      bindings[ count ].pImmutableSamplers = NULL;
+      bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
+      ++count;
     }
   }
     
@@ -1175,6 +1183,22 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	dwrites[ count ].descriptorCount = 1;
 	dwrites[ count ].pImageInfo = imageInfo + count - 1;
 	++count;
+      }else if( u->attachments[ j ]->type == PLVK_ATTACH_UNIT ){
+	imageInfo[ count - 1 ].imageLayout =
+	  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo[ count - 1 ].imageView =
+	  u->attachments[ j ]->unit->textures[ i ]->view;
+	imageInfo[ count - 1 ].sampler =
+	  u->attachments[ j ]->unit->textures[ i ]->sampler;
+	dwrites[ count ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	dwrites[ count ].dstSet = u->descriptorSets[ i ];
+	dwrites[ count ].dstBinding = count;
+	dwrites[ count ].dstArrayElement = 0;
+	dwrites[ count ].descriptorType =
+	  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	dwrites[ count ].descriptorCount = 1;
+	dwrites[ count ].pImageInfo = imageInfo + count - 1;
+	++count;
       }
     }
                 
@@ -1479,22 +1503,23 @@ void tickUnit( plvkUnit* u ){
 	buildUnit( u );
       }
     }
-      
+        
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO; 
-    VkSemaphore finishedSemaphores[] = 
-      { u->display->renderCompletes[ ping ] };  
-    VkSemaphore semaphores[] = { u->display->imageAvailables[ ping ] };
+    VkSemaphore finishedSemaphores[ 1 ] = {};
+    VkSemaphore semaphores[ 1 ] = {};
     VkPipelineStageFlags stages[] =
       { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     if( u->display && draw ){
+      finishedSemaphores[ 0 ] = u->display->renderCompletes[ ping ];  
+      semaphores[ 0 ] = u->display->imageAvailables[ ping ];
       submitInfo.pWaitDstStageMask = stages;
       submitInfo.pWaitSemaphores = semaphores;
       submitInfo.waitSemaphoreCount = 1;
       submitInfo.signalSemaphoreCount = 1;
       submitInfo.pSignalSemaphores = finishedSemaphores;
     }
-
+  
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &u->commandBuffers[ ping ];
     vkResetFences( u->instance->device, 1, &u->fences[ ping ] );
@@ -1514,7 +1539,7 @@ void tickUnit( plvkUnit* u ){
       presentation.pImageIndices = &index;
       vkQueuePresentKHR( u->instance->queue, &presentation );
     }
-      
+        
     u->pingpong = pong;
   }
 }

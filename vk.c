@@ -173,7 +173,7 @@ bool plvkeventLoop( plvkInstance* vk ){
   return !quit;
 }
 
-
+ 
 void plvkShow( plvkUnit* u ){
   if( u->display )
     guiShow( u->display->gui );
@@ -195,6 +195,13 @@ plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
   vk->unit = createUnit( vk, width, height, (VkFormat)format, components,
 			 fragName, vertName, displayed, title, x, y,
 			 attachments, numAttachments, drawSize );
+  if( !displayed ){
+    new( att, plvkAttachable );
+    att->type = PLVK_ATTACH_UNIT;
+    att->unit = vk->unit;
+    att->next = vk->attachables;
+    vk->attachables = att;
+  }
   vk->unit->next = top;
   return vk->unit;
 }
@@ -222,10 +229,17 @@ void plvkPauseRendering( plvkInstance* vk ){
 }
 void plvkResumeRendering( plvkInstance* vk ){
   releaseSemaphore( vk->rendering );
-  waitSemaphore( vk->rendering );
-  releaseSemaphore( vk->rendering );
 }
 void plvkTickRendering( plvkInstance* vk ){
   waitSemaphore( vk->rendering );
   releaseSemaphore( vk->rendering );
+}
+plvkAttachable* plvkGetAttachable( plvkInstance* vk, u32 n ){
+  if( !vk->attachables )
+    return vk->attachables;
+  plvkAttachable* ret = vk->attachables;
+  u32 c = n;
+  while( c-- && ret->next )
+    ret = ret->next;
+  return ret;
 }
