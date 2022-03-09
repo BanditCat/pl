@@ -206,7 +206,7 @@ int main( int argc, const char** argv ){
   plvkUnit* u3 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit2Frag.spv",
 				  "shaders\\mainVert.spv",
-				  true, "foo", 200, 400, atts + 2, 2, 4 );
+				  true, "foo", 200, 400, atts + 1, 2, 4 );
   plvkUnit* u4 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit3Frag.spv",
 				  "shaders\\mainVert.spv",

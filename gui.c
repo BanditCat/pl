@@ -86,7 +86,6 @@ guiInfo* wsetup( const char* title, int x, int y, int width, int height ){
   //  SetWindowLong( ret->handle, GWL_STYLE, 0 );
   SetWindowLongPtr( ret->handle, 0, (LONG_PTR)ret );
   gui->hDC = GetDC( ret->handle );
-
   return ret;
 }
 
@@ -121,25 +120,6 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
   guiState* gui = p->gui;
   RECT r;
   switch( uMsg ){
-  case WM_PAINT:
-    static PAINTSTRUCT ps;
-    plvkPauseRendering( state.vk );
-    BeginPaint( hWnd, &ps );
-    EndPaint( hWnd, &ps );
-    plvkResumeRendering( state.vk );
-    return 0;
-  case WM_SIZING:
-    r = *( (RECT*)lParam );
-    p->clientWidth = p->width = r.left - r.right;;
-    p->clientHeight = p->height = r.top - r.bottom;
-    AdjustWindowRect( &r, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS
-		      | WS_CLIPCHILDREN, FALSE );
-    p->x = r.left;
-    p->y = r.top;
-    p->width = r.left - r.right;
-    p->height = r.top - r.bottom;
-    PostMessage( hWnd, WM_PAINT, 0, 0 );
-    return 0;
   case WM_SIZE:
     p->clientWidth = p->width = LOWORD( lParam );
     p->clientHeight = p->height = HIWORD( lParam );
@@ -151,9 +131,8 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
 		      | WS_CLIPCHILDREN, FALSE );
     p->width = r.right - r.left;
     p->height = r.bottom - r.top;
-    PostMessage( hWnd, WM_PAINT, 0, 0 );
+    plvkTickRendering( state.vk );
     return 0;
-
   case WM_MOVE:
     p->x = LOWORD( lParam );
     p->y = HIWORD( lParam );
@@ -165,10 +144,11 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
 		      | WS_CLIPCHILDREN, FALSE );
     p->x = r.left;
     p->y = r.top;
-    PostMessage( hWnd, WM_PAINT, 0, 0 );
+    plvkTickRendering( state.vk );
     return 0;
-
-
+  case WM_GETMINMAXINFO:
+    plvkTickRendering( state.vk );
+    return 0;
   case WM_CLOSE:
     gui->quit = 1;
     return 0;

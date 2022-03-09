@@ -122,7 +122,6 @@ void updateGPUstate( plvkInstance* vk, f32 time ){
   vkUnmapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory );
 }
 void draw( void ){
-
   static u64 firstDrawTime = 0;
   if( !firstDrawTime )
     firstDrawTime = tickCount();
