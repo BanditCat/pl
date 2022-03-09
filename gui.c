@@ -146,13 +146,13 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
     p->y = r.top;
     plvkTickRendering( state.vk );
     return 0;
-  case WM_GETMINMAXINFO:
-    plvkTickRendering( state.vk );
-    return 0;
   case WM_CLOSE:
     gui->quit = 1;
     return 0;
   }
+  if( uMsg == WM_GETMINMAXINFO ||
+      uMsg == WM_NCCALCSIZE )
+    plvkTickRendering( state.vk );
   return (LONG)DefWindowProc( hWnd, uMsg, wParam, lParam );
 }
 
