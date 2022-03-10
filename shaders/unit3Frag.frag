@@ -20,20 +20,14 @@
 
 #version 460
 
-layout(location = 0) in vec2 fragTexCoord;
-layout(location = 1) in vec2 pos;
-
 layout(location = 0) out vec4 outColor;
+layout(location = 0) in vec2 pos;
+layout(binding = 1) uniform sampler2D texSampler;
 
 void main(){
-  vec2 c = pos;
-  vec2 x = c + fragTexCoord;
-  for( int i = 0; i < 2000; ++i ){
-    vec2 t = x;
-    x = vec2( t.x * t.x - t.y * t.y, 2 * t.x * t.y );
-    x += c;
-  }
-  float cl = dot( x, x );
-  outColor = vec4( cl, cl, cl, 1.0 );
+  if( dot( pos, pos ) > 1 )
+    discard;
+  else
+    outColor = vec4( 0.1, 1.0, 0.4, 1.0 );
 }
  

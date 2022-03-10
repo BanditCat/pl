@@ -20,38 +20,28 @@
 
 #version 460
 
-layout(location = 0) in vec2 fragTexCoord;
-layout(location = 1) in vec2 pos;
-
+layout(binding = 0) uniform UniformBufferObject {
+  float time;
+} ubo; 
 layout(binding = 1) uniform sampler2D texSampler;
-layout(location = 0) out vec4 outColor;
 
+layout(location = 0) out vec2 pos;
 
+const vec2 positions[ 3 ] = vec2[](
+				   vec2( -0.5, -0.28867513459 ), 
+				   vec2( 0.5, -0.28867513459 ),
+				   vec2( 0, 0.57735026919 )
+				   );
 
 void main(){
-  ivec2 size = textureSize( texSampler, 0 );
-  ivec2 spos = ivec2( pos * size );
-  vec4 self = texelFetch( texSampler, spos, 0 );
-  vec2 selfPos = self.xy;
-  vec2 selfVel = self.zw;
-  vec2 force = vec2( 0, 0 );
-  ivec2 tpos;
-  for( tpos.x = 0; tpos.x < size.x; ++tpos.x ){
-    for( tpos.y = 0; tpos.y < size.y; ++tpos.y ){
-      if( spos != tpos ){
- 
-	vec2 other = texelFetch( texSampler, tpos, 0 ).xy;
-	vec2 diff = other - selfPos;
-	float d = sqrt( dot( diff, diff ) );
-	d = clamp( d, 0.001, 4 );
-	force += diff / ( d * d * d );
-      }
-    }
-    selfVel += force * 0.0000001;
-    selfPos += selfVel * 0.0001;
-  }
-      
-  outColor = clamp( vec4( selfPos, selfVel ), -1.0, 1.0 );
-  
+   ivec2 size = textureSize( texSampler, 0 );
+  int tindex =  gl_VertexIndex / 3;
+  int pindex = gl_VertexIndex % 3;
+  ivec2 tpos = ivec2( tindex % size.x, tindex / size.x );
+  pos = positions[ int( pindex ) ] * 3.46410161514;
+  gl_Position =
+    vec4( texelFetch( texSampler, tpos, 0 ).xy +
+	   pos * 0.004,
+	  0.0, 1.0 );
 }
- 
+

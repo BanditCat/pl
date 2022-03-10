@@ -402,35 +402,6 @@ void destroyModule( plvkInstance* vk, VkShaderModule sm ){
 }
 
 
-VkDescriptorSetLayout createLayout( plvkInstance* vk ){
-  VkDescriptorSetLayout ret;
-  VkDescriptorSetLayoutBinding ubodslb = {};
-  ubodslb.binding = 0;
-  ubodslb.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  ubodslb.descriptorCount = 1;
-  ubodslb.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-  VkDescriptorSetLayoutBinding texdslb = {};
-  texdslb.binding = 1;
-  texdslb.descriptorCount = 1;
-  texdslb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  texdslb.pImmutableSamplers = NULL;
-  texdslb.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-  VkDescriptorSetLayoutBinding ls[ 2 ] = { ubodslb, texdslb };
-  
-  VkDescriptorSetLayoutCreateInfo dslci = {};
-  dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-  dslci.bindingCount = sizeof( ls ) / sizeof( ls[ 0 ] ) ;
-  dslci.pBindings = ls;
-  if( VK_SUCCESS != vkCreateDescriptorSetLayout( vk->device, &dslci, NULL,
-						 &ret ) ) 
-    die( "Descriptor layout creation failed." );
-
-  return ret;
-}
- 
-
 void createPool( plvkInstance* vk ){
   // Command pool.
   VkCommandPoolCreateInfo cpci = {};
@@ -451,7 +422,7 @@ void createImage( plvkInstance* vk, plvkTexture* tex );
 void copyBufferToImage( plvkInstance* vk, plvkBuffer* buf, plvkTexture* tex );
 void transitionImageLayout( plvkInstance* vk, plvkTexture* tex,
 			    VkImageLayout oldLayout, VkImageLayout newLayout );
-plvkTexture* createTextureImage( plvkInstance* vk, u8* pixels, u32 width,
+plvkTexture* createTextureImage( plvkInstance* vk, const u8* pixels, u32 width,
 				 u32 height, u8 fragmentSize, VkFormat format,
 				 bool writable ){
   new( ret, plvkTexture );
@@ -741,8 +712,8 @@ VkSampler createSampler( plvkInstance* vk ){
   vkGetPhysicalDeviceProperties( vk->gpu, &properties );
   VkSamplerCreateInfo samplerInfo = {};
   samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-  samplerInfo.magFilter = VK_FILTER_LINEAR;
-  samplerInfo.minFilter = VK_FILTER_LINEAR;
+  samplerInfo.magFilter = VK_FILTER_NEAREST;
+  samplerInfo.minFilter = VK_FILTER_NEAREST;
   samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
   samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
   samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -785,6 +756,7 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
     bindings[ 1 ].pImmutableSamplers = NULL;
     bindings[ 1 ].stageFlags = VK_SHADER_STAGE_ALL;
     ++count;
+    mark;
   }
 
   for( u64 i = 0; i < u->numAttachments; ++i ){
@@ -888,7 +860,7 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
 
   VkPipelineInputAssemblyStateCreateInfo piasci = {};
   piasci.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-  piasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+  piasci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   piasci.primitiveRestartEnable = VK_FALSE;
 
   VkViewport viewport = {};
@@ -955,7 +927,7 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
   VkAttachmentDescription colorAttachment = {};
   colorAttachment.format = u->format;
   colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -1022,15 +994,18 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
 }
 
 
-void createUnitTextures( plvkUnit* u, VkFormat format, u8 components ){
-  u64 sz = u->size.width * u->size.height;
-  newa( pixels, u8, sz * components );
+void createUnitTextures( plvkUnit* u, VkFormat format, u8 fragmentSize,
+			 const u8* pixels ){
+  const u8* pxs = pixels;
+  if( !pxs )
+    pxs = newae( u8, u->size.width * u->size.height * fragmentSize );
   for( u32 i = 0; i < 2; ++i ){
-    u->textures[ i ] = createTextureImage( u->instance, pixels, u->size.width,
-					   u->size.height, components, 
+    u->textures[ i ] = createTextureImage( u->instance, pxs, u->size.width,
+					   u->size.height, fragmentSize, 
 					   format, true );
   }
-  memfree( pixels );
+  if( !pixels )
+    memfree( (u8*)pxs );
 }
 
 
@@ -1078,7 +1053,11 @@ void createUnitCommandBuffers( plvkUnit* u ){
     rpbi.renderPass = u->pipe->renderPass;
     rpbi.framebuffer = u->framebuffers[ i ];
     rpbi.renderArea.extent = u->size;
-
+    
+    VkClearValue cc = {{{0.0, 0.0, 0.0, 1.0}}};
+    rpbi.clearValueCount = 1;
+    rpbi.pClearValues = &cc;
+    
     vkCmdBeginRenderPass( u->commandBuffers[ i ], &rpbi,
 			  VK_SUBPASS_CONTENTS_INLINE );
     vkCmdBindPipeline( u->commandBuffers[ i ],
@@ -1308,11 +1287,11 @@ void buildUnit( plvkUnit* u ){
 
 
 plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
-		      VkFormat format, u8 components,
+		      VkFormat format, u8 fragmentSize,
 		      const char* fragName, const char* vertName,
 		      bool displayed, const char* title, int x, int y,
 		      plvkAttachable** attachments, u64 numAttachments,
-		      u64 drawSize ){  
+		      u64 drawSize, const u8* pixels ){  
 
   vkDeviceWaitIdle( vk->device );
   new( ret, plvkUnit );
@@ -1334,7 +1313,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
     // This sets u->format
     createUnitSurface( ret );
   } else
-    createUnitTextures( ret, format, components );
+    createUnitTextures( ret, format, fragmentSize, pixels );
   buildUnit( ret );
     
   return ret;

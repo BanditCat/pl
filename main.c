@@ -193,25 +193,40 @@ int main( int argc, const char** argv ){
     plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL };
   plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				 "shaders\\unitFrag.spv",
-				 "shaders\\mainVert.spv",
-				 true, "foo", 300, 300, atts, 1, 4 );
-  plvkCreateUnit( vk, 100, 100, VK_FORMAT_R32G32_SFLOAT, 8,
-		  "shaders\\unit3Frag.spv",
-		  "shaders\\mainVert.spv",
-		  false, "foo", 400, 400, NULL, 0, 4 );
+				 "shaders\\quad.spv",
+				 true, "foo", 300, 300, atts, 1, 6, NULL );
+  static const u32 gsz = 30;
+  {
+    seedRand( 31337 );
+    newa( ps, f32, gsz * gsz * 4 );
+    for( u32 x = 0; x < gsz; ++x ){
+      for( u32 y = 0; y < gsz; ++y ){
+	ps[ ( y * gsz + x ) * 4 + 0 ] = frand( -1.0, 1.0 );
+	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( -1.0, 1.0 );
+	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.01, 0.01 );
+	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.01, 0.01 );
+      }
+    }
+    plvkCreateUnit( vk, gsz, gsz, VK_FORMAT_R32G32B32A32_SFLOAT, 16,
+		    "shaders\\gravFrag.spv",
+		    "shaders\\quad.spv",
+		    false, "foo", 400, 400, NULL, 0, 6, (u8*)ps );
+    memfree( ps );
+  }
   atts[ 3 ] = plvkGetAttachable( vk, 0 );
   plvkUnit* u2 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unitFrag.spv",
-				  "shaders\\mainVert.spv",
-				  true, "foo", 400, 400, atts + 1, 1, 4 );
+				  "shaders\\quad.spv",
+				  true, "foo", 400, 400, atts + 1, 1, 6, NULL );
   plvkUnit* u3 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit2Frag.spv",
-				  "shaders\\mainVert.spv",
-				  true, "foo", 200, 400, atts + 2, 2, 4 );
-  plvkUnit* u4 =  plvkCreateUnit( vk, 100, 100, VK_FORMAT_R32G32_SFLOAT, 4,
+				  "shaders\\quad.spv",
+				  true, "foo", 200, 400, atts + 3, 1, 6, NULL );
+  plvkUnit* u4 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit3Frag.spv",
-				  "shaders\\mainVert.spv",
-				  true, "foofff", 200, 400, NULL, 0, 4 );
+				  "shaders\\gravVert.spv",
+				  true, "foofff", 200, 400, atts + 3, 1, gsz * gsz * 3,
+				  NULL );
   plvkShow( u1 );
   plvkShow( u2 );
   plvkShow( u3 );

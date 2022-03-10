@@ -595,3 +595,16 @@ bool keyDown( u8 code ){
   else
     return 0;
 }
+
+
+void seedRand( u64 seed ){
+  state.seed = seed;
+}
+u64 urand( void ){
+  state.seed = state.seed * 6364136223846793005 + 1442695040888963407;
+  return state.seed;
+}
+f32 frand( f32 min, f32 max ){
+  f32 ret = ((f32)urand()) / ((f32)ULLONG_MAX);
+  return ret * ( max - min ) + min;
+}

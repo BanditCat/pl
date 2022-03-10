@@ -118,6 +118,8 @@ typedef struct {
   char** memallocd;
 #endif
 
+  //Linear congruential generator.
+  u64 seed;
 } states;
 extern states state;
 

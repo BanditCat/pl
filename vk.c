@@ -184,16 +184,16 @@ void plvkHide( plvkUnit* u ){
 
 
 plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
-			  VkFormat format, u8 components,
+			  VkFormat format, u8 fragmentSize,
 			  const char* fragName, const char* vertName,
 			  bool displayed, const char* title, int x, int y,
 			  plvkAttachable** attachments, u64 numAttachments,
-			  u64 drawSize ){  
+			  u64 drawSize, const u8* pixels ){  
   plvkUnit* top = vk->unit;
   
-  vk->unit = createUnit( vk, width, height, (VkFormat)format, components,
+  vk->unit = createUnit( vk, width, height, (VkFormat)format, fragmentSize,
 			 fragName, vertName, displayed, title, x, y,
-			 attachments, numAttachments, drawSize );
+			 attachments, numAttachments, drawSize, pixels );
   if( !displayed ){
     new( att, plvkAttachable );
     att->type = PLVK_ATTACH_UNIT;
