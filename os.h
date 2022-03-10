@@ -110,3 +110,4 @@ void waitSemaphore( HANDLE h );
 void setSemaphore( HANDLE h );
 void releaseSemaphore( HANDLE h );
 bool keyDown( u8 code );
+void getRes( void );

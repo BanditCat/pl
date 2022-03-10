@@ -64,7 +64,7 @@ typedef struct plvkBuffer{
 typedef struct plvkTexture{
   u32 size;
   u32 width, height;
-  u8 channels;
+  u8 fragmentSize;
   VkImageUsageFlagBits usage;
   VkImageTiling tiling;
   VkFormat format;    

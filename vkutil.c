@@ -452,14 +452,14 @@ void copyBufferToImage( plvkInstance* vk, plvkBuffer* buf, plvkTexture* tex );
 void transitionImageLayout( plvkInstance* vk, plvkTexture* tex,
 			    VkImageLayout oldLayout, VkImageLayout newLayout );
 plvkTexture* createTextureImage( plvkInstance* vk, u8* pixels, u32 width,
-				 u32 height, u8 channels, VkFormat format,
+				 u32 height, u8 fragmentSize, VkFormat format,
 				 bool writable ){
   new( ret, plvkTexture );
   ret->width = width;
   ret->height = height;
-  ret->channels = channels;
+  ret->fragmentSize = fragmentSize;
   ret->format = format;
-  ret->size = ret->width * ret->height * ret->channels;
+  ret->size = ret->width * ret->height * ret->fragmentSize;
   ret->tiling = VK_IMAGE_TILING_OPTIMAL;
   ret->usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
   if( writable )
@@ -1025,13 +1025,6 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
 void createUnitTextures( plvkUnit* u, VkFormat format, u8 components ){
   u64 sz = u->size.width * u->size.height;
   newa( pixels, u8, sz * components );
-  // BUGBUG
-  for( u64 i = 0; i < sz; ++i ){
-    pixels[ i * 4 + 0 ] = 1;
-    pixels[ i * 4 + 1 ] = 2;
-    pixels[ i * 4 + 2 ] = 3;
-    pixels[ i * 4 + 3 ] = 4;
-  }
   for( u32 i = 0; i < 2; ++i ){
     u->textures[ i ] = createTextureImage( u->instance, pixels, u->size.width,
 					   u->size.height, components, 
@@ -1457,29 +1450,29 @@ void destroyUnit( plvkUnit* u ){
 }
 
 
-const u8* copyUnit( plvkUnit* u ){
-  u64 size = u->textures[ u->pingpong ]->deviceSize;
-  newa( ret, u8, size );
-  plvkBuffer* buf = createBuffer( u->instance, size,
-				  VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-				  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-				  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
-  vkWaitForFences( u->instance->device, 1, &u->fences[ u->pingpong ], VK_TRUE,
-		   UINT64_MAX );
-  transitionImageLayout( u->instance, u->textures[ u->pingpong ],
-			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL );
-  copyImageToBuffer( u->instance, buf, u->textures[ u->pingpong ] );
-  transitionImageLayout( u->instance, u->textures[ u->pingpong ],
-			 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
-  void* data;
-  vkMapMemory( u->instance->device, buf->memory, 0, size, 0, &data );
-  memcpy( ret, data, size );
-  vkUnmapMemory( u->instance->device, buf->memory );
-  destroyBuffer( u->instance, buf );
-  return ret;
-}
+/* const u8* copyUnit( plvkUnit* u ){ */
+/*   u64 size = u->textures[ u->pingpong ]->deviceSize; */
+/*   newa( ret, u8, size ); */
+/*   plvkBuffer* buf = createBuffer( u->instance, size, */
+/* 				  VK_BUFFER_USAGE_TRANSFER_DST_BIT, */
+/* 				  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | */
+/* 				  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT ); */
+/*   vkWaitForFences( u->instance->device, 1, &u->fences[ u->pingpong ], VK_TRUE, */
+/* 		   UINT64_MAX ); */
+/*   transitionImageLayout( u->instance, u->textures[ u->pingpong ], */
+/* 			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, */
+/* 			 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL ); */
+/*   copyImageToBuffer( u->instance, buf, u->textures[ u->pingpong ] ); */
+/*   transitionImageLayout( u->instance, u->textures[ u->pingpong ], */
+/* 			 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, */
+/* 			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ); */
+/*   void* data; */
+/*   vkMapMemory( u->instance->device, buf->memory, 0, size, 0, &data ); */
+/*   memcpy( ret, data, size ); */
+/*   vkUnmapMemory( u->instance->device, buf->memory ); */
+/*   destroyBuffer( u->instance, buf ); */
+/*   return ret; */
+/* } */
 
 
 void tickUnit( plvkUnit* u ){

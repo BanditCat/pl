@@ -279,6 +279,14 @@ hasht* htNew( void ){
   ret->size = 0;
   return ret;
 }
+hasht* htSizedNew( u64 size ){
+  new( ret, hasht );
+  ret->bits = size;
+  ret->data = newae( bucket, 1 << size );
+  ret->used = newae( u32, 1 << size );
+  ret->size = 0;
+  return ret;
+}
 void htDestroy( hasht* ht ){
   for( u32 i = 0; i < ht->size; ++i ){
     memfree( ht->data[ ht->used[ i ] ].key );
@@ -733,13 +741,14 @@ const char* htSerialize( const hasht* ht, u64* size ){
   for( u64 i = 0; i < ht->size; ++i )
     dataSize += ( ht->data[ ht->used[ i ] ].keySize +
 		  ht->data[ ht->used[ i ] ].valueSize );
-  *size = sizeof( u64 ) + sizeof( serialBucket ) * ht->size + dataSize;
+  *size = sizeof( u64 ) * 2 + sizeof( serialBucket ) * ht->size + dataSize;
   u64* ret = mem( *size );
-  serialBucket* sret = ((serialBucket*)( ret + 1 ));
-  char* p = ((char*) ret) + sizeof( u64 ) +
+  serialBucket* sret = ((serialBucket*)( ret + 2 ));
+  char* p = ((char*) ret) + sizeof( u64 ) * 2 +
     sizeof( serialBucket ) * ht->size;
-  *ret = ht->size;
-  for( u64 i = 0; i < *ret; ++i ){
+  ret[ 0 ] = ht->bits;
+  ret[ 1 ] = ht->size;
+  for( u64 i = 0; i < ret[ 1 ]; ++i ){
     bucket* item = ht->data + ht->used[ i ];
     sret[ i ].hash = item->hash;
     sret[ i ].keySize = item->keySize;
@@ -754,11 +763,12 @@ const char* htSerialize( const hasht* ht, u64* size ){
 }
   
 hasht* htDeserialize( const char* ser ){
-  u64 size = *((u64*)ser);
-  serialBucket* buckets = (serialBucket*)(((u64*)ser) + 1 );
-  const char* data = ((char*) ser) + sizeof( u64 ) +
+  u64 bits = *(((u64*)ser) + 0 );
+  u64 size = *(((u64*)ser) + 1 );
+  serialBucket* buckets = (serialBucket*)(((u64*)ser) + 2 );
+  const char* data = ((char*) ser) + sizeof( u64 ) * 2 +
     sizeof( serialBucket ) * size;
-  hasht* ret = htNew();
+  hasht* ret = htSizedNew( bits );
   for( u64 i = 0; i < size; ++i ){
     const char* key = data;
     data += buckets[ i ].keySize;

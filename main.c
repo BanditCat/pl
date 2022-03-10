@@ -181,12 +181,13 @@ int main( int argc, const char** argv ){
     memfree( (void*)cd );
     return 0;
   }
+  // Get resources.
+  getRes();
   // Initialize vulkan.
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
   plvkInstance* vk = plvkInit( gpu, debugLevel );
-    
   plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
     plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
     plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL };
@@ -194,7 +195,7 @@ int main( int argc, const char** argv ){
 				 "shaders\\unitFrag.spv",
 				 "shaders\\mainVert.spv",
 				 true, "foo", 300, 300, atts, 1, 4 );
-  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+  plvkCreateUnit( vk, 100, 100, VK_FORMAT_R32G32_SFLOAT, 8,
 		  "shaders\\unit3Frag.spv",
 		  "shaders\\mainVert.spv",
 		  false, "foo", 400, 400, NULL, 0, 4 );
@@ -207,7 +208,7 @@ int main( int argc, const char** argv ){
 				  "shaders\\unit2Frag.spv",
 				  "shaders\\mainVert.spv",
 				  true, "foo", 200, 400, atts + 2, 2, 4 );
-  plvkUnit* u4 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
+  plvkUnit* u4 =  plvkCreateUnit( vk, 100, 100, VK_FORMAT_R32G32_SFLOAT, 4,
 				  "shaders\\unit3Frag.spv",
 				  "shaders\\mainVert.spv",
 				  true, "foofff", 200, 400, NULL, 0, 4 );

@@ -94,16 +94,15 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
 #else
   state.fps = 0;
 #endif
-  // Get compressed resources.
-  {
-    u32 cresSize;
-    u64 resSize;
-    const char* cres = loadBuiltin( "cres", &cresSize );
-    const char* res = uncompressOrDie( cres, cresSize, &resSize );
-    state.compressedResources = htDeserialize( res );
-    memfree( (void*)res );
-  }
   end( main( state.argc, state.argv ) );
+}
+void getRes( void ){
+  u32 cresSize;
+  u64 resSize;
+  const char* cres = loadBuiltin( "cres", &cresSize );
+  const char* res = uncompressOrDie( cres, cresSize, &resSize );
+  state.compressedResources = htDeserialize( res );
+  memfree( (void*)res );
 }
 
 void print( const char* str ){
