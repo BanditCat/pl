@@ -677,6 +677,8 @@ void destroyAttachables( plvkInstance* vk ){
   while( p ){
     if( p->type == PLVK_ATTACH_TEXTURE )
       destroyTexture( vk, p->texture );
+    else if( p->type == PLVK_ATTACH_BUFFER )
+      destroyBuffer( vk, p->buffer );
     plvkAttachable* t = p;
     p = p->next;
     memfree( t );
@@ -756,7 +758,6 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
     bindings[ 1 ].pImmutableSamplers = NULL;
     bindings[ 1 ].stageFlags = VK_SHADER_STAGE_ALL;
     ++count;
-    mark;
   }
 
   for( u64 i = 0; i < u->numAttachments; ++i ){
@@ -773,6 +774,15 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
       bindings[ count ].descriptorCount = 1;
       bindings[ count ].descriptorType =
 	VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      bindings[ count ].pImmutableSamplers = NULL;
+      bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
+      ++count;
+    } else if( u->attachments[ i ]->type == PLVK_ATTACH_BUFFER ){
+      mark;
+      bindings[ count ].binding = count;
+      bindings[ count ].descriptorCount = 1;
+      bindings[ count ].descriptorType =
+	VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       bindings[ count ].pImmutableSamplers = NULL;
       bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
       ++count;
@@ -1175,6 +1185,19 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	dwrites[ count ].descriptorCount = 1;
 	dwrites[ count ].pImageInfo = imageInfo + count - 1;
 	++count;
+      }else if( u->attachments[ j ]->type == PLVK_ATTACH_BUFFER ){
+	bufferInfo.buffer = u->attachments[ j ]->buffer->buffer;
+	bufferInfo.offset = 0;
+	bufferInfo.range = u->attachments[ j ]->buffer->size;
+
+	dwrites[ count ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	dwrites[ count ].dstSet = u->descriptorSets[ i ];
+	dwrites[ count ].dstBinding = count;
+	dwrites[ count ].dstArrayElement = 0;
+	dwrites[ count ].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	dwrites[ count ].descriptorCount = 1;
+	dwrites[ count ].pBufferInfo = &bufferInfo;
+	++count;
       }
     }
                 
@@ -1291,12 +1314,13 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      const char* fragName, const char* vertName,
 		      bool displayed, const char* title, int x, int y,
 		      plvkAttachable** attachments, u64 numAttachments,
-		      u64 drawSize, const u8* pixels ){  
-
+		      u64 drawSize, const u8* pixels, u32 tickCount ){  
+  
   vkDeviceWaitIdle( vk->device );
   new( ret, plvkUnit );
   if( displayed )
     ret->display = newe( plvkUnitDisplay );
+  ret->tickCount = tickCount;
   ret->instance = vk;
   ret->numAttachments = numAttachments;
   ret->drawSize = drawSize;
@@ -1306,7 +1330,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   ret->size.height = height;
   ret->layout = createUnitDescriptorLayout( ret );
   ret->format = format;
- ret->fragName = fragName;
+  ret->fragName = fragName;
   ret->vertName = vertName;
   if( displayed ){
     ret->display->gui = wsetup( title, x, y, width, height );
@@ -1518,4 +1542,17 @@ void tickUnit( plvkUnit* u ){
         
     u->pingpong = pong;
   }
+}
+
+
+plvkBuffer* createComputeBuffer( plvkInstance* vk, void* data, u64 size ){
+  plvkBuffer* stagebuf = createBuffer( vk, size, 
+				       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+  void* gpudata;
+  vkMapMemory( vk->device, stagebuf->memory, 0, size, 0, &gpudata );
+  memcpy( gpudata, data, size );
+  vkUnmapMemory( vk->device, stagebuf->memory );
+  return stagebuf;
 }

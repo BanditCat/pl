@@ -84,6 +84,7 @@ typedef struct plvkAttachable{
   union {
     plvkTexture* texture;
     plvkUnit* unit;
+    plvkBuffer* buffer;
   };
   struct plvkAttachable* next;
 } plvkAttachable;
@@ -166,6 +167,8 @@ typedef struct plvkUnit{
   const char* fragName;
   const char* vertName;
 
+  u32 tickCount;
+  
   u64 numAttachments;
   plvkAttachable** attachments;
 
@@ -211,7 +214,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      const char* fragName, const char* vertName,
 		      bool displayed, const char* title, int x, int y,
 		      plvkAttachable** attachments, u64 numAttachments,
-		      u64 drawSize, const u8* pixels );
+		      u64 drawSize, const u8* pixels, u32 tickCount );
 
 void destroyUnit( plvkUnit* u );
 void tickUnit( plvkUnit* u );
@@ -219,6 +222,7 @@ void waitUnit( plvkUnit* u );
 // The data returned must be memfree'd by the caller.  This is an expensive
 // operation.
 const u8* copyUnit( plvkUnit* u );
+plvkBuffer* createComputeBuffer( plvkInstance* vk, void* data, u64 size );
 
 
 plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel );

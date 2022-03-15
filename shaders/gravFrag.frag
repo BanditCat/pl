@@ -30,6 +30,7 @@ layout(location = 0) out vec4 outColor;
 
 void main(){
   ivec2 size = textureSize( texSampler, 0 );
+  float countscale = 1.0 / ( size.x * size.y );
   ivec2 spos = ivec2( pos * size );
   vec4 self = texelFetch( texSampler, spos, 0 );
   vec2 selfPos = self.xy;
@@ -43,15 +44,18 @@ void main(){
 	vec2 other = texelFetch( texSampler, tpos, 0 ).xy;
 	vec2 diff = other - selfPos;
 	float d = sqrt( dot( diff, diff ) );
-	d = clamp( d, 0.001, 4 );
+	d = clamp( d, 0.00155, 4 );
 	force += diff / ( d * d * d );
       }
     }
-    selfVel += force * 0.0000001;
-    selfPos += selfVel * 0.0001;
+    selfVel += force * 0.000005 * countscale;
+    selfPos += selfVel * 0.0000058;
   }
-      
-  outColor = clamp( vec4( selfPos, selfVel ), -1.0, 1.0 );
+
+  float veld = sqrt( dot( selfVel, selfVel ) );
+  if( veld > 1 )
+    selfVel /= veld;
+  outColor = vec4( clamp( selfPos, -1.0, 1.0 ), selfVel );
   
 }
  

@@ -47,7 +47,7 @@
  '(tab-line-tab-current ((t (:inherit tab-line-tab :background "medium blue"))))
  '(tab-line-tab-inactive ((t (:inherit tab-line-tab :background "black")))))
 
-(set-face-attribute 'default nil :height 107)
+(set-face-attribute 'default nil :height 87)
 
 (defun bandit-run (&optional arg) (interactive)
        (bandit-save)

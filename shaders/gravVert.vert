@@ -24,8 +24,13 @@ layout(binding = 0) uniform UniformBufferObject {
   float time;
 } ubo; 
 layout(binding = 1) uniform sampler2D texSampler;
+layout(std140, binding = 2) buffer colorBuffer 
+{
+   vec3 colors[];
+};
 
 layout(location = 0) out vec2 pos;
+layout(location = 1) flat out vec3 color;
 
 const vec2 positions[ 3 ] = vec2[](
 				   vec2( -0.5, -0.28867513459 ), 
@@ -41,7 +46,8 @@ void main(){
   pos = positions[ int( pindex ) ] * 3.46410161514;
   gl_Position =
     vec4( texelFetch( texSampler, tpos, 0 ).xy +
-	   pos * 0.004,
+	   pos * 0.0012,
 	  0.0, 1.0 );
+  color = colors[ gl_VertexIndex ];
 }
 

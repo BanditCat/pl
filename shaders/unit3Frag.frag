@@ -22,12 +22,14 @@
 
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec2 pos;
+layout(location = 1) flat in vec3 color;
 layout(binding = 1) uniform sampler2D texSampler;
+
 
 void main(){
   if( dot( pos, pos ) > 1 )
     discard;
   else
-    outColor = vec4( 0.1, 1.0, 0.4, 1.0 );
+    outColor = vec4( color, 1.0 );
 }
  

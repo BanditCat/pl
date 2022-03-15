@@ -129,7 +129,8 @@ void draw( void ){
   {
     plvkUnit* t = vk->unit;
     while( t ){
-      tickUnit( t );
+      for( u32 i = 0; i < t->tickCount; ++i )
+	tickUnit( t );
       t = t->next;
     }
   }
@@ -188,12 +189,13 @@ plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 			  const char* fragName, const char* vertName,
 			  bool displayed, const char* title, int x, int y,
 			  plvkAttachable** attachments, u64 numAttachments,
-			  u64 drawSize, const u8* pixels ){  
+			  u64 drawSize, const u8* pixels, u32 tickCount ){  
   plvkUnit* top = vk->unit;
   
   vk->unit = createUnit( vk, width, height, (VkFormat)format, fragmentSize,
 			 fragName, vertName, displayed, title, x, y,
-			 attachments, numAttachments, drawSize, pixels );
+			 attachments, numAttachments, drawSize, pixels,
+			 tickCount );
   if( !displayed ){
     new( att, plvkAttachable );
     att->type = PLVK_ATTACH_UNIT;
@@ -240,5 +242,13 @@ plvkAttachable* plvkGetAttachable( plvkInstance* vk, u32 n ){
   u32 c = n;
   while( c-- && ret->next )
     ret = ret->next;
+  return ret;
+}
+plvkAttachable* plvkAddBuffer( plvkInstance* vk, void* data, u64 size ){
+  new( ret, plvkAttachable );
+  ret->type = PLVK_ATTACH_BUFFER;
+  ret->buffer = createComputeBuffer( vk, data, size );
+  ret->next = vk->attachables;
+  vk->attachables = ret;
   return ret;
 }
