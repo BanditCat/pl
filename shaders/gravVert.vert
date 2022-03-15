@@ -24,8 +24,7 @@ layout(binding = 0) uniform UniformBufferObject {
   float time;
 } ubo; 
 layout(binding = 1) uniform sampler2D texSampler;
-layout(std140, binding = 2) buffer colorBuffer 
-{
+layout(std140, binding = 2) buffer colorBuffer{
    vec3 colors[];
 };
 

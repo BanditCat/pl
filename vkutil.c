@@ -778,7 +778,6 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
       bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
       ++count;
     } else if( u->attachments[ i ]->type == PLVK_ATTACH_BUFFER ){
-      mark;
       bindings[ count ].binding = count;
       bindings[ count ].descriptorCount = 1;
       bindings[ count ].descriptorType =
@@ -1118,11 +1117,12 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     
   for( u32 i = 0; i < 2; ++i ){
       
-    VkDescriptorBufferInfo bufferInfo = {};
+    VkDescriptorBufferInfo* bufferInfos = newae( VkDescriptorBufferInfo,
+						u->numAttachments + 1 );
       
-    bufferInfo.buffer = u->instance->UBOs[ i ]->buffer;
-    bufferInfo.offset = 0;
-    bufferInfo.range = sizeof( gpuState );
+    bufferInfos[ 0 ].buffer = u->instance->UBOs[ i ]->buffer;
+    bufferInfos[ 0 ].offset = 0;
+    bufferInfos[ 0 ].range = sizeof( gpuState );
 
       
     VkWriteDescriptorSet* dwrites = newae( VkWriteDescriptorSet,
@@ -1133,16 +1133,16 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     dwrites[ 0 ].dstArrayElement = 0;
     dwrites[ 0 ].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     dwrites[ 0 ].descriptorCount = 1;
-    dwrites[ 0 ].pBufferInfo = &bufferInfo;
+    dwrites[ 0 ].pBufferInfo = &( bufferInfos[ 0 ] );
       
-    VkDescriptorImageInfo* imageInfo = newae( VkDescriptorImageInfo,
+    VkDescriptorImageInfo* imageInfos = newae( VkDescriptorImageInfo,
 					      u->numAttachments + 1 );
       
     u64 count = 1;
     if( !u->display ){
-      imageInfo[ 0 ].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      imageInfo[ 0 ].imageView = u->textures[ i ^ 1 ]->view;
-      imageInfo[ 0 ].sampler = u->textures[ i ^ 1 ]->sampler;
+      imageInfos[ 0 ].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      imageInfos[ 0 ].imageView = u->textures[ i ^ 1 ]->view;
+      imageInfos[ 0 ].sampler = u->textures[ i ^ 1 ]->sampler;
 
       dwrites[ count ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       dwrites[ count ].dstSet = u->descriptorSets[ i ];
@@ -1151,15 +1151,15 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
       dwrites[ count ].descriptorType =
 	VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       dwrites[ count ].descriptorCount = 1;
-      dwrites[ count ].pImageInfo = imageInfo;
+      dwrites[ count ].pImageInfo = imageInfos;
       ++count;
     }
     for( u64 j = 0; j < u->numAttachments; ++j ){
       if( u->attachments[ j ]->type == PLVK_ATTACH_TEXTURE ){
-	imageInfo[ count - 1 ].imageLayout =
+	imageInfos[ count - 1 ].imageLayout =
 	  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo[ count - 1 ].imageView = u->attachments[ j ]->texture->view;
-	imageInfo[ count - 1 ].sampler = u->attachments[ j ]->texture->sampler;
+	imageInfos[ count - 1 ].imageView = u->attachments[ j ]->texture->view;
+	imageInfos[ count - 1 ].sampler = u->attachments[ j ]->texture->sampler;
 	dwrites[ count ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	dwrites[ count ].dstSet = u->descriptorSets[ i ];
 	dwrites[ count ].dstBinding = count;
@@ -1167,14 +1167,14 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	dwrites[ count ].descriptorType =
 	  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	dwrites[ count ].descriptorCount = 1;
-	dwrites[ count ].pImageInfo = imageInfo + count - 1;
+	dwrites[ count ].pImageInfo = imageInfos + count - 1;
 	++count;
       }else if( u->attachments[ j ]->type == PLVK_ATTACH_UNIT ){
-	imageInfo[ count - 1 ].imageLayout =
+	imageInfos[ count - 1 ].imageLayout =
 	  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo[ count - 1 ].imageView =
+	imageInfos[ count - 1 ].imageView =
 	  u->attachments[ j ]->unit->textures[ i ]->view;
-	imageInfo[ count - 1 ].sampler =
+	imageInfos[ count - 1 ].sampler =
 	  u->attachments[ j ]->unit->textures[ i ]->sampler;
 	dwrites[ count ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	dwrites[ count ].dstSet = u->descriptorSets[ i ];
@@ -1183,12 +1183,12 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	dwrites[ count ].descriptorType =
 	  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	dwrites[ count ].descriptorCount = 1;
-	dwrites[ count ].pImageInfo = imageInfo + count - 1;
+	dwrites[ count ].pImageInfo = imageInfos + count - 1;
 	++count;
       }else if( u->attachments[ j ]->type == PLVK_ATTACH_BUFFER ){
-	bufferInfo.buffer = u->attachments[ j ]->buffer->buffer;
-	bufferInfo.offset = 0;
-	bufferInfo.range = u->attachments[ j ]->buffer->size;
+	bufferInfos[ j + 1 ].buffer = u->attachments[ j ]->buffer->buffer;
+	bufferInfos[ j + 1 ].offset = 0;
+	bufferInfos[ j + 1 ].range = u->attachments[ j ]->buffer->size;
 
 	dwrites[ count ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	dwrites[ count ].dstSet = u->descriptorSets[ i ];
@@ -1196,14 +1196,15 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	dwrites[ count ].dstArrayElement = 0;
 	dwrites[ count ].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	dwrites[ count ].descriptorCount = 1;
-	dwrites[ count ].pBufferInfo = &bufferInfo;
+	dwrites[ count ].pBufferInfo = &( bufferInfos[ j + 1 ] );
 	++count;
       }
     }
-                
+
     vkUpdateDescriptorSets( u->instance->device, count, dwrites, 0, NULL );
           
-    memfree( imageInfo );
+    memfree( imageInfos );
+    memfree( bufferInfos );
     memfree( dwrites );
   }
   memfree( tl );
