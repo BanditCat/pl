@@ -1118,7 +1118,7 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
   for( u32 i = 0; i < 2; ++i ){
       
     VkDescriptorBufferInfo* bufferInfos = newae( VkDescriptorBufferInfo,
-						u->numAttachments + 1 );
+						 u->numAttachments + 1 );
       
     bufferInfos[ 0 ].buffer = u->instance->UBOs[ i ]->buffer;
     bufferInfos[ 0 ].offset = 0;
@@ -1136,7 +1136,7 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     dwrites[ 0 ].pBufferInfo = &( bufferInfos[ 0 ] );
       
     VkDescriptorImageInfo* imageInfos = newae( VkDescriptorImageInfo,
-					      u->numAttachments + 1 );
+					       u->numAttachments + 1 );
       
     u64 count = 1;
     if( !u->display ){
@@ -1548,12 +1548,21 @@ void tickUnit( plvkUnit* u ){
 
 plvkBuffer* createComputeBuffer( plvkInstance* vk, void* data, u64 size ){
   plvkBuffer* stagebuf = createBuffer( vk, size, 
-				       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+				       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 				       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
   void* gpudata;
   vkMapMemory( vk->device, stagebuf->memory, 0, size, 0, &gpudata );
   memcpy( gpudata, data, size );
   vkUnmapMemory( vk->device, stagebuf->memory );
-  return stagebuf;
+  plvkBuffer* ret = createBuffer( vk, size, 
+				  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+				  VK_BUFFER_USAGE_TRANSFER_DST_BIT, 0 );
+  VkCommandBuffer commandBuffer = beginSingleTimeCommands( vk );
+  VkBufferCopy reg = { 0, 0, size };
+  vkCmdCopyBuffer( commandBuffer, stagebuf->buffer, ret->buffer, 1, &reg );
+  endSingleTimeCommands( vk, commandBuffer );
+  destroyBuffer( vk, stagebuf );
+  return ret;
 }
