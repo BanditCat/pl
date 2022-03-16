@@ -49,9 +49,10 @@ CRES=./build/cres
 TXTS:=$(TXTS) $(wildcard ./*.txt) ./Makefile ./README.md ./windowsResource.rc
 SRCS:=$(SRCS) $(wildcard ./*.h) $(wildcard ./*.c) $(SHADERS)
 CS:=$(CS) $(wildcard ./*.c)
-SHADERS:=$(SHADERS) $(wildcard ./shaders/*.vert) $(wildcard ./shaders/*.frag)
+SHADERS:=$(SHADERS) $(wildcard ./shaders/*.comp) $(wildcard ./shaders/*.vert) $(wildcard ./shaders/*.frag)
 SOBJS:=$(SHADERS:./shaders/%.vert=./res/shaders/%.spv) 
 SOBJS:=$(SOBJS:./shaders/%.frag=./res/shaders/%.spv) 
+SOBJS:=$(SOBJS:./shaders/%.comp=./res/shaders/%.spv) 
 OBJS:=$(RES) $(CS:%.c=./build/%.o)
 DOBJS:=$(RES) $(CS:%.c=./build/%_dbg.o)
 $(OBJS): Makefile
@@ -67,6 +68,8 @@ $(RES): windowsResource.rc graphics/pl.ico $(CRES)
 ./res/shaders/%.spv: ./shaders/%.vert
 	$(GLSLC) $< -o $@
 ./res/shaders/%.spv: ./shaders/%.frag
+	$(GLSLC) $< -o $@
+./res/shaders/%.spv: ./shaders/%.comp
 	$(GLSLC) $< -o $@
 
 ./build/%.o: %.c

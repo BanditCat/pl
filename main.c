@@ -215,9 +215,9 @@ int main( int argc, const char** argv ){
     ps = newae( f32, gsz * gsz * 3 );
     for( u32 x = 0; x < gsz; ++x ){
       for( u32 y = 0; y < gsz; ++y ){
-	ps[ ( y * gsz + x ) * 3 + 0 ] = frand( 0.5, 1.0 );
-	ps[ ( y * gsz + x ) * 3 + 1 ] = frand( 1.0, 1.0 );
-	ps[ ( y * gsz + x ) * 3 + 2 ] = frand( 0.5, 1.0 );
+	ps[ ( y * gsz + x ) * 3 + 0 ] = frand( 0.2, 1.0 );
+	ps[ ( y * gsz + x ) * 3 + 1 ] = frand( 0.2, 1.0 );
+	ps[ ( y * gsz + x ) * 3 + 2 ] = frand( 0.2, 1.0 );
       }
     }
     plvkAddBuffer( vk, ps, gsz * gsz * 3 * 4 );
@@ -244,6 +244,23 @@ int main( int argc, const char** argv ){
   plvkShow( u2 );
   plvkShow( u3 );
   plvkShow( u4 );
+
+  {
+    newa( tb, f32, gsz * gsz );
+    for( u64 i = 0; i < gsz; ++i )
+      tb[ i ] = i;
+    mark;
+    plvkUnit* testUnit = plvkCreateUnit( vk, 64, 1024, 0, 4,
+					 "shaders\\test.spv", NULL,
+					 false, "tttt", 0, 0, atts + 4, 1,
+					 gsz * gsz, (const void*)tb, 1 );
+    mark;
+    const char* gd = plvkCopyComputeBuffer( testUnit );
+    mark;
+    printRaw( gd, 200 );
+    
+  }
+					 
   // Main loop.
   plvkStartRendering( vk );
   while( plvkeventLoop( vk ) ){

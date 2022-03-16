@@ -174,7 +174,8 @@ typedef struct plvkUnit{
 
   VkExtent2D size;
 
-  VkFramebuffer framebuffers[ 2 ]; 
+  VkFramebuffer framebuffers[ 2 ];
+  plvkBuffer* buffers[ 2 ];
 
   plvkPipeline* pipe;
 
@@ -214,7 +215,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      const char* fragName, const char* vertName,
 		      bool displayed, const char* title, int x, int y,
 		      plvkAttachable** attachments, u64 numAttachments,
-		      u64 drawSize, const u8* pixels, u32 tickCount );
+		      u64 drawSize, const void* pixels, u32 tickCount );
 
 void destroyUnit( plvkUnit* u );
 void tickUnit( plvkUnit* u );
@@ -222,7 +223,9 @@ void waitUnit( plvkUnit* u );
 // The data returned must be memfree'd by the caller.  This is an expensive
 // operation.
 const u8* copyUnit( plvkUnit* u );
-plvkBuffer* createComputeBuffer( plvkInstance* vk, void* data, u64 size );
+plvkBuffer* createComputeBuffer( plvkInstance* vk, const void* data, u64 size );
+// Returned array must be freed.
+void* copyComputeBuffer( plvkUnit* u );
 
 
 plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel );

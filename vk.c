@@ -252,3 +252,6 @@ plvkAttachable* plvkAddBuffer( plvkInstance* vk, void* data, u64 size ){
   vk->attachables = ret;
   return ret;
 }
+void* plvkCopyComputeBuffer( plvkUnit* u ){
+  return copyComputeBuffer( u );
+}

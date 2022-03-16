@@ -222,7 +222,13 @@ void plvkEnd( plvkInstance* vk );
 
 plvkAttachable* plvkAddTexture( plvkInstance* vk, const char* name );
 
-// Creates a unit and attaches it to the instance.
+// Creates a unit and attaches it to the instance. If displayable is true,
+// format is ignored and a compatible surace format is used. Also, if displayed
+// is true, the binding of attachables starts from 0, if it's not a display
+// unit, binding 0 is the unit's own texture, and binding of attahcables starts
+// from 1. If displayed is false and vertName is NULL, a compute unit is
+// created. For compute units, width and height specify the dispatch size, while
+// drawSize * fragmentSize is the size of the buffers.
 plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 			  VkFormat format, u8 fragmentSize,
 			  const char* fragName, const char* vertName,
@@ -235,6 +241,7 @@ plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 // is too large.
 plvkAttachable* plvkGetAttachable( plvkInstance* vk, u32 n );
 plvkAttachable* plvkAddBuffer( plvkInstance* vk, void* data, u64 size );
+void* plvkCopyComputeBuffer( plvkUnit* u );
 
 void draw( void );
 
