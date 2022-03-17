@@ -782,6 +782,7 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
 
   for( u64 i = 0; i < u->numAttachments; ++i ){
     if( u->attachments[ i ]->type == PLVK_ATTACH_TEXTURE ){
+      marc;
       bindings[ count ].binding = count;
       bindings[ count ].descriptorCount = 1;
       bindings[ count ].descriptorType =
@@ -790,18 +791,22 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
       bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
       ++count;
     } else if( u->attachments[ i ]->type == PLVK_ATTACH_UNIT ){
+      marc;
       bindings[ count ].binding = count;
       bindings[ count ].descriptorCount = 1;
-      if( u->vertName ){
+      if( u->attachments[ i ]->unit->vertName ){
+      marc;
 	bindings[ count ].descriptorType =
 	  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       }else{
+      marc;
 	bindings[ count ].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       }
       bindings[ count ].pImmutableSamplers = NULL;
       bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
       ++count;
     } else if( u->attachments[ i ]->type == PLVK_ATTACH_BUFFER ){
+      marc;
       bindings[ count ].binding = count;
       bindings[ count ].descriptorCount = 1;
       bindings[ count ].descriptorType =
@@ -1464,6 +1469,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      u64 drawSize, const void* pixels, u32 tickCount ){  
   
   vkDeviceWaitIdle( vk->device );
+    marc;
   new( ret, plvkUnit );
   ret->fragName = fragName;
   ret->vertName = vertName;
@@ -1479,6 +1485,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   ret->size.height = height;
   ret->layout = createUnitDescriptorLayout( ret );
   ret->format = format;
+    marc;
 
   if( displayed ){
     ret->display->gui = wsetup( title, x, y, width, height );
@@ -1487,9 +1494,13 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   }else if( vertName ){
     createUnitTextures( ret, format, fragmentSize, pixels );
   }else{
+    marc;
     createUnitComputeBuffers( ret, drawSize, fragmentSize, pixels );
+    marc;
   }
+  marc;
   buildUnit( ret );
+    marc;
     
   return ret;
 }

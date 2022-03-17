@@ -28,7 +28,7 @@ unsigned long renderThread( void* vkp ){
   plvkInstance* vk = (plvkInstance*)vkp;
   while( vk->valid ){
     waitSemaphore( vk->rendering );
-    draw();
+    plvkDraw();
     releaseSemaphore( vk->rendering );
   }
   return 0;
@@ -121,7 +121,7 @@ void updateGPUstate( plvkInstance* vk, f32 time ){
   memcpy( data, &vk->UBOcpumem, sizeof( gpuState ) );
   vkUnmapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory );
 }
-void draw( void ){
+void plvkDraw( void ){
   static u64 firstDrawTime = 0;
   if( !firstDrawTime )
     firstDrawTime = tickCount();
@@ -189,7 +189,7 @@ plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 			  const char* fragName, const char* vertName,
 			  bool displayed, const char* title, int x, int y,
 			  plvkAttachable** attachments, u64 numAttachments,
-			  u64 drawSize, const u8* pixels, u32 tickCount ){  
+			  u64 drawSize, const void* pixels, u32 tickCount ){  
   plvkUnit* top = vk->unit;
   
   vk->unit = createUnit( vk, width, height, (VkFormat)format, fragmentSize,
@@ -254,4 +254,7 @@ plvkAttachable* plvkAddBuffer( plvkInstance* vk, void* data, u64 size ){
 }
 void* plvkCopyComputeBuffer( plvkUnit* u ){
   return copyComputeBuffer( u );
+}
+void plvkTickUnit( plvkUnit* u ){
+  tickUnit( u );
 }

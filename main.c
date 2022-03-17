@@ -190,22 +190,30 @@ int main( int argc, const char** argv ){
   plvkInstance* vk = plvkInit( gpu, debugLevel );
   plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
     plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
-    plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL };
+    plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL };
   plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				 "shaders\\unitFrag.spv",
 				 "shaders\\quad.spv",
 				 true, "foo", 300, 300, atts, 1, 6, NULL, 1 );
   static const u32 gsz = 210;
   {
+    static const u32 cuesz = 8;
+    static const u32 cusz = gsz * gsz;
     seedRand( 31337 );
     newa( ps, f32, gsz * gsz * 4 );
+    newa( cud, f32, cusz * cuesz * 4 );
     for( u32 x = 0; x < gsz; ++x ){
       for( u32 y = 0; y < gsz; ++y ){
 	ps[ ( y * gsz + x ) * 4 + 0 ] = frand( -1.0, 1.0 );
 	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( -1.0, 1.0 );
 	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.01, 0.01 );
 	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.01, 0.01 );
+	for( int i = 0; i < 6; ++i )
+	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -1.0, 1.0 );
+	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.0, 1.0 );
+	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.5, 2.5 );
       }
+
     }
     plvkCreateUnit( vk, gsz, gsz, VK_FORMAT_R32G32B32A32_SFLOAT, 16,
 		    "shaders\\gravFrag.spv",
@@ -221,10 +229,18 @@ int main( int argc, const char** argv ){
       }
     }
     plvkAddBuffer( vk, ps, gsz * gsz * 3 * 4 );
+    marc;
+    plvkCreateUnit( vk, cusz, 1, 0, cuesz * 4,
+		    "shaders\\gravcomp.spv", NULL,
+		    false, "foofff", 50, 200, NULL, 0,
+		    cusz, cud, 1 );
+    marc;
     memfree( ps );
+    memfree( cud );
   }
-  atts[ 3 ] = plvkGetAttachable( vk, 1 );
-  atts[ 4 ] = plvkGetAttachable( vk, 0 );
+  atts[ 3 ] = plvkGetAttachable( vk, 2 );
+  atts[ 4 ] = plvkGetAttachable( vk, 1 );
+  atts[ 5 ] = plvkGetAttachable( vk, 0 );
   plvkUnit* u2 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unitFrag.spv",
 				  "shaders\\quad.spv",
@@ -238,7 +254,7 @@ int main( int argc, const char** argv ){
   plvkUnit* u4 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit3Frag.spv",
 				  "shaders\\gravVert.spv",
-				  true, "foofff", 50, 200, atts + 3, 2,
+				  true, "foofff", 50, 200, atts + 3, 3,
 				  gsz * gsz * 3, NULL, 1 );
   plvkShow( u1 );
   plvkShow( u2 );
@@ -246,17 +262,25 @@ int main( int argc, const char** argv ){
   plvkShow( u4 );
 
   {
-    newa( tb, f32, gsz * gsz );
+    newa( tb, u32, gsz * gsz );
     for( u64 i = 0; i < gsz; ++i )
       tb[ i ] = i;
-    plvkUnit* testUnit = plvkCreateUnit( vk, 64, 1024, 0, 4,
+    plvkUnit* testUnit = plvkCreateUnit( vk, 4, 8, 0, 4,
 					 "shaders\\test.spv", NULL,
 					 false, "tttt", 0, 0, atts + 4, 1,
 					 gsz * gsz, (const void*)tb, 1 );
-    char* gd = plvkCopyComputeBuffer( testUnit );
-    printRaw( gd, 200 );
+    char* gd;
+    for( u64 i = 0; i < 10; ++i ){
+      printInt( i ); endl();
+      plvkTickUnit( testUnit );
+      gd = plvkCopyComputeBuffer( testUnit );
+      printRaw( gd, 200 );
+      memfree( gd );
+      endl();
+    }
+
     memfree( tb );
-    memfree( gd );
+
   }
 					 
   // Main loop.

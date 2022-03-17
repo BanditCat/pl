@@ -27,8 +27,17 @@ layout(binding = 1) uniform sampler2D texSampler;
 layout(std140, binding = 2) buffer colorBuffer{
    vec3 colors[];
 };
+struct particle{
+  vec3 pos;
+  vec3 vel;
+  float color;
+  float mass;
+};
+layout(std140, binding = 3) buffer particleBuffer{
+  particle ps[];
+};
 
-layout(location = 0) out vec2 pos;
+layout(location = 0) out vec2 position;
 layout(location = 1) flat out vec3 color;
 
 const vec2 positions[ 3 ] = vec2[](
@@ -38,15 +47,16 @@ const vec2 positions[ 3 ] = vec2[](
 				   );
 
 void main(){
-   ivec2 size = textureSize( texSampler, 0 );
+  ivec2 size = textureSize( texSampler, 0 );
   int tindex =  gl_VertexIndex / 3;
   int pindex = gl_VertexIndex % 3;
   ivec2 tpos = ivec2( tindex % size.x, tindex / size.x );
-  pos = positions[ int( pindex ) ] * 3.46410161514;
+  position = positions[ int( pindex ) ] * 3.46410161514;
   gl_Position =
-    vec4( texelFetch( texSampler, tpos, 0 ).xy +
-	   pos * 0.0012,
+    vec4( //texelFetch( texSampler, tpos, 0 ).xy +
+	 ps[ tindex ].pos.xy +
+	 position * 0.0012,
 	  0.0, 1.0 );
-  color = colors[ gl_VertexIndex ];
+  color = colors[ tindex ];
 }
 

@@ -19,15 +19,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
+struct particle{
+  vec3 pos;
+  vec3 vel;
+  float color;
+  float mass;
+};
+layout(std140, binding = 1) buffer oparticleBuffer{
+  particle ops[];
+};
+layout(std140, binding = 2) buffer iparticleBuffer{
+  particle ips[];
+};
 
-layout(std140, binding = 1) buffer outcolors{
-   uint ocolors[];
-};
-layout(std140, binding = 2) buffer incolors{
-   uint icolors[];
-};
 
 void main(){
-  ocolors[ gl_GlobalInvocationID.x ] = icolors[ gl_GlobalInvocationID.x ] + 1;
+  ops[ gl_GlobalInvocationID.x ].pos =
+    ips[ gl_GlobalInvocationID.x ].pos + vec3 ( 0.001, 0.001, 0.001 );
 }
  
