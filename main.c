@@ -245,21 +245,19 @@ int main( int argc, const char** argv ){
   plvkShow( u3 );
   plvkShow( u4 );
 
-  /* { */
-  /*   newa( tb, f32, gsz * gsz ); */
-  /*   for( u64 i = 0; i < gsz; ++i ) */
-  /*     tb[ i ] = i; */
-  /*   mark; */
-  /*   plvkUnit* testUnit = plvkCreateUnit( vk, 64, 1024, 0, 4, */
-  /* 					 "shaders\\test.spv", NULL, */
-  /* 					 false, "tttt", 0, 0, atts + 4, 1, */
-  /* 					 gsz * gsz, (const void*)tb, 1 ); */
-  /*   mark; */
-  /*   const char* gd = plvkCopyComputeBuffer( testUnit ); */
-  /*   mark; */
-  /*   printRaw( gd, 200 ); */
-    
-  /* } */
+  {
+    newa( tb, f32, gsz * gsz );
+    for( u64 i = 0; i < gsz; ++i )
+      tb[ i ] = i;
+    plvkUnit* testUnit = plvkCreateUnit( vk, 64, 1024, 0, 4,
+					 "shaders\\test.spv", NULL,
+					 false, "tttt", 0, 0, atts + 4, 1,
+					 gsz * gsz, (const void*)tb, 1 );
+    char* gd = plvkCopyComputeBuffer( testUnit );
+    printRaw( gd, 200 );
+    memfree( tb );
+    memfree( gd );
+  }
 					 
   // Main loop.
   plvkStartRendering( vk );
