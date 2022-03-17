@@ -29,7 +29,11 @@
 
 #define memc { if( !memCheck( 0 ) ){ memCheck( 1 );\
 	die( "memory check failed." ); } }
+#ifdef DEBUG
 #define marc { eprintl( AT ": Marker" ); memc; }
+#else
+#define marc
+#endif
 #define mark { eprintl( AT ": Marker " ); }
 
 #ifndef NULL

@@ -737,7 +737,7 @@ VkSampler createSampler( plvkInstance* vk ){
 
 
 VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
-  u64 na = u->numAttachments + 1;
+  u64 na = u->numAttachments + 2;
   if( !u->display )
     ++na;
   u64 count = 0;
@@ -754,13 +754,32 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
   ++count;
   
   if( !u->display ){
-    bindings[ 1 ].binding = count;
-    bindings[ 1 ].descriptorCount = 1;
-    bindings[ 1 ].descriptorType =
+    if( u->vertName ){
+      mark;
+      bindings[ 1 ].binding = count;
+      bindings[ 1 ].descriptorCount = 1;
+      bindings[ 1 ].descriptorType =
 	VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindings[ 1 ].pImmutableSamplers = NULL;
-    bindings[ 1 ].stageFlags = VK_SHADER_STAGE_ALL;
-    ++count;
+      bindings[ 1 ].pImmutableSamplers = NULL;
+      bindings[ 1 ].stageFlags = VK_SHADER_STAGE_ALL;
+      ++count;
+    }else{
+      mark;
+      bindings[ 1 ].binding = count;
+      bindings[ 1 ].descriptorCount = 1;
+      bindings[ 1 ].descriptorType =
+	VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      bindings[ 1 ].pImmutableSamplers = NULL;
+      bindings[ 1 ].stageFlags = VK_SHADER_STAGE_ALL;
+      ++count;
+      bindings[ 2 ].binding = count;
+      bindings[ 2 ].descriptorCount = 1;
+      bindings[ 2 ].descriptorType =
+	VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      bindings[ 2 ].pImmutableSamplers = NULL;
+      bindings[ 2 ].stageFlags = VK_SHADER_STAGE_ALL;
+      ++count;
+    }
   }
 
   for( u64 i = 0; i < u->numAttachments; ++i ){
@@ -775,11 +794,14 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
     } else if( u->attachments[ i ]->type == PLVK_ATTACH_UNIT ){
       bindings[ count ].binding = count;
       bindings[ count ].descriptorCount = 1;
-      if( u->vertName )
-	bindings[ count ].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      else
+      if( u->vertName ){
+	marc;
 	bindings[ count ].descriptorType =
 	  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      }else{
+	marc;
+	bindings[ count ].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      }
       bindings[ count ].pImmutableSamplers = NULL;
       bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
       ++count;
@@ -841,6 +863,7 @@ void createUnitPoolAndFences( plvkUnit* u ){
 
 plvkPipeline* createUnitPipeline( plvkUnit* u ){
   if( u->vertName ){
+    mark;
     VkShaderModule displayVertexShader;
     VkShaderModule displayFragmentShader;
     u64 fsize, vsize;
@@ -1008,6 +1031,7 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
     destroyModule( u->instance, displayVertexShader );
     return ret;
   }else{
+    mark;
     VkShaderModule computeShader;
     u64 csize;
     const char* comp = htFindString( state.compressedResources, u->fragName,
@@ -1198,7 +1222,7 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 
       
     VkWriteDescriptorSet* dwrites = newae( VkWriteDescriptorSet,
-					   u->numAttachments + 2 );
+					   u->numAttachments + 3 );
     dwrites[ 0 ].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     dwrites[ 0 ].dstSet = u->descriptorSets[ i ];
     dwrites[ 0 ].dstBinding = 0;
@@ -1210,10 +1234,11 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
     VkDescriptorImageInfo* imageInfos = newae( VkDescriptorImageInfo,
 					       u->numAttachments + 1 );
       
-        mark;
+    mark;
     u64 count = 1;
     if( !u->display ){
       if( u->vertName ){
+	mark;
 	imageInfos[ 0 ].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	imageInfos[ 0 ].imageView = u->textures[ i ^ 1 ]->view;
 	imageInfos[ 0 ].sampler = u->textures[ i ^ 1 ]->sampler;
@@ -1228,6 +1253,7 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	dwrites[ count ].pImageInfo = imageInfos;
 	++count;
       }else{
+	mark;
 	bufferInfos[ 1 ].buffer = u->buffers[ i ^ 1 ]->buffer;
 	bufferInfos[ 1 ].offset = 0;
 	bufferInfos[ 1 ].range = u->buffers[ i ^ 1 ]->size;
@@ -1254,10 +1280,10 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	
       }
     }
-        mark;
+    mark;
     for( u64 j = 0; j < u->numAttachments; ++j ){
 
-        mark;
+      marc;
       if( u->attachments[ j ]->type == PLVK_ATTACH_TEXTURE ){
         mark;
 	imageInfos[ count - 1 ].imageLayout =
@@ -1275,7 +1301,7 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	++count;
       }else if( u->attachments[ j ]->type == PLVK_ATTACH_UNIT ){
 	if( u->attachments[ j ]->unit->vertName ){
-        mark;
+	  mark;
 	  imageInfos[ count - 1 ].imageLayout =
 	    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	  imageInfos[ count - 1 ].imageView =
@@ -1325,9 +1351,9 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
       }
     }
 
-        mark;
+    marc;
     vkUpdateDescriptorSets( u->instance->device, count, dwrites, 0, NULL );
-        mark;
+    mark;
           
     memfree( imageInfos );
     memfree( bufferInfos );
@@ -1426,22 +1452,22 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
 
 
 void buildUnit( plvkUnit* u ){
-    mark;
+  mark;
   
   if( u->display )
     createUnitSwap( u, true );
-    mark;
+  mark;
   createUnitPoolAndFences( u );
-    mark;
+  mark;
   u->pipe = createUnitPipeline( u );
-    mark;
+  mark;
   if( u->vertName )
     createUnitFramebuffers( u ); 
-    mark;
+  mark;
   createUnitDescriptorSetsAndPool( u );
-    mark;
+  mark;
   createUnitCommandBuffers( u );
-    mark;
+  mark;
 }
 
 
@@ -1464,6 +1490,8 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   
   vkDeviceWaitIdle( vk->device );
   new( ret, plvkUnit );
+  ret->fragName = fragName;
+  ret->vertName = vertName;
   if( displayed )
     ret->display = newe( plvkUnitDisplay );
   ret->tickCount = tickCount;
@@ -1476,8 +1504,6 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   ret->size.height = height;
   ret->layout = createUnitDescriptorLayout( ret );
   ret->format = format;
-  ret->fragName = fragName;
-  ret->vertName = vertName;
 
   if( displayed ){
     ret->display->gui = wsetup( title, x, y, width, height );
