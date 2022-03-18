@@ -20,6 +20,10 @@
 
 #version 460
 
+layout(constant_id = 1) const float aspectx = 1;
+layout(constant_id = 2) const float aspecty = 1;
+const vec2 aspect = vec2( aspecty, aspectx );
+
 layout(binding = 0) uniform UniformBufferObject {
   float time;
 } ubo; 
@@ -54,7 +58,7 @@ void main(){
   position = positions[ int( pindex ) ] * 3.46410161514;
   gl_Position =
     vec4( //texelFetch( texSampler, tpos, 0 ).xy +
-	 ps[ tindex ].pos.xy +
+	 ps[ tindex ].pos.xy * aspect +
 	 position * 0.0012,
 	  0.0, 1.0 );
   color = colors[ tindex ];

@@ -1,0 +1,4 @@
+Binding 0 is the global uniform buffer. This is for implementing global state such as keyboard input. For display units, attachments start from binding 1. For a nondisplay unit, binding 1 will be the units own texure and attachments start from binding 2. For compute units, binding 1 will be the output buffer, binding 2 will be the last state buffer, and attachments start from binding 3.
+
+Constant 0, a float is the unit aspect ratio.
+constant 1 and 2: a vec 2, is a vector to that respects aspect ratio. 

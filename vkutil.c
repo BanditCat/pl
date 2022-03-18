@@ -21,6 +21,7 @@
 #include "vkutil.h"
 #include "util.h"
 #include "os.h"
+#include <math.h>
 
 // Validation layer callback.
 #ifdef DEBUG
@@ -795,11 +796,11 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
       bindings[ count ].binding = count;
       bindings[ count ].descriptorCount = 1;
       if( u->attachments[ i ]->unit->vertName ){
-      marc;
+	marc;
 	bindings[ count ].descriptorType =
 	  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
       }else{
-      marc;
+	marc;
 	bindings[ count ].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       }
       bindings[ count ].pImmutableSamplers = NULL;
@@ -863,7 +864,31 @@ void createUnitPoolAndFences( plvkUnit* u ){
 
 
 plvkPipeline* createUnitPipeline( plvkUnit* u ){
-  if( u->vertName ){
+    // Specialization
+    VkSpecializationMapEntry smes[ 3 ] = {};
+    smes[ 0 ].constantID = 0;
+    smes[ 0 ].offset = 0;
+    smes[ 0 ].size = 4;
+    smes[ 1 ].constantID = 1;
+    smes[ 1 ].offset = 4;
+    smes[ 1 ].size = 4;
+    smes[ 2 ].constantID = 2;
+    smes[ 2 ].offset = 8;
+    smes[ 2 ].size = 4;
+    
+    f32 spdata[ 3 ] = {
+      ( (f32)u->size.width / (f32)u->size.height ),
+      fsqrt( (f32)u->size.width / (f32)u->size.height ),
+      1 / fsqrt( (f32)u->size.width / (f32)u->size.height )
+    };
+
+    VkSpecializationInfo si = {};
+    si.mapEntryCount = 3;
+    si.pMapEntries = smes;
+    si.dataSize = 12;
+    si.pData = spdata;
+
+    if( u->vertName ){
     VkShaderModule displayVertexShader;
     VkShaderModule displayFragmentShader;
     u64 fsize, vsize;
@@ -876,6 +901,8 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
     displayFragmentShader = createModule( u->instance->device, frag, fsize );
     displayVertexShader = createModule( u->instance->device, vert, vsize );
 
+
+
     new( ret, plvkPipeline );
     VkPipelineShaderStageCreateInfo pssci[ 2 ];
     pssci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -884,14 +911,14 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
     pssci[ 0 ].stage = VK_SHADER_STAGE_VERTEX_BIT;
     pssci[ 0 ].module = displayVertexShader;
     pssci[ 0 ].pName = "main";
-    pssci[ 0 ].pSpecializationInfo = NULL;
+    pssci[ 0 ].pSpecializationInfo = &si;
     pssci[ 1 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     pssci[ 1 ].pNext = NULL;
     pssci[ 1 ].flags = 0;
     pssci[ 1 ].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     pssci[ 1 ].module = displayFragmentShader;
     pssci[ 1 ].pName = "main";
-    pssci[ 1 ].pSpecializationInfo = NULL;
+    pssci[ 1 ].pSpecializationInfo = &si;
 
 
     VkPipelineVertexInputStateCreateInfo pvici = {};
@@ -1048,7 +1075,7 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
     pssci.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     pssci.module = computeShader;
     pssci.pName = "main";
-    pssci.pSpecializationInfo = NULL;
+    pssci.pSpecializationInfo = &si;
 
 
     VkPipelineLayoutCreateInfo plci = {};
@@ -1469,7 +1496,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      u64 drawSize, const void* pixels, u32 tickCount ){  
   
   vkDeviceWaitIdle( vk->device );
-    marc;
+  marc;
   new( ret, plvkUnit );
   ret->fragName = fragName;
   ret->vertName = vertName;
@@ -1485,7 +1512,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   ret->size.height = height;
   ret->layout = createUnitDescriptorLayout( ret );
   ret->format = format;
-    marc;
+  marc;
 
   if( displayed ){
     ret->display->gui = wsetup( title, x, y, width, height );
@@ -1500,7 +1527,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   }
   marc;
   buildUnit( ret );
-    marc;
+  marc;
     
   return ret;
 }

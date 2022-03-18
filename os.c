@@ -608,3 +608,12 @@ f32 frand( f32 min, f32 max ){
   f32 ret = ((f32)urand()) / ((f32)ULLONG_MAX);
   return ret * ( max - min ) + min;
 }
+f32 fsqrt( volatile f32 n ) {
+  f32 d;
+ __asm ("flds %1\n"
+    "fsqrt\n"
+    "fstps %0\n"
+    : "=rm" (d) 
+    : "rm" (n));
+  return d;
+}

@@ -237,6 +237,13 @@ int main( int argc, const char** argv ){
     marc;
     memfree( ps );
     memfree( cud );
+
+    //BUGBUG
+    f32 t = 22;
+    printFloat( t ); endl();
+    f32 q = fsqrt( t );
+    printFloat( q ); endl();
+    
   }
   atts[ 3 ] = plvkGetAttachable( vk, 2 );
   atts[ 4 ] = plvkGetAttachable( vk, 1 );

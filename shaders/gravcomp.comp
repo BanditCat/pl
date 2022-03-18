@@ -19,6 +19,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
+
+#extension GL_NV_cooperative_matrix : enable
+
+
 struct particle{
   vec3 pos;
   vec3 vel;

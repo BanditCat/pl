@@ -114,3 +114,5 @@ void getRes( void );
 void seedRand( u64 seed );
 u64 urand( void );
 f32 frand( f32 min, f32 max );
+
+f32 fsqrt( volatile f32 n );
