@@ -269,19 +269,31 @@ int main( int argc, const char** argv ){
   plvkShow( u4 );
 
   {
-    newa( tb, u32, gsz * gsz );
-    for( u64 i = 0; i < gsz; ++i )
-      tb[ i ] = i;
-    plvkUnit* testUnit = plvkCreateUnit( vk, 4, 8, 0, 4,
+    u32 tdim = 4;
+    u32 tsz = 16;
+    newa( tb, f32, tsz );
+      for( u32 x = 0; x < tdim; x++ ){
+	for( u32 y = 0; y < tdim; y++ ){
+	  tb[ y * tdim + x ] = x == y ? 1 : 0;
+	}
+      }
+      tb[ 2 ] = 2;
+    plvkUnit* testUnit = plvkCreateUnit( vk, tdim, tdim, 0, 4,
 					 "shaders\\test.spv", NULL,
-					 false, "tttt", 0, 0, atts + 4, 1,
-					 gsz * gsz, (const void*)tb, 1 );
+					 false, "tttt", 0, 0, NULL, 0,
+					 tsz, (const void*)tb, 1 );
     char* gd;
     for( u64 i = 0; i < 10; ++i ){
       printInt( i ); endl();
-      plvkTickUnit( testUnit );
       gd = plvkCopyComputeBuffer( testUnit );
-      printRaw( gd, 200 );
+      f32* fd = (f32*)gd;
+      for( u32 x = 0; x < tdim; x++ ){
+	endl();
+	for( u32 y = 0; y < tdim; y++ ){
+	  print( " " ); printFloat( fd[ y * tdim + x ] );
+	}
+      }
+      plvkTickUnit( testUnit );
       memfree( gd );
       endl();
     }

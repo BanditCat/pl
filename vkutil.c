@@ -60,15 +60,18 @@ void setupDebugCreateinfo( VkDebugUtilsMessengerCreateInfoEXT* ci ){
 
 
 // Requirements
-const char* requiredDeviceExtensions[] = { "VK_KHR_swapchain" };
+const char* requiredDeviceExtensions[] = {
+  VK_NV_COOPERATIVE_MATRIX_EXTENSION_NAME,
+  VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+  VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME, "VK_KHR_swapchain" };
 const u32 numRequiredDeviceExtensions =
   sizeof( requiredDeviceExtensions ) / sizeof( char* );
+#define reqExtensionsDef "VK_KHR_surface", "VK_KHR_win32_surface"
 #ifdef DEBUG
 const char* requiredExtensions[] =
-  { "VK_KHR_surface", "VK_KHR_win32_surface",
-    VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+  { reqExtensionsDef, VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
 #else
-const char* requiredExtensions[] = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+const char* requiredExtensions[] = { reqExtensionsDef };
 #endif
 #ifdef DEBUG
 const char* requiredLayers[] = { "VK_LAYER_KHRONOS_validation" };
@@ -317,9 +320,28 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel ){
   float qpriority = 1.0f;
   qci.pQueuePriorities = &qpriority;
   VkPhysicalDeviceFeatures deviceFeatures = {};
+  VkPhysicalDeviceVulkan12Features v12f = {};
+  v12f.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+  v12f.vulkanMemoryModel = 1;
+  v12f.shaderFloat16 = 1;
+  v12f.shaderInt8 = 1;
+  VkPhysicalDeviceCooperativeMatrixFeaturesNV coopMatFeatures = {
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV,
+    &v12f,
+    VK_TRUE,
+    VK_FALSE,
+  };
+  VkPhysicalDeviceBufferAddressFeaturesEXT bufferDeviceAddressFeatures = {
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT,
+    &coopMatFeatures,
+    VK_TRUE,
+    VK_FALSE,
+    VK_FALSE, 
+  };
   deviceFeatures.samplerAnisotropy = VK_TRUE;
   VkDeviceCreateInfo dci = {};
   dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  dci.pNext = &bufferDeviceAddressFeatures;
   dci.pQueueCreateInfos = &qci;
   dci.queueCreateInfoCount = 1;
   dci.pEnabledFeatures = &deviceFeatures;
@@ -864,31 +886,31 @@ void createUnitPoolAndFences( plvkUnit* u ){
 
 
 plvkPipeline* createUnitPipeline( plvkUnit* u ){
-    // Specialization
-    VkSpecializationMapEntry smes[ 3 ] = {};
-    smes[ 0 ].constantID = 0;
-    smes[ 0 ].offset = 0;
-    smes[ 0 ].size = 4;
-    smes[ 1 ].constantID = 1;
-    smes[ 1 ].offset = 4;
-    smes[ 1 ].size = 4;
-    smes[ 2 ].constantID = 2;
-    smes[ 2 ].offset = 8;
-    smes[ 2 ].size = 4;
+  // Specialization
+  VkSpecializationMapEntry smes[ 3 ] = {};
+  smes[ 0 ].constantID = 0;
+  smes[ 0 ].offset = 0;
+  smes[ 0 ].size = 4;
+  smes[ 1 ].constantID = 1;
+  smes[ 1 ].offset = 4;
+  smes[ 1 ].size = 4;
+  smes[ 2 ].constantID = 2;
+  smes[ 2 ].offset = 8;
+  smes[ 2 ].size = 4;
     
-    f32 spdata[ 3 ] = {
-      ( (f32)u->size.width / (f32)u->size.height ),
-      fsqrt( (f32)u->size.width / (f32)u->size.height ),
-      1 / fsqrt( (f32)u->size.width / (f32)u->size.height )
-    };
+  f32 spdata[ 3 ] = {
+    ( (f32)u->size.width / (f32)u->size.height ),
+    fsqrt( (f32)u->size.width / (f32)u->size.height ),
+    1 / fsqrt( (f32)u->size.width / (f32)u->size.height )
+  };
 
-    VkSpecializationInfo si = {};
-    si.mapEntryCount = 3;
-    si.pMapEntries = smes;
-    si.dataSize = 12;
-    si.pData = spdata;
+  VkSpecializationInfo si = {};
+  si.mapEntryCount = 3;
+  si.pMapEntries = smes;
+  si.dataSize = 12;
+  si.pData = spdata;
 
-    if( u->vertName ){
+  if( u->vertName ){
     VkShaderModule displayVertexShader;
     VkShaderModule displayFragmentShader;
     u64 fsize, vsize;
