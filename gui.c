@@ -131,7 +131,7 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
 		      | WS_CLIPCHILDREN, FALSE );
     p->width = r.right - r.left;
     p->height = r.bottom - r.top;
-    plvkTickRendering( state.vk );
+    //    plvkTickRendering( state.vk );
     return 0;
   case WM_MOVE:
     p->x = LOWORD( lParam );
@@ -144,7 +144,7 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
 		      | WS_CLIPCHILDREN, FALSE );
     p->x = r.left;
     p->y = r.top;
-    plvkTickRendering( state.vk );
+    //    plvkTickRendering( state.vk );
     return 0;
   case WM_CLOSE:
     gui->quit = 1;

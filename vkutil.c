@@ -1679,9 +1679,9 @@ void destroyUnitComputeBuffers( plvkUnit* u ){
 // Only useful for displayed units.
 void unbuildUnit( plvkUnit* u ){
   vkDeviceWaitIdle( u->instance->device ); 
+  destroyUnitCommandBuffers( u );
   destroyUnitDescriptorSetsAndPool( u );
   destroyUnitFramebuffers( u );
-  destroyUnitCommandBuffers( u );
   if( u->display )
     destroyUnitSwap( u );
 }
