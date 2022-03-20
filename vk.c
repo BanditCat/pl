@@ -57,6 +57,33 @@ void plvkPrintInitInfo( void ){
     printInt( i ); print( ": " );
     printl( vk->deviceExtensions[ i ].extensionName );
   }
+  if( vk->useTensorCores ){
+    printl( "\nTensor core formats:" );
+    const char* types[] = {
+      "COMPONENT_TYPE_FLOAT16\n",
+      "COMPONENT_TYPE_FLOAT32\n",
+      "COMPONENT_TYPE_FLOAT64\n",
+      "COMPONENT_TYPE_SINT8\n",
+      "COMPONENT_TYPE_SINT16\n",
+      "COMPONENT_TYPE_SINT32\n",
+      "COMPONENT_TYPE_SINT64\n",
+      "COMPONENT_TYPE_UINT8\n",
+      "COMPONENT_TYPE_UINT16\n",
+      "COMPONENT_TYPE_UINT32\n",
+      "COMPONENT_TYPE_UINT64\n"
+    };
+    for( u64 i = 0; i < vk->tensorPropertyCount; i++ ){
+      print( "Type #" ); printInt( i ); printl( ": {" );
+      print( "  MSize: " ); printInt( vk->tensorProperties[ i ].MSize ); endl();
+      print( "  NSize: " ); printInt( vk->tensorProperties[ i ].NSize ); endl();
+      print( "  KSize: " ); printInt( vk->tensorProperties[ i ].KSize ); endl();
+      print( "  AType: " ); print( types[ vk->tensorProperties[ i ].AType ] ); 
+      print( "  BType: " ); print( types[ vk->tensorProperties[ i ].BType ] ); 
+      print( "  CType: " ); print( types[ vk->tensorProperties[ i ].CType ] ); 
+      print( "  DType: " ); print( types[ vk->tensorProperties[ i ].DType ] );
+      printl( "}" );
+    }
+  }
 }
 
 void plvkPrintGPUs( void ){
@@ -106,8 +133,8 @@ void plvkEnd( plvkInstance* vk ){
 }
 
 
-plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel ){
-  plvkInstance* vk = createInstance( whichGPU, debugLevel );
+plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, bool useTensorCores ){
+  plvkInstance* vk = createInstance( whichGPU, debugLevel, useTensorCores );
   createPool( vk );
   createUBOs( vk ); 
 
@@ -189,13 +216,14 @@ plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 			  const char* fragName, const char* vertName,
 			  bool displayed, const char* title, int x, int y,
 			  plvkAttachable** attachments, u64 numAttachments,
-			  u64 drawSize, const void* pixels, u32 tickCount ){  
+			  u64 drawSize, const void* pixels, u32 tickCount,
+			  u32* specializations, u64 numSpecializations ){  
   plvkUnit* top = vk->unit;
   
   vk->unit = createUnit( vk, width, height, (VkFormat)format, fragmentSize,
 			 fragName, vertName, displayed, title, x, y,
 			 attachments, numAttachments, drawSize, pixels,
-			 tickCount );
+			 tickCount, specializations, numSpecializations );
   if( !displayed ){
     new( att, plvkAttachable );
     att->type = PLVK_ATTACH_UNIT;

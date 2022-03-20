@@ -49,7 +49,8 @@ void printIntInBase( u64 n, u8 base );
 void eprintIntInBase( u64 n, u8 base );
 #define printInt( n ) printIntInBase( n, 10 );
 #define eprintInt( n ) eprintIntInBase( n, 10 );
-void printFloat( f64 );
+void printFloatDigits( f64, u64 );
+#define printFloat( x ) printFloatDigits( (x), 2 );
 // Puts a number in a string, with a trailing nul character, writing at most count bytes.
 void intToStringInBase( char* s, u64 n, u64 count, u8 base );
 #define intToString( s, n, c ) intToStringInBase( s, n, c, 10 );

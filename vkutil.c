@@ -100,6 +100,7 @@ void getFuncPointers( plvkInstance* vk ){
 #ifdef DEBUG   
   FPGET( vkCreateDebugUtilsMessengerEXT );
   FPGET( vkDestroyDebugUtilsMessengerEXT );
+  FPGET( vkGetPhysicalDeviceCooperativeMatrixPropertiesNV );
 #endif
 }
 
@@ -173,11 +174,12 @@ void destroyUBOs( plvkInstance* vk ){
 }
 
 
-plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel ){
+plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores ){
   new( vk, plvkInstance );
   state.vk = vk;
   vk->debugLevel = debugLevel;
-
+  vk->useTensorCores = useTensorCores;
+  
   // Get extensions.
   vkEnumerateInstanceExtensionProperties( NULL, &vk->numExtensions, NULL );
   vk->extensions = newae( VkExtensionProperties, vk->numExtensions );
@@ -276,7 +278,24 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel ){
   vkGetPhysicalDeviceFeatures( vk->gpu, &vk->selectedGpuFeatures );
   vkEnumerateDeviceExtensionProperties( vk->gpu, NULL,
 					&vk->numDeviceExtensions, NULL );
-  // Check device extensions.
+
+  if( vk->useTensorCores ){
+    if( VK_SUCCESS !=
+	vk->vkGetPhysicalDeviceCooperativeMatrixPropertiesNV
+	( vk->gpu, &vk->tensorPropertyCount, NULL ) )
+      die( "Failed to get tensor core information count." );
+    vk->tensorProperties = newae( VkCooperativeMatrixPropertiesNV,
+				  vk->tensorPropertyCount );
+    for( u64 i = 0; i < vk->tensorPropertyCount; i++ )
+      vk->tensorProperties[ i ].sType =
+	VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV;
+    if( VK_SUCCESS !=
+	vk->vkGetPhysicalDeviceCooperativeMatrixPropertiesNV
+	( vk->gpu, &vk->tensorPropertyCount, vk->tensorProperties ) )
+      die( "Failed to get tensor core information." );
+
+  }
+
   vk->deviceExtensions = newae( VkExtensionProperties,
 				vk->numDeviceExtensions );
   vkEnumerateDeviceExtensionProperties( vk->gpu, NULL,
@@ -363,6 +382,8 @@ void destroyInstance( plvkInstance* vk ){
   if( vk->instance )
     vkDestroyInstance( vk->instance, NULL );
 
+  if( vk->tensorProperties )
+    memfree( vk->tensorProperties );
   if( vk->extensions )
     memfree( vk->extensions );
   if( vk->layers )
@@ -886,30 +907,21 @@ void createUnitPoolAndFences( plvkUnit* u ){
 
 
 plvkPipeline* createUnitPipeline( plvkUnit* u ){
-  // Specialization
-  VkSpecializationMapEntry smes[ 3 ] = {};
-  smes[ 0 ].constantID = 0;
-  smes[ 0 ].offset = 0;
-  smes[ 0 ].size = 4;
-  smes[ 1 ].constantID = 1;
-  smes[ 1 ].offset = 4;
-  smes[ 1 ].size = 4;
-  smes[ 2 ].constantID = 2;
-  smes[ 2 ].offset = 8;
-  smes[ 2 ].size = 4;
-    
-  f32 spdata[ 3 ] = {
-    ( (f32)u->size.width / (f32)u->size.height ),
-    fsqrt( (f32)u->size.width / (f32)u->size.height ),
-    1 / fsqrt( (f32)u->size.width / (f32)u->size.height )
-  };
-
+  
+  newa( mape, VkSpecializationMapEntry, u->numSpecializations );
+  for( u64 i = 0; i < u->numSpecializations; ++i ){
+    mape[ i ].constantID = i;
+    mape[ i ].offset = 4 * i;
+    mape[ i ].size = 4;
+  }
+  
   VkSpecializationInfo si = {};
-  si.mapEntryCount = 3;
-  si.pMapEntries = smes;
-  si.dataSize = 12;
-  si.pData = spdata;
+  si.mapEntryCount = u->numSpecializations;
+  si.pMapEntries = mape;
+  si.dataSize = 4 * u->numSpecializations;
+  si.pData = u->specializations;
 
+  new( ret, plvkPipeline );
   if( u->vertName ){
     VkShaderModule displayVertexShader;
     VkShaderModule displayFragmentShader;
@@ -923,9 +935,6 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
     displayFragmentShader = createModule( u->instance->device, frag, fsize );
     displayVertexShader = createModule( u->instance->device, vert, vsize );
 
-
-
-    new( ret, plvkPipeline );
     VkPipelineShaderStageCreateInfo pssci[ 2 ];
     pssci[ 0 ].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     pssci[ 0 ].pNext = NULL;
@@ -1055,6 +1064,16 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
 					  NULL, &ret->renderPass ) ) 
       die( "Render pass creation failed." );
 
+
+    VkDynamicState dynamicStates[ 2 ] = {
+      VK_DYNAMIC_STATE_VIEWPORT,
+      VK_DYNAMIC_STATE_SCISSOR
+    };
+    VkPipelineDynamicStateCreateInfo pdsci = {};
+    pdsci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    pdsci.dynamicStateCount = 2;
+    pdsci.pDynamicStates = dynamicStates; 
+      
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.stageCount = 2;
@@ -1067,6 +1086,7 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
     pipelineInfo.pColorBlendState = &pcbsci;
     pipelineInfo.layout = ret->pipelineLayout;
     pipelineInfo.renderPass = ret->renderPass;
+    pipelineInfo.pDynamicState = &pdsci;
     pipelineInfo.subpass = 0;
 
 
@@ -1078,7 +1098,6 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
 
     destroyModule( u->instance, displayFragmentShader );
     destroyModule( u->instance, displayVertexShader );
-    return ret;
   }else{
     VkShaderModule computeShader;
     u64 csize;
@@ -1089,7 +1108,6 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
     computeShader = createModule( u->instance->device, comp, csize );
 
 
-    new( ret, plvkPipeline );
     VkPipelineShaderStageCreateInfo pssci;
     pssci.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     pssci.pNext = NULL;
@@ -1126,8 +1144,9 @@ plvkPipeline* createUnitPipeline( plvkUnit* u ){
       die( "Compute pipeline creation failed." );
 
     destroyModule( u->instance, computeShader );
-    return ret;
   }
+  memfree( mape );
+  return ret;
 }
 
 
@@ -1200,6 +1219,19 @@ void createUnitCommandBuffers( plvkUnit* u ){
 			    VK_SUBPASS_CONTENTS_INLINE );
       vkCmdBindPipeline( u->commandBuffers[ i ],
 			 VK_PIPELINE_BIND_POINT_GRAPHICS, u->pipe->pipeline );
+      VkViewport viewport = {};
+      viewport.x = 0.0f;
+      viewport.y = 0.0f;
+      viewport.width = (float) u->size.width;
+      viewport.height = (float) u->size.height;
+      viewport.minDepth = 0.0f;
+      viewport.maxDepth = 1.0f;
+
+      VkRect2D scissor = {};
+      scissor.extent = u->size;
+      vkCmdSetViewport( u->commandBuffers[ i ], 0, 1, &viewport );
+      vkCmdSetScissor( u->commandBuffers[ i ], 0, 1, &scissor );
+
       vkCmdBindDescriptorSets( u->commandBuffers[ i ],
 			       VK_PIPELINE_BIND_POINT_GRAPHICS,
 			       u->pipe->pipelineLayout, 0, 1,
@@ -1491,8 +1523,6 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
 void buildUnit( plvkUnit* u ){    
   if( u->display )
     createUnitSwap( u, true );
-  createUnitPoolAndFences( u );
-  u->pipe = createUnitPipeline( u );
   if( u->vertName )
     createUnitFramebuffers( u ); 
   createUnitDescriptorSetsAndPool( u );
@@ -1515,11 +1545,16 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      const char* fragName, const char* vertName,
 		      bool displayed, const char* title, int x, int y,
 		      plvkAttachable** attachments, u64 numAttachments,
-		      u64 drawSize, const void* pixels, u32 tickCount ){  
+		      u64 drawSize, const void* pixels, u32 tickCount,
+		      u32* specializations, u64 numSpecializations ){  
   
   vkDeviceWaitIdle( vk->device );
   marc;
   new( ret, plvkUnit );
+  ret->numSpecializations = numSpecializations;
+  ret->specializations = newae( u32, numSpecializations );
+  memcopy( ret->specializations, specializations, u32, numSpecializations ); 
+
   ret->fragName = fragName;
   ret->vertName = vertName;
   if( displayed )
@@ -1548,6 +1583,9 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
     marc;
   }
   marc;
+  ret->pipe = createUnitPipeline( ret );
+  createUnitPoolAndFences( ret );
+
   buildUnit( ret );
   marc;
     
@@ -1643,16 +1681,16 @@ void unbuildUnit( plvkUnit* u ){
   vkDeviceWaitIdle( u->instance->device ); 
   destroyUnitDescriptorSetsAndPool( u );
   destroyUnitFramebuffers( u );
-  destroyUnitPipeline( u );
   destroyUnitCommandBuffers( u );
   if( u->display )
     destroyUnitSwap( u );
-  destroyUnitPoolAndFences( u );
 }
 
 void destroyUnit( plvkUnit* u ){
   vkDeviceWaitIdle( u->instance->device ); 
   unbuildUnit( u );
+  destroyUnitPoolAndFences( u );
+  destroyUnitPipeline( u );
   //destroyUnitDescriptorSetsAndPool( u );
   //destroyUnitFramebuffers( u );
   //destroyUnitPipeline( u );
@@ -1667,6 +1705,7 @@ void destroyUnit( plvkUnit* u ){
     destroyUnitTextures( u );
   if( !u->vertName )
     destroyUnitComputeBuffers( u );
+  memfree( u->specializations );
   memfree( u->attachments );
   memfree( u );
 }

@@ -142,7 +142,7 @@ int main( int argc, const char** argv ){
       continue;
     }
     if( !strcomp( "-info", argv[ i ] ) ){
-      plvkInit( gpu, debugLevel );
+      plvkInit( gpu, debugLevel, true );
       plvkPrintInitInfo();
       plvkPrintGPUs();
       return 0;
@@ -187,14 +187,14 @@ int main( int argc, const char** argv ){
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
-  plvkInstance* vk = plvkInit( gpu, debugLevel );
+  plvkInstance* vk = plvkInit( gpu, debugLevel, true );
   plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
     plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
     plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL };
   plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				 "shaders\\unitFrag.spv",
 				 "shaders\\quad.spv",
-				 true, "foo", 300, 300, atts, 1, 6, NULL, 1 );
+				 true, "foo", 300, 300, atts, 1, 6, NULL, 1, NULL, 0 );
   static const u32 gsz = 210;
   {
     static const u32 cuesz = 8;
@@ -218,7 +218,7 @@ int main( int argc, const char** argv ){
     plvkCreateUnit( vk, gsz, gsz, VK_FORMAT_R32G32B32A32_SFLOAT, 16,
 		    "shaders\\gravFrag.spv",
 		    "shaders\\quad.spv",
-		    false, "foo", 400, 400, NULL, 0, 6, (u8*)ps, 1 );
+		    false, "foo", 400, 400, NULL, 0, 6, (u8*)ps, 1, NULL, 0  );
     memfree( ps );
     ps = newae( f32, gsz * gsz * 3 );
     for( u32 x = 0; x < gsz; ++x ){
@@ -233,7 +233,7 @@ int main( int argc, const char** argv ){
     plvkCreateUnit( vk, cusz, 1, 0, cuesz * 4,
 		    "shaders\\gravcomp.spv", NULL,
 		    false, "foofff", 50, 200, NULL, 0,
-		    cusz, cud, 1 );
+		    cusz, cud, 1, NULL, 0  );
     marc;
     memfree( ps );
     memfree( cud );
@@ -252,45 +252,56 @@ int main( int argc, const char** argv ){
 				  "shaders\\unitFrag.spv",
 				  "shaders\\quad.spv",
 				  true, "foo", 400, 400, atts + 1, 1, 6, NULL,
-				  1 );
+				  1, NULL, 0  );
   plvkUnit* u3 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit2Frag.spv",
 				  "shaders\\quad.spv",
 				  true, "foo", 1050, 200, atts + 3, 1, 6, NULL,
-				  1 );
+				  1, NULL, 0  );
   plvkUnit* u4 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit3Frag.spv",
 				  "shaders\\gravVert.spv",
 				  true, "foofff", 50, 200, atts + 3, 3,
-				  gsz * gsz * 3, NULL, 1 );
+				  gsz * gsz * 3, NULL, 1, NULL, 0 );
   plvkShow( u1 );
   plvkShow( u2 );
   plvkShow( u3 );
   plvkShow( u4 );
-
+  marc;
   {
-    u32 tdim = 4;
-    u32 tsz = 16;
+    u32 tdimx = 16;
+    u32 tdimy = 16;
+    u32 tsz = 256;
+    newa( ta, f32, tsz );
     newa( tb, f32, tsz );
-      for( u32 x = 0; x < tdim; x++ ){
-	for( u32 y = 0; y < tdim; y++ ){
-	  tb[ y * tdim + x ] = x == y ? 1 : 0;
-	}
+    newa( tc, f32, tsz );
+    for( u32 x = 0; x < tdimx; x++ ){
+      for( u32 y = 0; y < tdimy; y++ ){
+	ta[ y * tdimx + x ] = x == y ? 1.2 : 3.0;
+	tb[ y * tdimx + x ] = 2.0;
+	tc[ y * tdimx + x ] = 0.1;
       }
-      tb[ 2 ] = 2;
-    plvkUnit* testUnit = plvkCreateUnit( vk, tdim, tdim, 0, 4,
+    }
+    plvkAddBuffer( vk, tb, tsz * 4 );
+    plvkAddBuffer( vk, tc, tsz * 4 );
+    plvkAttachable* tatts[] = {
+      plvkGetAttachable( vk, 0 ),
+      plvkGetAttachable( vk, 1 ) };
+
+    //tb[ 2 ] = 2;
+    plvkUnit* testUnit = plvkCreateUnit( vk, 1, 1, 0, 4,
 					 "shaders\\test.spv", NULL,
-					 false, "tttt", 0, 0, NULL, 0,
-					 tsz, (const void*)tb, 1 );
+					 false, "tttt", 0, 0, tatts, 2,
+					 tsz, (const void*)ta, 1, NULL, 0 );
     char* gd;
     for( u64 i = 0; i < 10; ++i ){
       printInt( i ); endl();
       gd = plvkCopyComputeBuffer( testUnit );
       f32* fd = (f32*)gd;
-      for( u32 x = 0; x < tdim; x++ ){
+      for( u32 y = 0; y < tdimy; y++ ){
 	endl();
-	for( u32 y = 0; y < tdim; y++ ){
-	  print( " " ); printFloat( fd[ y * tdim + x ] );
+	for( u32 x = 0; x < tdimx; x++ ){
+	  print( " " ); printFloat( fd[ y * tdimx + x ] );
 	}
       }
       plvkTickUnit( testUnit );
@@ -298,8 +309,9 @@ int main( int argc, const char** argv ){
       endl();
     }
 
+    memfree( ta );
     memfree( tb );
-
+    memfree( tc );
   }
 					 
   // Main loop.

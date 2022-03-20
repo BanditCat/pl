@@ -32,27 +32,65 @@
 #extension GL_EXT_buffer_reference : enable
 #extension GL_EXT_control_flow_attributes : enable
 
-layout(std140, binding = 1) buffer outcolors{
-  mat4 outbuf;
+layout( binding = 1) coherent buffer outcolors{
+  float outbuf[ 256 ];
 };
-layout(std140, binding = 2) buffer incolors{
-  mat4 inbuf;
+layout( binding = 2) coherent buffer incolors{
+  float inbuf[ 256 ];
+};
+layout( binding = 3) coherent buffer b{
+  float bmat[ 256 ];
+};
+layout( binding = 4) coherent buffer c{
+  float cmat[ 256 ];
 };
 
-shared float tm[16];
-  //    1, 0, 0, 0,
-  //    0, 2, 0, 0,
-  //    0, 0, 1, 0,
-  //    0, 0, 0, 1 
-  // };
-  
-fcoopmatNV<16, gl_ScopeSubgroup, 16, 8> tcmat; 
+const uint sz = 256;  
+fcoopmatNV<16, gl_ScopeSubgroup  , 16, 16> tcmat[ sz ]; 
 void main(){
-   coopMatLoadNV( tcmat, tm, 0, 4, false);
-     
-   outbuf[ gl_GlobalInvocationID.x ][ gl_GlobalInvocationID.y ] = tcmat.length();
+  barrier();
+  fcoopmatNV<16, gl_ScopeSubgroup  , 16, 16> b[ sz ]; 
+  fcoopmatNV<16, gl_ScopeSubgroup  , 16, 16> c[ sz ]; 
+  fcoopmatNV<16, gl_ScopeSubgroup  , 16, 16> d[ sz ]; 
   
-  // outbuf//[ gl_GlobalInvocationID.x ][ gl_GlobalInvocationID.y ]
-  //   *= inbuf;//[ gl_GlobalInvocationID.x ][ gl_GlobalInvocationID.y ];
+  for( uint i = 0; i < sz; ++i ){
+    const uint el = i * 1;
+    const uint st = 16;
+    coopMatLoadNV( tcmat[ i ], outbuf, el, st, false );
+  }
+  barrier();
+  for( uint i = 0; i < sz; ++i ){
+    const uint el = i * 1;
+    const uint st = 16;
+    coopMatLoadNV( b[ i ], bmat, el, st, false );
+  }
+  barrier();
+  for( uint i = 0; i < sz; ++i ){
+    const uint el = i * 1;
+    const uint st = 16;
+    coopMatLoadNV( c[ i ], cmat, el, st, false );
+  }
+  barrier();
+  for( uint i = 0; i < sz; ++i ){
+    d[ i ] = coopMatMulAddNV( tcmat[ i ], b[ i ], c[ i ] );
+  }
+  barrier();
+  for( uint i = 0; i < sz; ++i ){
+    const uint el = i * 1;
+    const uint st = 16;
+    coopMatStoreNV( d[ i ], outbuf, el, st, false );
+  }
+  barrier();
+  outbuf[ 255 ] = tcmat[ 0 ].length();
+  barrier();
+  // for( uint i = 0; i < tcmat.length(); i++ )
+  //   outbuf[ i ]
+  // 	= tcmat[ i ];
+  //  barrier();
+     
+  
+  // if( gl_GlobalInvocationID.x == 255 ){
+  // }
+  // barrier();
 }
  

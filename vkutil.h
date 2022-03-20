@@ -91,6 +91,10 @@ typedef struct plvkAttachable{
 
 // Instance wide state.
 typedef struct plvkIntance{
+  bool useTensorCores;
+  u32 tensorPropertyCount;
+  VkCooperativeMatrixPropertiesNV* tensorProperties;
+  
   VkInstance instance;
   u32 numGPUs;
   VkPhysicalDevice* gpus;
@@ -141,7 +145,8 @@ typedef struct plvkIntance{
   FPDEFINE( vkDestroyDebugUtilsMessengerEXT );
   VkDebugUtilsMessengerEXT vkdbg;
 #endif
-
+  FPDEFINE( vkGetPhysicalDeviceCooperativeMatrixPropertiesNV );
+  
   bool valid;
   HANDLE renderThread;
   HANDLE rendering;
@@ -167,6 +172,9 @@ typedef struct plvkUnit{
   const char* fragName;
   const char* vertName;
 
+  u64 numSpecializations;
+  u32* specializations;
+  
   u32 tickCount;
   
   u64 numAttachments;
@@ -215,7 +223,8 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      const char* fragName, const char* vertName,
 		      bool displayed, const char* title, int x, int y,
 		      plvkAttachable** attachments, u64 numAttachments,
-		      u64 drawSize, const void* pixels, u32 tickCount );
+		      u64 drawSize, const void* pixels, u32 tickCount,
+		      u32* specializations, u64 numSpecializations );
 
 void destroyUnit( plvkUnit* u );
 void tickUnit( plvkUnit* u );
@@ -228,7 +237,7 @@ plvkBuffer* createComputeBuffer( plvkInstance* vk, const void* data, u64 size );
 void* copyComputeBuffer( plvkUnit* u );
 
 
-plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel );
+plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores );
 void destroyInstance( plvkInstance* vk );
 void createUBOs( plvkInstance* vk );
 void destroyUBOs( plvkInstance* vk );

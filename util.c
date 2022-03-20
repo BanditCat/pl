@@ -161,7 +161,8 @@ void eprintIntInBase( u64 n, u8 base ){
   intToStringInBase( s, n, 256, base );
   eprint( s );
 }
-void printFloat( f64 f ){
+void printFloatDigits( f64 f, u64 digits ){
+  u32 dgs = digits > 11 ? 11 : digits;
   if( f < 0 ){
     print( "-" );
     f *= -1.0;
@@ -173,13 +174,16 @@ void printFloat( f64 f ){
   else{
     u64 integerPart = f;
     f = f - integerPart;
-    f *= 100000000000;
+    for( u32 i = 0; i < dgs; ++i )
+      f *= 10;
     u64 fractionalPart = f;
     printInt( integerPart );
     print( "." );
-    printIntWithPrefix( fractionalPart, 11, '0' );
+    printIntWithPrefix( fractionalPart, dgs, '0' );
   }
 }
+  
+  
 void intToStringWithPrefix( char* s, u64 n, u64 count, u32 minWidth, char pad ){
   intToString( s, n, count );
   u32 olen = slen( s );

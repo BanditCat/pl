@@ -27,10 +27,10 @@ struct particle{
   float color;
   float mass;
 };
-layout(std140, binding = 1) buffer oparticleBuffer{
+layout( binding = 1) buffer oparticleBuffer{
   particle ops[];
 };
-layout(std140, binding = 2) buffer iparticleBuffer{
+layout( binding = 2) buffer iparticleBuffer{
   particle ips[];
 };
 
