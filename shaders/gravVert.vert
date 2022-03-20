@@ -20,15 +20,11 @@
 
 #version 460
 
-layout(constant_id = 1) const float aspectx = 1;
-layout(constant_id = 2) const float aspecty = 1;
-const vec2 aspect = vec2( aspecty, aspectx );
-
 layout(binding = 0) uniform UniformBufferObject {
   float time;
 } ubo; 
 layout(binding = 1) uniform sampler2D texSampler;
-layout(std140, binding = 2) buffer colorBuffer{
+layout( binding = 2) buffer colorBuffer{
    vec3 colors[];
 };
 struct particle{
@@ -37,8 +33,11 @@ struct particle{
   float color;
   float mass;
 };
-layout(std140, binding = 3) buffer particleBuffer{
+layout( binding = 3) buffer particleBuffer{
   particle ps[];
+};
+layout( binding = 4) uniform aspectBuffer{
+  vec2 aspect;
 };
 
 layout(location = 0) out vec2 position;

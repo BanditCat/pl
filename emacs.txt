@@ -112,6 +112,7 @@
 (global-set-key (kbd "<f3>") 'bandit-indent)
 (global-set-key (kbd "<f4>") 'next-error)
 (global-set-key (kbd "<f6>") (lambda () (interactive) (bandit-run "rall")))
+(global-set-key (kbd "<S-f6>") (lambda () (interactive) (bandit-run "rdall")))
 (global-set-key (kbd "<f7>") (lambda () (interactive) (bandit-run "clean")))
 (global-set-key (kbd "<f8>") (lambda () (interactive) (bandit-run "backup")))
 (global-set-key (kbd "<f9>") (lambda () (interactive) (comment-region (mark) (point))))

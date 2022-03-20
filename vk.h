@@ -221,6 +221,10 @@ plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, bool useTensorCores );
 void plvkEnd( plvkInstance* vk );
 
 plvkAttachable* plvkAddTexture( plvkInstance* vk, const char* name );
+plvkAttachable* plvkAddBuffer( plvkInstance* vk, void* data, u64 size );
+plvkAttachable* plvkAddUniformBuffer( plvkInstance* vk, u64 size,
+				      void (*uniform)( void*out, void* in ),
+				      void* indata );
 
 // Creates a unit and attaches it to the instance. If displayable is true,
 // format is ignored and a compatible surace format is used. Also, if displayed
@@ -241,7 +245,7 @@ plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 // attaachables, otherwise the first attached item (bottom of the stack) if n
 // is too large.
 plvkAttachable* plvkGetAttachable( plvkInstance* vk, u32 n );
-plvkAttachable* plvkAddBuffer( plvkInstance* vk, void* data, u64 size );
+
 void* plvkCopyComputeBuffer( plvkUnit* u );
 
 void plvkDraw( void );
@@ -259,3 +263,4 @@ void plvkStopRendering( plvkInstance* vk );
 void plvkPauseRendering( plvkInstance* vk );
 void plvkResumeRendering( plvkInstance* vk );
 void plvkTickRendering( plvkInstance* vk );
+void plvkGetUnitSize( plvkUnit* u, u64* w, u64* h );

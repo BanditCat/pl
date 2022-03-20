@@ -100,8 +100,8 @@ void getFuncPointers( plvkInstance* vk ){
 #ifdef DEBUG   
   FPGET( vkCreateDebugUtilsMessengerEXT );
   FPGET( vkDestroyDebugUtilsMessengerEXT );
-  FPGET( vkGetPhysicalDeviceCooperativeMatrixPropertiesNV );
 #endif
+  FPGET( vkGetPhysicalDeviceCooperativeMatrixPropertiesNV );
 }
 
 
@@ -121,6 +121,13 @@ u32 findMemoryType( plvkInstance* vk, u32 filter, VkMemoryPropertyFlags props ){
 plvkBuffer* createBuffer( plvkInstance* vk, u64 size, VkBufferUsageFlags usage,
 			  VkMemoryPropertyFlags props ){
   new( ret, plvkBuffer );
+  if( VK_BUFFER_USAGE_STORAGE_BUFFER_BIT & usage )
+    ret->type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  else if( VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT & usage )
+    ret->type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  else
+    ret->type = 0xdead;
+
   VkBufferCreateInfo bci = {};
   bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   bci.size = size;
@@ -229,6 +236,7 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
   create.ppEnabledExtensionNames = requiredExtensions;
   create.pNext = NULL;
 
+    marc;
   if( VK_SUCCESS != vkCreateInstance( &create, NULL, &vk->instance ) )
     die( "Failed to create vulkan instance." );
 
@@ -253,6 +261,7 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
   if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGPUs,
 						vk->gpus ) )
     die( "Failed to enumerate gpus." );
+    marc;
   vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGPUs );
   for( u32 i = 0; i < vk->numGPUs; ++i )
     vkGetPhysicalDeviceProperties( vk->gpus[ i ], vk->gpuProperties + i );
@@ -265,6 +274,8 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
       bestScore = score;
     }
   }
+      marc;
+
   if( whichGPU != -1 ){
     if( (u32)whichGPU >= vk->numGPUs )
       die( "Nonexistent gpu selected." );
@@ -273,11 +284,13 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
     vk->gpuIndex = best;
   }
   // Get selected gpu information.
+    marc;
   vk->gpu = vk->gpus[ vk->gpuIndex ];
   vk->selectedGpuProperties = vk->gpuProperties + vk->gpuIndex;
   vkGetPhysicalDeviceFeatures( vk->gpu, &vk->selectedGpuFeatures );
   vkEnumerateDeviceExtensionProperties( vk->gpu, NULL,
 					&vk->numDeviceExtensions, NULL );
+    marc;
 
   if( vk->useTensorCores ){
     if( VK_SUCCESS !=
@@ -295,6 +308,7 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
       die( "Failed to get tensor core information." );
 
   }
+    marc;
 
   vk->deviceExtensions = newae( VkExtensionProperties,
 				vk->numDeviceExtensions );
@@ -396,6 +410,12 @@ void destroyInstance( plvkInstance* vk ){
     memfree( vk->deviceExtensions );
   if( vk->queueFamilies )
     memfree( vk->queueFamilies );
+  plvkUniformBufferCallback* ucbp = vk->ucallbacks;
+  while( ucbp ){
+    plvkUniformBufferCallback* p = ucbp;
+    ucbp = ucbp->next;
+    memfree( p );
+  }
 }
 
 
@@ -406,10 +426,10 @@ VkExtent2D getUnitExtent( plvkUnit* u ){
 					     &u->display->surface
 					     ->surfaceCapabilities );
   const guiInfo* g = u->display->gui;
-  if( u->display->surface->surfaceCapabilities.currentExtent.width
-      != UINT32_MAX ){
-    wh = u->display->surface->surfaceCapabilities.currentExtent;
-  } else {
+  /* if( u->display->surface->surfaceCapabilities.currentExtent.width */
+  /*     != UINT32_MAX ){ */
+  /*   wh = u->display->surface->surfaceCapabilities.currentExtent; */
+  /* } else */ {
     wh.width = g->clientWidth;
     wh.height = g->clientHeight;
     if( wh.width >
@@ -853,8 +873,8 @@ VkDescriptorSetLayout createUnitDescriptorLayout( plvkUnit* u ){
       marc;
       bindings[ count ].binding = count;
       bindings[ count ].descriptorCount = 1;
-      bindings[ count ].descriptorType =
-	VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      bindings[ count ].descriptorType =	
+	u->attachments[ i ]->buffer->type;
       bindings[ count ].pImmutableSamplers = NULL;
       bindings[ count ].stageFlags = VK_SHADER_STAGE_ALL;
       ++count;
@@ -1415,7 +1435,8 @@ void createUnitDescriptorSetsAndPool( plvkUnit* u ){
 	dwrites[ count ].dstSet = u->descriptorSets[ i ];
 	dwrites[ count ].dstBinding = count;
 	dwrites[ count ].dstArrayElement = 0;
-	dwrites[ count ].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	dwrites[ count ].descriptorType =
+	  u->attachments[ j ]->buffer->type;
 	dwrites[ count ].descriptorCount = 1;
 	dwrites[ count ].pBufferInfo = &( bufferInfos[ j + 3 ] );
 	++count;
@@ -1691,11 +1712,7 @@ void destroyUnit( plvkUnit* u ){
   unbuildUnit( u );
   destroyUnitPoolAndFences( u );
   destroyUnitPipeline( u );
-  //destroyUnitDescriptorSetsAndPool( u );
-  //destroyUnitFramebuffers( u );
-  //destroyUnitPipeline( u );
   if( u->display ){
-    //destroyUnitSwap( u );
     destroyUnitSurface( u );
     wend( u->display->gui );
     memfree( u->display );
@@ -1803,9 +1820,30 @@ void tickUnit( plvkUnit* u ){
 }
 
 
+plvkBuffer* createUniformBuffer( plvkInstance* vk, u64 size,
+				 void (*uniform)( void*out, void* in ),
+				 void* indata ){
+  plvkBuffer* ret = createBuffer( vk, size, 
+				  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+  void* gpudata;
+  vkMapMemory( vk->device, ret->memory, 0, size, 0, &gpudata );
+  uniform( gpudata, indata );
+  vkUnmapMemory( vk->device, ret->memory );
+  return ret;
+}
+void* mapUniformBuffer( plvkInstance* vk, plvkBuffer* b ){
+  void* gpudata;
+  vkMapMemory( vk->device, b->memory, 0, b->size, 0, &gpudata );
+  return gpudata;
+}
+void unmapUniformBuffer( plvkInstance* vk, plvkBuffer* b ){
+  vkUnmapMemory( vk->device, b->memory );
+}
+
 plvkBuffer* createComputeBuffer( plvkInstance* vk, const void* data, u64 size ){
   plvkBuffer* stagebuf = createBuffer( vk, size, 
-				       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 				       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 				       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
@@ -1827,7 +1865,6 @@ plvkBuffer* createComputeBuffer( plvkInstance* vk, const void* data, u64 size ){
 void* copyComputeBuffer( plvkUnit* u ){
   plvkBuffer* stagebuf = createBuffer( u->instance,
 				       u->buffers[ u->pingpong ]->size, 
-				       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
 				       VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 				       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
@@ -1845,4 +1882,8 @@ void* copyComputeBuffer( plvkUnit* u ){
   vkUnmapMemory( u->instance->device, stagebuf->memory );
   destroyBuffer( u->instance, stagebuf );
   return ret;  
+}
+void getUnitSize( plvkUnit* u, u64* w, u64* h ){
+  *w = u->size.width;
+  *h = u->size.height;
 }

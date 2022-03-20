@@ -134,6 +134,7 @@ void plvkEnd( plvkInstance* vk ){
 
 
 plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, bool useTensorCores ){
+  marc;
   plvkInstance* vk = createInstance( whichGPU, debugLevel, useTensorCores );
   createPool( vk );
   createUBOs( vk ); 
@@ -158,6 +159,15 @@ void plvkDraw( void ){
     while( t ){
       for( u32 i = 0; i < t->tickCount; ++i )
 	tickUnit( t );
+      t = t->next;
+    }
+  }
+  {
+    plvkUniformBufferCallback* t = vk->ucallbacks;
+    while( t ){
+      void* m = mapUniformBuffer( vk, t->buf );
+      t->func( m, t->data );
+      unmapUniformBuffer( vk, t->buf );
       t = t->next;
     }
   }
@@ -280,9 +290,30 @@ plvkAttachable* plvkAddBuffer( plvkInstance* vk, void* data, u64 size ){
   vk->attachables = ret;
   return ret;
 }
+plvkAttachable* plvkAddUniformBuffer( plvkInstance* vk, u64 size,
+				      void (*uniform)( void*out, void* in ),
+				      void* indata ){
+  new( ret, plvkAttachable );
+  ret->type = PLVK_ATTACH_BUFFER;
+  ret->buffer = createUniformBuffer( vk, size, uniform, indata );
+  ret->next = vk->attachables;
+  vk->attachables = ret;
+
+  new( cb, plvkUniformBufferCallback );
+  cb->func = uniform;
+  cb->data = indata;
+  cb->next = vk->ucallbacks;
+  cb->buf = ret->buffer;
+  vk->ucallbacks = cb;
+  
+  return ret;
+}
 void* plvkCopyComputeBuffer( plvkUnit* u ){
   return copyComputeBuffer( u );
 }
 void plvkTickUnit( plvkUnit* u ){
   tickUnit( u );
+}
+void plvkGetUnitSize( plvkUnit* u, u64* w, u64* h ){
+  getUnitSize( u, w, h );
 }

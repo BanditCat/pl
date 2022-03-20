@@ -121,17 +121,10 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
   RECT r;
   switch( uMsg ){
   case WM_SIZE:
-    p->clientWidth = p->width = LOWORD( lParam );
-    p->clientHeight = p->height = HIWORD( lParam );
-    r.left = p->x;
-    r.top = p->y;
-    r.right = r.left + p->width;
-    r.bottom = r.top + p->height;
-    AdjustWindowRect( &r, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS
-		      | WS_CLIPCHILDREN, FALSE );
+    GetClientRect( hWnd, &r );
     p->width = r.right - r.left;
     p->height = r.bottom - r.top;
-    //    plvkTickRendering( state.vk );
+    plvkTickRendering( state.vk );
     return 0;
   case WM_MOVE:
     p->x = LOWORD( lParam );
@@ -144,7 +137,6 @@ LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
 		      | WS_CLIPCHILDREN, FALSE );
     p->x = r.left;
     p->y = r.top;
-    //    plvkTickRendering( state.vk );
     return 0;
   case WM_CLOSE:
     gui->quit = 1;

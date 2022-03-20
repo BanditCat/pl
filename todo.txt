@@ -1,5 +1,5 @@
+
 tensor cores
 3d textures/compute
-flexible specialization contants
 restructure utils/rewrite hashes, strings, arrays.
 dark theme

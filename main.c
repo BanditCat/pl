@@ -27,6 +27,25 @@
 #include "gui.h"
 #include "vk.h"
 
+
+typedef struct asp{
+  f32 mulx;
+  f32 muly;
+} asp;
+  
+void afunc( void* v, void* mem ){
+  asp* a = (asp*)v;
+  plvkUnit** u = (plvkUnit**)mem;
+  if( *u ){
+  marc;
+  u64 w, h;
+  plvkGetUnitSize( *u, &w, &h );
+  a->mulx = fsqrt( ( (f32)h ) / ( (f32)w ) );
+  a->muly = 1 / a->mulx;
+  }
+}
+
+  
 const char* clUsage =
   ////////////////////////////////////////
   ////////////////////////////////////////
@@ -68,7 +87,8 @@ const char* clUsage =
 #define minH 240
 
 int main( int argc, const char** argv ){
-  u32 x = defX;
+    marc;
+u32 x = defX;
   u32 y = defY;
   u32 w = minW;
   u32 h = minH;
@@ -183,18 +203,23 @@ int main( int argc, const char** argv ){
   }
   // Get resources.
   getRes();
+  marc;
   // Initialize vulkan.
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
+    marc;
+
   plvkInstance* vk = plvkInit( gpu, debugLevel, true );
+  marc;
   plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
     plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
-    plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL };
+    plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL, NULL };
   plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				 "shaders\\unitFrag.spv",
 				 "shaders\\quad.spv",
 				 true, "foo", 300, 300, atts, 1, 6, NULL, 1, NULL, 0 );
+  marc;
   static const u32 gsz = 210;
   {
     static const u32 cuesz = 8;
@@ -215,6 +240,7 @@ int main( int argc, const char** argv ){
       }
 
     }
+    marc;
     plvkCreateUnit( vk, gsz, gsz, VK_FORMAT_R32G32B32A32_SFLOAT, 16,
 		    "shaders\\gravFrag.spv",
 		    "shaders\\quad.spv",
@@ -228,6 +254,7 @@ int main( int argc, const char** argv ){
 	ps[ ( y * gsz + x ) * 3 + 2 ] = frand( 0.2, 1.0 );
       }
     }
+    marc;
     plvkAddBuffer( vk, ps, gsz * gsz * 3 * 4 );
     marc;
     plvkCreateUnit( vk, cusz, 1, 0, cuesz * 4,
@@ -245,6 +272,7 @@ int main( int argc, const char** argv ){
     printFloat( q ); endl();
     
   }
+  marc;
   atts[ 3 ] = plvkGetAttachable( vk, 2 );
   atts[ 4 ] = plvkGetAttachable( vk, 1 );
   atts[ 5 ] = plvkGetAttachable( vk, 0 );
@@ -253,20 +281,28 @@ int main( int argc, const char** argv ){
 				  "shaders\\quad.spv",
 				  true, "foo", 400, 400, atts + 1, 1, 6, NULL,
 				  1, NULL, 0  );
+  marc;
   plvkUnit* u3 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit2Frag.spv",
 				  "shaders\\quad.spv",
 				  true, "foo", 1050, 200, atts + 3, 1, 6, NULL,
 				  1, NULL, 0  );
-  plvkUnit* u4 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
-				  "shaders\\unit3Frag.spv",
-				  "shaders\\gravVert.spv",
-				  true, "foofff", 50, 200, atts + 3, 3,
-				  gsz * gsz * 3, NULL, 1, NULL, 0 );
+  marc;
+  new( u4, plvkUnit* );
+  plvkAddUniformBuffer( vk, sizeof( asp ), afunc, u4 );
+  marc;
+  atts[ 6 ] = plvkGetAttachable( vk, 0 );
+  marc;
+  *u4 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
+			"shaders\\unit3Frag.spv",
+			"shaders\\gravVert.spv",
+			true, "foofff", 50, 200, atts + 3, 4,
+			gsz * gsz * 3, NULL, 1, NULL, 0 );
+  
   plvkShow( u1 );
   plvkShow( u2 );
   plvkShow( u3 );
-  plvkShow( u4 );
+  plvkShow( *u4 );
   marc;
   {
     u32 tdimx = 16;
@@ -323,6 +359,7 @@ int main( int argc, const char** argv ){
   testPrograms();
   htTest();
 #endif
+  memfree( u4 );
   return 0;
 }
 

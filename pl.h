@@ -32,7 +32,7 @@
 #ifdef DEBUG
 #define marc { eprintl( AT ": Marker" ); memc; }
 #else
-#define marc
+#define marc mark
 #endif
 #define mark { eprintl( AT ": Marker " ); }
 

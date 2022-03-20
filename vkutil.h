@@ -59,6 +59,7 @@ typedef struct plvkBuffer{
   VkMemoryPropertyFlags props;
   VkBufferUsageFlags usage;
   VkDeviceSize size;
+  u32 type;
 } plvkBuffer;
 // Textures.
 typedef struct plvkTexture{
@@ -88,9 +89,15 @@ typedef struct plvkAttachable{
   };
   struct plvkAttachable* next;
 } plvkAttachable;
+typedef struct plvkUniformBufferCallback{
+  struct plvkUniformBufferCallback* next;
+  plvkBuffer* buf;
+  void* data;
+  void (*func)( void*, void* );
+} plvkUniformBufferCallback;
 
 // Instance wide state.
-typedef struct plvkIntance{
+typedef struct plvkInstance{
   bool useTensorCores;
   u32 tensorPropertyCount;
   VkCooperativeMatrixPropertiesNV* tensorProperties;
@@ -137,6 +144,9 @@ typedef struct plvkIntance{
 
   // A tree of units.
   plvkUnit* unit;
+
+  // All callbacs are called once per draw.
+  plvkUniformBufferCallback* ucallbacks;
   
   // Function pointers.
 #define FPDEFINE( x ) PFN_##x x
@@ -252,3 +262,9 @@ VkSampler createSampler( plvkInstance* vk );
 plvkTexture* loadTexturePPM( plvkInstance* vk, const char* name );
 void destroyAttachables( plvkInstance* vk );
 
+plvkBuffer* createUniformBuffer( plvkInstance* vk, u64 size,
+				 void (*uniform)( void*out, void* in ),
+				 void* indata );
+void* mapUniformBuffer( plvkInstance* vk, plvkBuffer* b );
+void unmapUniformBuffer( plvkInstance* vk, plvkBuffer* b );
+void getUnitSize( plvkUnit* u, u64* w, u64* h );
