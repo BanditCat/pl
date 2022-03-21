@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Display fragment shader.                                                   //
+// Compute shader.                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
@@ -23,44 +23,26 @@
 layout(binding = 0) uniform UniformBufferObject {
   float time;
 } ubo; 
-layout(binding = 1) uniform sampler2D texSampler;
-layout( binding = 2) buffer colorBuffer{
-   vec3 colors[];
+layout( binding = 1) buffer outBuf{
+  mat4 oproj;
 };
-struct particle{
-  vec3 pos;
-  vec3 vel;
-  float color;
-  float mass;
+layout( binding = 2) buffer inBuf{
+  mat4 iproj;
 };
-layout( binding = 3) buffer particleBuffer{
-  particle ps[];
-};
-layout( binding = 4 ) buffer projBuffer{
-  mat4 proj;
+layout( binding = 3 ) uniform aspect{
+  float aspx;
+  float aspy;
 };
 
-layout(location = 0) out vec2 position;
-layout(location = 1) flat out vec3 color;
-
-const vec2 positions[ 3 ] = vec2[](
-				   vec2( -0.5, -0.28867513459 ), 
-				   vec2( 0.5, -0.28867513459 ),
-				   vec2( 0, 0.57735026919 )
-				   );
-
-void main(){
-  ivec2 size = textureSize( texSampler, 0 );
-  int tindex =  gl_VertexIndex / 3;
-  int pindex = gl_VertexIndex % 3;
-  ivec2 tpos = ivec2( tindex % size.x, tindex / size.x );
-  position = positions[ int( pindex ) ] * 3.46410161514;
-  vec4 ppos = proj * vec4( ps[ tindex ].pos, 1.0 );
-  vec2 spos = ppos.xy / ppos.w;
-  gl_Position =
-    vec4( //texelFetch( texSampler, tpos, 0 ).xy +
-	 spos + position * 0.0012,
-	  0.0, 1.0 );
-  color = colors[ tindex ];
+mat4 projMat( float leftright, float topbottom, float near, float far ){
+  return mat4( near / leftright, 0, 0, 0,
+	       0, near / topbottom, 0, 0,
+	       0, 0, ( near + far ) / ( near - far ),
+	       ( 2 * near * far ) / ( near - far ),
+	       0, 0, -1, 0 );
 }
 
+void main(){
+  oproj = projMat( aspy, aspx, 0.1, 1 );   
+}
+ 

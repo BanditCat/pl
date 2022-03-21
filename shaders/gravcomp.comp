@@ -37,6 +37,6 @@ layout( binding = 2) buffer iparticleBuffer{
 
 void main(){
   ops[ gl_GlobalInvocationID.x ].pos =
-    ips[ gl_GlobalInvocationID.x ].pos + vec3 ( 0.001, 0.001, 0.001 );
+    ips[ gl_GlobalInvocationID.x ].pos;// + vec3 ( 0.001, 0.001, 0.001 );
 }
  

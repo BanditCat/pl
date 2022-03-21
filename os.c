@@ -28,6 +28,8 @@
 #include "util.h"
 #include "vk.h"
 
+#define NUMINPUTS = 32;
+
 #define MEMCONST1 0x12FEEDFACEC0FFEE
 #define MEMCONST2 0xDEADBEEFDEADBEEF
 #define MEMCONST3 '~'

@@ -37,11 +37,10 @@ void afunc( void* v, void* mem ){
   asp* a = (asp*)v;
   plvkUnit** u = (plvkUnit**)mem;
   if( *u ){
-  marc;
-  u64 w, h;
-  plvkGetUnitSize( *u, &w, &h );
-  a->mulx = fsqrt( ( (f32)h ) / ( (f32)w ) );
-  a->muly = 1 / a->mulx;
+    u64 w, h;
+    plvkGetUnitSize( *u, &w, &h );
+    a->mulx = fsqrt( ( (f32)h ) / ( (f32)w ) );
+    a->muly = 1 / a->mulx;
   }
 }
 
@@ -87,8 +86,8 @@ const char* clUsage =
 #define minH 240
 
 int main( int argc, const char** argv ){
-    marc;
-u32 x = defX;
+  marc;
+  u32 x = defX;
   u32 y = defY;
   u32 w = minW;
   u32 h = minH;
@@ -208,13 +207,13 @@ u32 x = defX;
 #ifdef DEBUG
   printl( "Initializing vulkan..." );
 #endif
-    marc;
+  marc;
 
   plvkInstance* vk = plvkInit( gpu, debugLevel, true );
   marc;
   plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
     plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
-    plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL, NULL };
+    plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL, NULL, NULL };
   plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				 "shaders\\unitFrag.spv",
 				 "shaders\\quad.spv",
@@ -291,6 +290,11 @@ u32 x = defX;
   new( u4, plvkUnit* );
   plvkAddUniformBuffer( vk, sizeof( asp ), afunc, u4 );
   marc;
+  atts[ 7 ] = plvkGetAttachable( vk, 0 );
+  marc;
+  //plvkUnit* moveUnit =
+    plvkCreateUnit( vk, 1, 1, 0, 4, "shaders\\moveComp.spv", NULL, false,
+		    NULL, 0, 0, atts + 7, 1, 16, NULL, 1, NULL, 0 );
   atts[ 6 ] = plvkGetAttachable( vk, 0 );
   marc;
   *u4 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
