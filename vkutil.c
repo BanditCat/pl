@@ -236,7 +236,7 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
   create.ppEnabledExtensionNames = requiredExtensions;
   create.pNext = NULL;
 
-    marc;
+  marc;
   if( VK_SUCCESS != vkCreateInstance( &create, NULL, &vk->instance ) )
     die( "Failed to create vulkan instance." );
 
@@ -261,7 +261,7 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
   if( VK_SUCCESS != vkEnumeratePhysicalDevices( vk->instance, &vk->numGPUs,
 						vk->gpus ) )
     die( "Failed to enumerate gpus." );
-    marc;
+  marc;
   vk->gpuProperties = newae( VkPhysicalDeviceProperties, vk->numGPUs );
   for( u32 i = 0; i < vk->numGPUs; ++i )
     vkGetPhysicalDeviceProperties( vk->gpus[ i ], vk->gpuProperties + i );
@@ -274,7 +274,7 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
       bestScore = score;
     }
   }
-      marc;
+  marc;
 
   if( whichGPU != -1 ){
     if( (u32)whichGPU >= vk->numGPUs )
@@ -284,13 +284,13 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
     vk->gpuIndex = best;
   }
   // Get selected gpu information.
-    marc;
+  marc;
   vk->gpu = vk->gpus[ vk->gpuIndex ];
   vk->selectedGpuProperties = vk->gpuProperties + vk->gpuIndex;
   vkGetPhysicalDeviceFeatures( vk->gpu, &vk->selectedGpuFeatures );
   vkEnumerateDeviceExtensionProperties( vk->gpu, NULL,
 					&vk->numDeviceExtensions, NULL );
-    marc;
+  marc;
 
   if( vk->useTensorCores ){
     if( VK_SUCCESS !=
@@ -308,7 +308,7 @@ plvkInstance* createInstance(  s32 whichGPU, u32 debugLevel, bool useTensorCores
       die( "Failed to get tensor core information." );
 
   }
-    marc;
+  marc;
 
   vk->deviceExtensions = newae( VkExtensionProperties,
 				vk->numDeviceExtensions );
@@ -491,6 +491,11 @@ void transitionImageLayout( plvkInstance* vk, plvkTexture* tex,
 plvkTexture* createTextureImage( plvkInstance* vk, const u8* pixels, u32 width,
 				 u32 height, u8 fragmentSize, VkFormat format,
 				 bool writable ){
+  bool depth = false;
+  if( format == VK_FORMAT_D32_SFLOAT ){
+    mark;
+    depth = true;
+  }
   new( ret, plvkTexture );
   ret->width = width;
   ret->height = height;
@@ -498,30 +503,36 @@ plvkTexture* createTextureImage( plvkInstance* vk, const u8* pixels, u32 width,
   ret->format = format;
   ret->size = ret->width * ret->height * ret->fragmentSize;
   ret->tiling = VK_IMAGE_TILING_OPTIMAL;
-  ret->usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-  if( writable )
-    ret->usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-  plvkBuffer* buf = createBuffer( vk, ret->size,
-				  VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-				  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-				  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+  if( depth ){
+    ret->usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    createImage( vk, ret );
+  }else{
+    ret->usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    if( writable )
+      ret->usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    plvkBuffer* buf = createBuffer( vk, ret->size,
+				    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+				    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
 
-  void* data;
-  vkMapMemory( vk->device, buf->memory, 0, buf->size, 0, &data );
-  if( pixels )
-    memcpy( data, pixels, buf->size );
-  else
-    memset( data, 0, buf->size );
-  vkUnmapMemory( vk->device, buf->memory );
-  createImage( vk, ret );
-  transitionImageLayout( vk, ret,
-			 VK_IMAGE_LAYOUT_UNDEFINED,
-			 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL );
-  copyBufferToImage( vk, buf, ret );
-  transitionImageLayout( vk, ret, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
-  destroyBuffer( vk, buf );
-    
+    void* data;
+    vkMapMemory( vk->device, buf->memory, 0, buf->size, 0, &data );
+    if( pixels )
+      memcpy( data, pixels, buf->size );
+    else
+      memset( data, 0, buf->size );
+    vkUnmapMemory( vk->device, buf->memory );
+    createImage( vk, ret );
+    transitionImageLayout( vk, ret,
+			   VK_IMAGE_LAYOUT_UNDEFINED,
+			   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL );
+    copyBufferToImage( vk, buf, ret );
+    transitionImageLayout( vk, ret, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL );
+    destroyBuffer( vk, buf );
+  }
+  
   ret->view = createView( vk, ret->image, format );
   ret->sampler = createSampler( vk );
 
@@ -565,6 +576,12 @@ void endSingleTimeCommands( plvkInstance* vk, VkCommandBuffer commandBuffer ){
 
 
 void createImage( plvkInstance* vk, plvkTexture* tex ){
+    bool depth = false;
+    if( tex->format == VK_FORMAT_D32_SFLOAT ){
+      mark;
+      depth = true;
+    }
+
   VkImageCreateInfo imageInfo = {};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -1503,7 +1520,7 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
   u->size = wh;
   plvkSwapchain* ret = NULL;
   if( u->size.width && u->size.height ){
-    new( ret, plvkSwapchain );
+    ret = newe( plvkSwapchain );
     VkPresentModeKHR pm = vsync ? VK_PRESENT_MODE_FIFO_KHR :
       VK_PRESENT_MODE_IMMEDIATE_KHR ;
     VkSwapchainCreateInfoKHR scci = {};
@@ -1533,9 +1550,9 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
     ret->images = newae( VkImage, ret->numImages );
     vkGetSwapchainImagesKHR( u->instance->device, ret->swap, &ret->numImages,
 			     ret->images );
-    /* ret->depth = createTextureImage( u->instance, NULL, u->size.width, */
-    /* 				     u->size.height, 4, */
-    /* 				     VK_FORMAT_D32_SFLOAT, false ); */
+    ret->depth = createTextureImage( u->instance, NULL, u->size.width,
+				     u->size.height, 4,
+				     VK_FORMAT_D32_SFLOAT, false );
     // Image views.
     ret->imageViews = newae( VkImageView, ret->numImages );
     for( u32 i = 0; i < ret->numImages; ++i ){
@@ -1693,6 +1710,8 @@ void destroyUnitSurface( plvkUnit* u ){
 
 
 void destroyUnitSwap( plvkUnit* u ){
+  if( u->display->swap->depth )
+    destroyTexture( u->instance, u->display->swap->depth );
   for( u32 i = 0; i < 2; ++i ){
     vkDestroyImageView( u->instance->device,
 			u->display->swap->imageViews[ i ], NULL );
