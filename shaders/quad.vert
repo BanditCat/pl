@@ -40,7 +40,7 @@ void main(){
   gl_Position = vec4( positions[ indices[ gl_VertexIndex ] ], 0.0, 1.0); 
   pos = ( gl_Position.xy + vec2( 1.0, 1.0 ) ) * vec2( 0.5, 0.5 );
   
-  fragTexCoord = vec2( vec4( mod( ubo.time * 10, 2.0 ) - 1.0, 0.0, 0.0, 0.0 ) + gl_Position );
+  fragTexCoord = vec2( vec4( mod( ubo.time , 2.0 ) - 1.0, 0.0, 0.0, 0.0 ) + gl_Position );
   
 }
 

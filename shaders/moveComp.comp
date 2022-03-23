@@ -20,12 +20,11 @@
 
 #version 460
 
-#extension GL_EXT_scalar_block_layout : enable
 
-layout(binding = 0, scalar) uniform UniformBufferObject {
-  float time;
+layout(binding = 0) uniform UniformBufferObject {
+  vec4 time;
   float axes[ 256 ];
-  bvec4 buttons[ 256 ];
+  bool buttons[ 256 ];
 };
 struct state{
   mat4 proj;
@@ -54,7 +53,7 @@ mat4 posMat( vec3 pos ){
 }
 
 void main(){
-  outstate.pos = instate.pos + vec3( axes[ 1 ], axes[ 0 ], axes[ 4 ] ) * 0.004;
+  outstate.pos = instate.pos + vec3( -axes[ 1 ], -axes[ 0 ], axes[ 4 ] ) * 0.004;
   outstate.proj = projMat( aspy, aspx, 0.1, 1 ) * posMat( outstate.pos ) ;   
 }
  

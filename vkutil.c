@@ -576,11 +576,6 @@ void endSingleTimeCommands( plvkInstance* vk, VkCommandBuffer commandBuffer ){
 
 
 void createImage( plvkInstance* vk, plvkTexture* tex ){
-    bool depth = false;
-    if( tex->format == VK_FORMAT_D32_SFLOAT ){
-      mark;
-      depth = true;
-    }
 
   VkImageCreateInfo imageInfo = {};
   imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -774,6 +769,11 @@ void destroyAttachables( plvkInstance* vk ){
 
 
 VkImageView createView( plvkInstance* vk, VkImage img, VkFormat format ){
+  bool depth = false;
+  if( format == VK_FORMAT_D32_SFLOAT ){
+    mark;
+    depth = true;
+  }
   VkImageView ret;
   VkImageViewCreateInfo ivci = {};
   ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -784,7 +784,10 @@ VkImageView createView( plvkInstance* vk, VkImage img, VkFormat format ){
   ivci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
   ivci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
   ivci.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-  ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  if( depth )
+    ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+  else
+    ivci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   ivci.subresourceRange.baseMipLevel = 0;
   ivci.subresourceRange.levelCount = 1;
   ivci.subresourceRange.baseArrayLayer = 0;

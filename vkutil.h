@@ -28,6 +28,9 @@
 
 typedef struct gpuState{
   f32 time;
+  f32 secondFraction;
+  f32 deltaTime;
+  u32 _unused1;
   f32 axes[ MAX_AXES ];
   bool buttons[ MAX_BUTTONS ];
 } gpuState;

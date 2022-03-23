@@ -194,7 +194,7 @@ void plvkDraw( void ){
   static u64 frameCount = 0;
 
 
-  updateGPUstate( vk, 0.1 * (f32)( tickCount() - firstDrawTime )
+  updateGPUstate( vk,  (f32)( tickCount() - firstDrawTime )
 		  / (f32)tickFrequency() );
       
   ++vk->currentImage;
