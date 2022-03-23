@@ -43,6 +43,12 @@ layout( binding = 3 ) uniform aspect{
   float aspy;
 };
 
+mat4 rotzMat( float angle ){
+  return transpose( mat4( cos( angle ), 0, sin( angle ), 0,
+			  0, 1, 0, 0,
+			  -sin( angle ), 0, cos( angle ), 0,
+			  0, 0, 0, 1 ) );
+}
 mat4 rotyMat( float angle ){
   return transpose( mat4( cos( angle ), 0, sin( angle ), 0,
 			  0, 1, 0, 0,
@@ -93,7 +99,9 @@ void main(){
   outstate.projm = projMat( aspy * fov * 0.01, aspx * fov * 0.01,
 			    0.01, 1000.0 );
   outstate.posm = posMat( outstate.pos + vec3 ( 0, 0, -3 ) );
-  outstate.irotm = rotxMat( -outstate.rot.y ) * rotyMat( -outstate.rot.x ) * instate.irotm;
-  outstate.rotm = instate.rotm * rotyMat( outstate.rot.x ) * rotxMat( outstate.rot.y );
+  outstate.irotm = instate.irotm * rotxMat( -outstate.rot.y ) *
+    rotyMat( -outstate.rot.x );
+  outstate.rotm = rotyMat( outstate.rot.x ) * rotxMat( outstate.rot.y ) *
+    instate.rotm;
 }
  
