@@ -37,7 +37,13 @@ layout( binding = 3) buffer particleBuffer{
   particle ps[];
 };
 layout( binding = 4 ) buffer projBuffer{
-  mat4 proj;
+  mat4 projm;
+  mat4 rotm;
+  mat4 irotm;
+  mat4 posm;
+  vec3 pos;
+  float fov;
+  vec3 rot;
 };
 
 layout(location = 0) out vec2 position;
@@ -54,8 +60,8 @@ void main(){
   int tindex =  gl_VertexIndex / 3;
   int pindex = gl_VertexIndex % 3;
   position = positions[ int( pindex ) ] * 3.46410161514;
-  vec4 ppos = vec4( ps[ tindex ].pos, 1.0 ) + vec4( position * 0.0412, 0, 0 );
-  vec4 spos = (proj* ppos);// / ppos.w;
+  vec4 ppos = vec4( ps[ tindex ].pos, 1.0 ) ;
+  vec4 spos = (projm * rotm * posm * ppos) + vec4( position * 0.0412, 0, 0 );
   gl_Position = 
        spos;
   color = colors[ tindex ];
