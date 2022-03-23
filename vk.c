@@ -151,15 +151,11 @@ void updateGPUstate( plvkInstance* vk, f32 time ){
     if( ( numButtons + inp->numButtons < MAX_BUTTONS ) &&
 	( numAxes + inp->numAxes < MAX_AXES ) ){
       for( u32 j = 0; j < inp->numButtons; ++j ){
-	printInt( inp->buttons[ j ] );
 	vk->UBOcpumem.buttons[ numButtons++ ] = inp->buttons[ j ];
       }
-      endl();
       for( u32 j = 0; j < inp->numAxes; ++j ){
-	printFloat( inp->axes[ j ].val ); 
 	vk->UBOcpumem.axes[ numAxes++ ] = inp->axes[ j ].val;
       }
-      endl();
     }
   }
   void* data;
@@ -190,31 +186,33 @@ void plvkDraw( void ){
       t = t->next;
     }
   }
-  static u64 lasttime = 0;
+  static u64 lastTime = 0;
   static u64 frameCount = 0;
 
-
-  updateGPUstate( vk,  (f32)( tickCount() - firstDrawTime )
+  u64 now, elapsed, lastFrameTime;
+  now = tickCount();
+  if( 0 == lastTime  ){
+    lastFrameTime = lastTime = tickCount();
+  }else{
+    elapsed = (f64)( now - lastTime ) / tickFrequency();
+  }
+  
+  updateGPUstate( vk, (f32)( now - firstDrawTime )
 		  / (f32)tickFrequency() );
       
   ++vk->currentImage;
   vk->currentImage %= 2;
   if( state.fps ){
-    if( 0 == lasttime  )
-      lasttime = tickCount();
-    else{
-      u64 now = tickCount();
-      f64 elapsed = (f64)( now - lasttime ) / tickFrequency();
-      if( elapsed > 1.0 ){
-	print( "FPS: " );
-	printFloat( (f64)frameCount / elapsed );
-	endl();
-	lasttime = now;
-	frameCount = 0;
-      }
+    if( elapsed > 1.0 ){
+      print( "FPS: " );
+      printFloat( (f64)frameCount / elapsed );
+      endl();
+      lastFrameTime = now;
+      frameCount = 0;
     }
-    ++frameCount;
   }
+  lastTime = now;
+  ++frameCount;
 }
 bool plvkeventLoop( plvkInstance* vk ){
   bool quit = 0;

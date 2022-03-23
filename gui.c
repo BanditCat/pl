@@ -175,8 +175,6 @@ void parseInput( RAWINPUT* rinp, u64 arsz ){
       memfree( vcaps );
     } else
       idev = *idevp;
-    printInt( idev->numAxes ); print( " fx " ); printInt( idev->numButtons );
-    endl();
     USAGE usage[ MAX_BUTTONS ];
     unsigned long usageLength = idev->numButtons;
     if( HIDP_STATUS_SUCCESS != HidP_GetUsages( HidP_Input, idev->usagePage,

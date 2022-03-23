@@ -288,7 +288,7 @@ int main( int argc, const char** argv ){
   marc;
   //plvkUnit* moveUnit =
     plvkCreateUnit( vk, 1, 1, 0, 4, "shaders\\moveComp.spv", NULL, false,
-		    NULL, 0, 0, atts + 7, 1, 28, NULL, 1, NULL, 0 );
+		    NULL, 0, 0, atts + 7, 1, 256, NULL, 1, NULL, 0 );
   atts[ 6 ] = plvkGetAttachable( vk, 0 );
   marc;
   *u4 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
@@ -351,6 +351,10 @@ int main( int argc, const char** argv ){
   // Main loop.
   plvkStartRendering( vk );
   while( plvkeventLoop( vk ) ){
+    inputDevice* dev =
+      *( (inputDevice**)htByIndex( state.osstate->devices, 0, NULL ) );
+    if( dev->buttons[ 7 ] )
+      break;
   }
   // Run tests.
 #ifdef DEBUG
