@@ -50,13 +50,6 @@ typedef struct plvkPipeline{
   VkRenderPass renderPass;
   VkPipeline pipeline;
 } plvkPipeline;
-// Swapchain and associated state.
-typedef struct plvkSwapchain{
-  VkSwapchainKHR swap;
-  u32 numImages;
-  VkImage* images;
-  VkImageView* imageViews;
-} plvkSwapchain;
 // A GPU buffer.
 typedef struct plvkBuffer{
   VkBuffer buffer;
@@ -80,6 +73,14 @@ typedef struct plvkTexture{
   VkImageView view;
   VkSampler sampler;
 } plvkTexture;
+// Swapchain and associated state.
+typedef struct plvkSwapchain{
+  VkSwapchainKHR swap;
+  u32 numImages;
+  VkImage* images;
+  VkImageView* imageViews;
+  plvkTexture* depth;
+} plvkSwapchain;
 typedef struct plvkAttachable{
   enum {
     PLVK_ATTACH_INVALID = 0,

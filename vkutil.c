@@ -508,7 +508,10 @@ plvkTexture* createTextureImage( plvkInstance* vk, const u8* pixels, u32 width,
 
   void* data;
   vkMapMemory( vk->device, buf->memory, 0, buf->size, 0, &data );
-  memcpy( data, pixels, buf->size );
+  if( pixels )
+    memcpy( data, pixels, buf->size );
+  else
+    memset( data, 0, buf->size );
   vkUnmapMemory( vk->device, buf->memory );
   createImage( vk, ret );
   transitionImageLayout( vk, ret,
@@ -1192,6 +1195,7 @@ void createUnitFramebuffers( plvkUnit* u ){
       attachments[ 0 ] = u->display->swap->imageViews[ i ];
     else
       attachments[ 0 ] = u->textures[ i ]->view;
+    mark;
     VkFramebufferCreateInfo fbci = {};
     fbci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     fbci.renderPass = u->pipe->renderPass;
@@ -1499,7 +1503,7 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
   u->size = wh;
   plvkSwapchain* ret = NULL;
   if( u->size.width && u->size.height ){
-    ret = newe( plvkSwapchain );
+    new( ret, plvkSwapchain );
     VkPresentModeKHR pm = vsync ? VK_PRESENT_MODE_FIFO_KHR :
       VK_PRESENT_MODE_IMMEDIATE_KHR ;
     VkSwapchainCreateInfoKHR scci = {};
@@ -1529,6 +1533,9 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
     ret->images = newae( VkImage, ret->numImages );
     vkGetSwapchainImagesKHR( u->instance->device, ret->swap, &ret->numImages,
 			     ret->images );
+    /* ret->depth = createTextureImage( u->instance, NULL, u->size.width, */
+    /* 				     u->size.height, 4, */
+    /* 				     VK_FORMAT_D32_SFLOAT, false ); */
     // Image views.
     ret->imageViews = newae( VkImageView, ret->numImages );
     for( u32 i = 0; i < ret->numImages; ++i ){
@@ -1541,13 +1548,18 @@ void createUnitSwap( plvkUnit* u, bool vsync ){
 }
 
 
-void buildUnit( plvkUnit* u ){    
+void buildUnit( plvkUnit* u ){
+  marc;
   if( u->display )
     createUnitSwap( u, true );
+  marc;
   if( u->vertName )
     createUnitFramebuffers( u ); 
+  marc;
   createUnitDescriptorSetsAndPool( u );
+  marc;
   createUnitCommandBuffers( u );
+  marc;
 }
 
 
@@ -1605,8 +1617,9 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
   }
   marc;
   ret->pipe = createUnitPipeline( ret );
+  marc;
   createUnitPoolAndFences( ret );
-
+  marc;
   buildUnit( ret );
   marc;
     
