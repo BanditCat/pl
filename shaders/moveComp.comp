@@ -44,9 +44,9 @@ layout( binding = 3 ) uniform aspect{
 };
 
 mat4 rotzMat( float angle ){
-  return transpose( mat4( cos( angle ), 0, sin( angle ), 0,
-			  0, 1, 0, 0,
-			  -sin( angle ), 0, cos( angle ), 0,
+  return transpose( mat4( cos( angle ), -sin( angle ), 0, 0,
+			  sin( angle ), cos( angle ), 0, 0,
+			  0, 0, 1, 0,
 			  0, 0, 0, 1 ) );
 }
 mat4 rotyMat( float angle ){
@@ -93,15 +93,16 @@ void main(){
   vec4 pdelta = vec4( vec3( -axes[ 0 ].y, -axes[ 0 ].x, -axes[ 1 ].x ) * 0.04,
 		      1 );
   outstate.pos = instate.pos + ( instate.irotm * pdelta ).xyz;
-  outstate.rot = vec3( axes[ 0 ].w, -axes[ 0 ].z, 0 ) * 0.015;
+  outstate.rot = vec3( axes[ 0 ].w, -axes[ 0 ].z,
+		       buttons[ 1 ].x - buttons[ 1 ].y  ) * 0.015;
   //outstate.proj =  posMat( outstate.pos ) * projMat( aspy, aspx, 0.1, 0.5 );
   float fov = outstate.fov + 1;
   outstate.projm = projMat( aspy * fov * 0.01, aspx * fov * 0.01,
 			    0.01, 1000.0 );
   outstate.posm = posMat( outstate.pos + vec3 ( 0, 0, -3 ) );
   outstate.irotm = instate.irotm * rotxMat( -outstate.rot.y ) *
-    rotyMat( -outstate.rot.x );
-  outstate.rotm = rotyMat( outstate.rot.x ) * rotxMat( outstate.rot.y ) *
-    instate.rotm;
+    rotyMat( -outstate.rot.x ) * rotzMat( -outstate.rot.z );
+  outstate.rotm = rotzMat( outstate.rot.z ) * rotyMat( outstate.rot.x ) *
+    rotxMat( outstate.rot.y ) * instate.rotm;
 }
  

@@ -301,60 +301,65 @@ int main( int argc, const char** argv ){
   plvkShow( u2 );
   plvkShow( u3 );
   plvkShow( *u4 );
-  marc;
-  {
-    u32 tdimx = 16;
-    u32 tdimy = 16;
-    u32 tsz = 256;
-    newa( ta, f32, tsz );
-    newa( tb, f32, tsz );
-    newa( tc, f32, tsz );
-    for( u32 x = 0; x < tdimx; x++ ){
-      for( u32 y = 0; y < tdimy; y++ ){
-	ta[ y * tdimx + x ] = x == y ? 1.2 : 3.0;
-	tb[ y * tdimx + x ] = 2.0;
-	tc[ y * tdimx + x ] = 0.1;
-      }
-    }
-    plvkAddBuffer( vk, tb, tsz * 4 );
-    plvkAddBuffer( vk, tc, tsz * 4 );
-    plvkAttachable* tatts[] = {
-      plvkGetAttachable( vk, 0 ),
-      plvkGetAttachable( vk, 1 ) };
+  /* marc; */
+  /* { */
+  /*   u32 tdimx = 16; */
+  /*   u32 tdimy = 16; */
+  /*   u32 tsz = 256; */
+  /*   newa( ta, f32, tsz ); */
+  /*   newa( tb, f32, tsz ); */
+  /*   newa( tc, f32, tsz ); */
+  /*   for( u32 x = 0; x < tdimx; x++ ){ */
+  /*     for( u32 y = 0; y < tdimy; y++ ){ */
+  /* 	ta[ y * tdimx + x ] = x == y ? 1.2 : 3.0; */
+  /* 	tb[ y * tdimx + x ] = 2.0; */
+  /* 	tc[ y * tdimx + x ] = 0.1; */
+  /*     } */
+  /*   } */
+  /*   plvkAddBuffer( vk, tb, tsz * 4 ); */
+  /*   plvkAddBuffer( vk, tc, tsz * 4 ); */
+  /*   plvkAttachable* tatts[] = { */
+  /*     plvkGetAttachable( vk, 0 ), */
+  /*     plvkGetAttachable( vk, 1 ) }; */
 
-    //tb[ 2 ] = 2;
-    plvkUnit* testUnit = plvkCreateUnit( vk, 1, 1, 0, 4,
-					 "shaders\\test.spv", NULL,
-					 false, "tttt", 0, 0, tatts, 2,
-					 tsz, (const void*)ta, 1, NULL, 0 );
-    char* gd;
-    for( u64 i = 0; i < 10; ++i ){
-      printInt( i ); endl();
-      gd = plvkCopyComputeBuffer( testUnit );
-      f32* fd = (f32*)gd;
-      for( u32 y = 0; y < tdimy; y++ ){
-	endl();
-	for( u32 x = 0; x < tdimx; x++ ){
-	  print( " " ); printFloat( fd[ y * tdimx + x ] );
-	}
-      }
-      plvkTickUnit( testUnit );
-      memfree( gd );
-      endl();
-    }
+  /*   //tb[ 2 ] = 2; */
+  /*   plvkUnit* testUnit = plvkCreateUnit( vk, 1, 1, 0, 4, */
+  /* 					 "shaders\\test.spv", NULL, */
+  /* 					 false, "tttt", 0, 0, tatts, 2, */
+  /* 					 tsz, (const void*)ta, 1, NULL, 0 ); */
+  /*   char* gd; */
+  /*   for( u64 i = 0; i < 10; ++i ){ */
+  /*     printInt( i ); endl(); */
+  /*     gd = plvkCopyComputeBuffer( testUnit ); */
+  /*     f32* fd = (f32*)gd; */
+  /*     for( u32 y = 0; y < tdimy; y++ ){ */
+  /* 	endl(); */
+  /* 	for( u32 x = 0; x < tdimx; x++ ){ */
+  /* 	  print( " " ); printFloat( fd[ y * tdimx + x ] ); */
+  /* 	} */
+  /*     } */
+  /*     plvkTickUnit( testUnit ); */
+  /*     memfree( gd ); */
+  /*     endl(); */
+  /*   } */
 
-    memfree( ta );
-    memfree( tb );
-    memfree( tc );
-  }
+  /*   memfree( ta ); */
+  /*   memfree( tb ); */
+  /*   memfree( tc ); */
+  /* } */
 					 
   // Main loop.
   plvkStartRendering( vk );
   while( plvkeventLoop( vk ) ){
-    inputDevice* dev =
-      *( (inputDevice**)htByIndex( state.osstate->devices, 0, NULL ) );
-    if( dev->buttons[ 7 ] )
-      break;
+    inputDevice** devp =
+      (inputDevice**)htByIndex( state.osstate->devices, 0, NULL );
+    
+    inputDevice* dev;
+    if( devp ){
+      dev = *devp;
+      if( dev->buttons[ 7 ] )
+	break;
+    }
   }
   // Run tests.
 #ifdef DEBUG

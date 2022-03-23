@@ -189,13 +189,10 @@ void plvkDraw( void ){
   static u64 lastTime = 0;
   static u64 frameCount = 0;
 
-  u64 now, elapsed, lastFrameTime;
-  now = tickCount();
-  if( 0 == lastTime  ){
-    lastFrameTime = lastTime = tickCount();
-  }else{
-    elapsed = (f64)( now - lastTime ) / tickFrequency();
-  }
+  u64 elapsed = 0;
+  static u64 lastFrameTime = 0;
+  u64 now = tickCount();
+  elapsed = (f64)( now - lastFrameTime ) / tickFrequency();
   
   updateGPUstate( vk, (f32)( now - firstDrawTime )
 		  / (f32)tickFrequency() );
