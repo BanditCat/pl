@@ -101,6 +101,7 @@ inline u64 slen( const char* str ){
   return c - 1;
 }
 
+typedef struct osstate osstate;
 
 // Global state.
 typedef struct {
@@ -124,6 +125,8 @@ typedef struct {
 
   //Linear congruential generator.
   u64 seed;
+
+ osstate* osstate;
 } states;
 extern states state;
 

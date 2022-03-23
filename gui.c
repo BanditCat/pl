@@ -23,13 +23,13 @@
 #define UNICODE
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <uxtheme.h>
+#include <hidsdi.h>
 
 #include "pl.h"
 #include "vk.h"
 #include "gui.h"
-#include "os.h"
 #include "util.h"
+#include "os.h"
 
 #define className ( L"plClassName" )
 
@@ -113,13 +113,146 @@ bool weventLoop( guiInfo* vp ){
 }
 
 
+#define MAX_BUTTONS 256
+void parseInput( RAWINPUT* rinp, u64 arsz ){
+  u32 rsz = arsz;
+  if( RIM_TYPEHID == rinp->header.dwType ){
+    hasht* devices = state.osstate->devices;
+    u32 h = hash( &rinp->header.hDevice, sizeof( HANDLE ), devices );
+    inputDevice** idevp =
+      (inputDevice**)htFindWithHash( devices, &rinp->header.hDevice,
+				     sizeof( HANDLE ), NULL, h );
+    inputDevice* idev;
+    if( (u32)-1 == GetRawInputDeviceInfoW( rinp->header.hDevice,
+					   RIDI_PREPARSEDDATA, NULL, &rsz ) )
+      die( "GetRawInputDeviceInfoW failed." );
+    PHIDP_PREPARSED_DATA ppd = mem( rsz );
+    if( (u32)-1 == GetRawInputDeviceInfoW( rinp->header.hDevice,
+					   RIDI_PREPARSEDDATA, ppd, &rsz ) )
+      die( "GetRawInputDeviceInfoW failed." );
+    if( !idevp ){
+      idev = newe( inputDevice );
+      htAddWithHash( devices, &rinp->header.hDevice, sizeof( HANDLE ),
+		     &idev, sizeof( inputDevice* ), h );
+      
+      
+      HIDP_CAPS caps;
+      if( HIDP_STATUS_SUCCESS != HidP_GetCaps( ppd, &caps ) )
+	die( "HidP_GetCaps failed." );
+      PHIDP_BUTTON_CAPS bcaps = mem( sizeof( HIDP_BUTTON_CAPS ) *
+				     caps.NumberInputButtonCaps );
+      u16 bcapsLen = caps.NumberInputButtonCaps;
+      if( HIDP_STATUS_SUCCESS != HidP_GetButtonCaps( HidP_Input, bcaps,
+						     &bcapsLen, ppd ) )
+	die( "HidP_GetButtonCaps failed." );
+
+      u16 vcapsLen = caps.NumberInputValueCaps;
+      PHIDP_VALUE_CAPS vcaps = mem( sizeof( HIDP_VALUE_CAPS ) *
+				    caps.NumberInputValueCaps );
+      if( HIDP_STATUS_SUCCESS != HidP_GetValueCaps( HidP_Input, vcaps,
+						    &vcapsLen, ppd ) )
+	die( "HidP_GetValueCaps failed." );
+
+      
+      idev->usagePage = bcaps->UsagePage;
+      idev->minButton = bcaps->Range.UsageMin;
+      idev->numButtons = bcaps->Range.UsageMax - bcaps->Range.UsageMin;
+      idev->buttons = newae( bool, idev->numButtons );
+
+      idev->numAxes = vcapsLen;
+      idev->axes = newae( axis, idev->numAxes );
+      for( u32 i = 0; i < idev->numAxes; ++i ){
+	idev->axes[ i ].minAxis = vcaps[ i ].Range.UsageMax;
+	idev->axes[ i ].usagePage = vcaps[ i ].UsagePage;
+	idev->axes[ i ].minVal = vcaps[ i ].LogicalMin;
+	idev->axes[ i ].maxVal = vcaps[ i ].LogicalMax;
+	if( idev->axes[ i ].maxVal < idev->axes[ i ].minVal ){
+	  idev->axes[ i ].minVal = 0;
+	  idev->axes[ i ].maxVal = 65536;
+	}
+      }
+      memfree( bcaps );
+      memfree( vcaps );
+    } else
+      idev = *idevp;
+    printInt( idev->numAxes ); print( " fx " ); printInt( idev->numButtons );
+    endl();
+    USAGE usage[ MAX_BUTTONS ];
+    unsigned long usageLength = idev->numButtons;
+    if( HIDP_STATUS_SUCCESS != HidP_GetUsages( HidP_Input, idev->usagePage,
+					       0, usage, &usageLength, ppd,
+					       (PCHAR)rinp->data.hid.bRawData,
+					       rinp->data.hid.dwSizeHid ) )
+      die( "HidP_GetUsages failed." );
+    for( u32 i = 0; i < idev->numAxes; ++i ){
+      unsigned long value;
+      if( HIDP_STATUS_SUCCESS !=
+	  HidP_GetUsageValue( HidP_Input, idev->axes[ i ].usagePage, 0,
+			      idev->axes[ i ].minAxis,
+			      &value, ppd, (PCHAR)rinp->data.hid.bRawData,
+			      rinp->data.hid.dwSizeHid ) )
+	die( "HidP_GetUsageValue failed." );
+      idev->axes[ i ].val = (f32)( (long)value - idev->axes[ i ].minVal ) /
+	(f32)( idev->axes[ i ].maxVal - idev->axes[ i ].minVal );
+      idev->axes[ i ].val = idev->axes[ i ].val * 2 - 1;
+    }
+
+    bool bstates[ MAX_BUTTONS ];
+    memset( bstates, 0, sizeof( bstates ) );
+    for( u32 i = 0; i < idev->numButtons; i++ )
+      idev->buttons[ i ] = false;
+    for( u32 i = 0; i < usageLength; i++)
+      idev->buttons[ usage[ i ] - idev->minButton ] = true;
+    memfree( ppd );
+  
+  }
+}
+
+
+
 LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ){
   guiInfo* p = (guiInfo*)GetWindowLongPtr( hWnd, 0 );
-  if( !p )
-    return (LONG)DefWindowProc( hWnd, uMsg, wParam, lParam );
+  if( !p ){
+    if( WM_CREATE == uMsg ){
+      static bool done = false;
+      if( !done ){
+	done = true;
+	u32 pages[] = { 0x0001, 0x000C, 0x000D, 0x0020, 0x0084, 0x008C };
+	const u32 numpages = sizeof( pages ) / sizeof( pages[ 0 ] );
+	newa( rid, RAWINPUTDEVICE, numpages );
+
+	for( u32 i = 0; i < numpages; ++i ){
+	  rid[ i ].usUsagePage = pages[ i ];
+	  rid[ i ].usUsage = 0;
+	  rid[ i ].dwFlags = RIDEV_INPUTSINK | RIDEV_PAGEONLY;
+	  rid[ i ].hwndTarget = hWnd;
+	}     
+	if( !RegisterRawInputDevices( rid, numpages,
+				      sizeof( RAWINPUTDEVICE ) ) )
+	  die( "Device input registration failed" );
+	memfree( rid );
+      }
+      return 0;
+    }else
+      return (LONG)DefWindowProc( hWnd, uMsg, wParam, lParam );
+  }
   guiState* gui = p->gui;
   RECT r;
   switch( uMsg ){
+  case WM_INPUT:
+    if( !GET_RAWINPUT_CODE_WPARAM( wParam ) ){
+      u32 rsz;
+      if( (u32)-1 == GetRawInputData( (HRAWINPUT)lParam, RID_INPUT, NULL, 
+				      &rsz, sizeof( RAWINPUTHEADER ) ) )
+	die( "GetRawInputData failed." );
+      RAWINPUT* rinp = mem( rsz );
+      if( (u32)-1 == GetRawInputData( (HRAWINPUT)lParam, RID_INPUT, rinp, 
+				      &rsz, sizeof( RAWINPUTHEADER ) ) )
+	die( "GetRawInputData failed." );
+      parseInput( rinp, rsz );
+      memfree( rinp );
+    }
+    return DefWindowProc( hWnd, uMsg, wParam, lParam );
   case WM_SIZE:
     GetClientRect( hWnd, &r );
     p->width = r.right - r.left;

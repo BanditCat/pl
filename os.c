@@ -24,11 +24,9 @@
 #include <compressapi.h>
 
 #include "pl.h"
-#include "os.h"
 #include "util.h"
+#include "os.h"
 #include "vk.h"
-
-#define NUMINPUTS = 32;
 
 #define MEMCONST1 0x12FEEDFACEC0FFEE
 #define MEMCONST2 0xDEADBEEFDEADBEEF
@@ -96,6 +94,8 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
 #else
   state.fps = 0;
 #endif
+  state.osstate = newe( osstate );
+  state.osstate->devices = htNew();
   end( main( state.argc, state.argv ) );
 }
 void getRes( void ){
@@ -143,6 +143,18 @@ void emessage( const char* message ){
 
 void end( int ecode ){
   if( !state.ended ){
+    if( state.osstate ){
+      u64 lim = htElementCount( state.osstate->devices );
+      for( u64 i = 0; i < lim; ++i ){
+	inputDevice* dev = *( (inputDevice**)htByIndex( state.osstate->devices,
+						 i, NULL ) );
+	memfree( dev->buttons );
+	memfree( dev->axes );
+	memfree( dev );
+      }
+      htDestroy( state.osstate->devices );
+      memfree( state.osstate );
+    }
     state.ended = 1;
     if( state.compressedResources )
       htDestroy( state.compressedResources );
@@ -619,3 +631,4 @@ f32 fsqrt( volatile f32 n ) {
     : "rm" (n));
   return d;
 }
+

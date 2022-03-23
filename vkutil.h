@@ -23,8 +23,13 @@
 #include "pl.h"
 #include "gui.h"
 
+#define MAX_AXES 256
+#define MAX_BUTTONS 256
+
 typedef struct gpuState{
   f32 time;
+  f32 axes[ MAX_AXES ];
+  bool buttons[ MAX_BUTTONS ];
 } gpuState;
 
 typedef struct plvkUnit plvkUnit;

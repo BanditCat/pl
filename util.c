@@ -19,8 +19,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "pl.h"
-#include "os.h"
 #include "util.h"
+#include "os.h"
+
 void printRaw( const char* sa, u32 size ){
   const u8* s = (const u8*)sa;
   char pa[ 2 ] = {};
@@ -237,7 +238,7 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr ){
 #define HASH_TABLE_SHIFT 1
 
 // a "good" hash function.
-u32 hash( const char* cdata, u32 size, const hasht* ht ){
+u32 hash( const void* cdata, u32 size, const hasht* ht ){
   const char* data = cdata;
   u64 h = HASH_I;
   for( u64 i = 0; i < size; ++i ){
@@ -300,6 +301,16 @@ void htDestroy( hasht* ht ){
   memfree( ht->used );
   memfree( ht );
 }
+u64 htElementCount( hasht* ht ){
+  return ht->size;
+}
+const void* htByIndex( hasht* ht, u64 index, u64* retSize ){
+  if( retSize )
+    *retSize = ht->data[ ht->used[ index ] ].valueSize;
+  return ht->data[ ht->used[ index ] ].value;
+}
+
+
 void htRehash( hasht* ht ){
   ++ht->bits;
   u32 mask = ( 1 << ht->bits ) - 1;
@@ -324,8 +335,8 @@ void htRehash( hasht* ht ){
   memfree( ht->used );
   ht->used = nu;
 }
-void htAddWithHash( hasht* ht, const char* key, u64 keySize,
-		    const char* val, u64 valsize, u32 h ){
+void htAddWithHash( hasht* ht, const void* key, u64 keySize,
+		    const void* val, u64 valsize, u32 h ){
   u32 probes = 0;
   u32 mask = ( 1 << ht->bits ) - 1;
   u32 index = h & mask;
@@ -354,7 +365,7 @@ void htAddWithHash( hasht* ht, const char* key, u64 keySize,
   ht->data[ index ].index = ht->size;
   ht->used[ ht->size++ ] = index;
 }
-const char* htFindWithHash( hasht* ht, const char* key, u64 keySize,
+const void* htFindWithHash( hasht* ht, const void* key, u64 keySize,
 			    u64* retSize, u32 h ){ 
   u32 mask = ( 1 << ht->bits ) - 1;
   u32 index = h & mask;
@@ -372,7 +383,7 @@ const char* htFindWithHash( hasht* ht, const char* key, u64 keySize,
   }
   return NULL;
 }
-void htRemoveWithHash( hasht* ht, const char* key, u64 keySize, u32 h ){
+void htRemoveWithHash( hasht* ht, const void* key, u64 keySize, u32 h ){
   u32 mask = ( 1 << ht->bits ) - 1;
   u32 index = h & mask;
   u32 probes = 0;

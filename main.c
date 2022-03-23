@@ -21,9 +21,9 @@
 #include <windows.h>
 
 #include "pl.h"
-#include "os.h"
 #include "prog.h"
 #include "util.h"
+#include "os.h"
 #include "gui.h"
 #include "vk.h"
 
@@ -264,12 +264,6 @@ int main( int argc, const char** argv ){
     memfree( ps );
     memfree( cud );
 
-    //BUGBUG
-    f32 t = 22;
-    printFloat( t ); endl();
-    f32 q = fsqrt( t );
-    printFloat( q ); endl();
-    
   }
   marc;
   atts[ 3 ] = plvkGetAttachable( vk, 2 );
@@ -294,7 +288,7 @@ int main( int argc, const char** argv ){
   marc;
   //plvkUnit* moveUnit =
     plvkCreateUnit( vk, 1, 1, 0, 4, "shaders\\moveComp.spv", NULL, false,
-		    NULL, 0, 0, atts + 7, 1, 16, NULL, 1, NULL, 0 );
+		    NULL, 0, 0, atts + 7, 1, 28, NULL, 1, NULL, 0 );
   atts[ 6 ] = plvkGetAttachable( vk, 0 );
   marc;
   *u4 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,

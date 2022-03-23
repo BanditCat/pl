@@ -143,6 +143,25 @@ plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, bool useTensorCores ){
 }
 void updateGPUstate( plvkInstance* vk, f32 time ){
   vk->UBOcpumem.time = time;
+  hasht* devs = state.osstate->devices;
+  /* u32 numButtons = 0; */
+  /* u32 numAxes = 0; */
+  for( u32 i = 0; i < htElementCount( devs ); ++i ){
+    inputDevice* inp = *( (inputDevice**)htByIndex( devs, i, NULL ) );
+    /* if( ( numButtons + inp->numButtons < MAX_BUTTONS ) && */
+    /* 	( numAxes + inp->numAxes < MAX_AXES ) ){ */
+      for( u32 j = 0; j < inp->numButtons; ++j ){
+	printInt( inp->buttons[ j ] );
+	vk->UBOcpumem.buttons[ j ] = inp->buttons[ j ];
+      }
+      endl();
+      for( u32 j = 0; j < inp->numAxes; ++j ){
+	printFloat( inp->axes[ j ].val ); 
+	vk->UBOcpumem.axes[ j ] = inp->axes[ j ].val;
+      }
+      endl();
+    /* } */
+  }
   void* data;
   vkMapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory, 0,
 	       sizeof( gpuState ), 0, &data );

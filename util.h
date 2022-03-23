@@ -63,9 +63,9 @@ void printArray( u32 indent, u32 numsPerRow, u32 size, const u32* arr );
 // Hash tables.
 typedef struct bucket{
   u32 hash;
-  char* key;
+  void* key;
   u64 keySize;
-  char* value;
+  void* value;
   u64 valueSize;
   u32 index;
 } bucket;
@@ -75,27 +75,29 @@ typedef struct hasht{
   u32 size;
   u32* used;
 } hasht;
-u32 hash( const char* cdata, u32 size, const hasht* ht );
+u32 hash( const void* cdata, u32 size, const hasht* ht );
 hasht* htNew( void );
 void htDestroy( hasht* ht );
 // Copies data.
-void htAddWithHash( hasht* ht, const char* key, u64 keysize,
-		    const char* val, u64 valsize, u32 hash );
+void htAddWithHash( hasht* ht, const void* key, u64 keysize,
+		    const void* val, u64 valsize, u32 hash );
 #define htAdd( ht, k, ks, v, vs ) htAddWithHash( ht, k, ks, v, vs,\
 						 hash( k, ks, ht ) )
 #define htAddString( ht, k, v, vs ) htAdd( ht, k, slen( k ), v, vs )
 // Returns NULL if key isn't found. If retSize isn't NULL, it is assigned the
 // size of the returned array, in bytes.
-const char* htFindWithHash( hasht* ht, const char* key, u64 keysize,
+const void* htFindWithHash( hasht* ht, const void* key, u64 keysize,
 			    u64* retSize, u32 hash );
 #define htFind( ht, k, ks, rs ) htFindWithHash( ht, k, ks, rs,\
 						hash( k, ks, ht ) )
 #define htFindString( ht, k, rs ) htFind( ht, k, slen( k ), rs )
 // Removes the element key, errors and exits if key isn't found.
-void htRemoveWithHash( hasht* ht, const char* key, u64 keysize, u32 hash );
+void htRemoveWithHash( hasht* ht, const void* key, u64 keysize, u32 hash );
 #define htRemove( ht, k, ks ) htRemoveWithHash( ht, k, ks, hash( k, ks, ht ) )
-void htPrint( hasht* ht );
+u64 htElementCount( hasht* ht );
+const void* htByIndex( hasht* ht, u64 index, u64* retSize );
 // Debugging.
+void htPrint( hasht* ht );
 #ifdef DEBUG
 void htTest( void );
 #endif

@@ -56,11 +56,10 @@ void main(){
   ivec2 tpos = ivec2( tindex % size.x, tindex / size.x );
   position = positions[ int( pindex ) ] * 3.46410161514;
   vec4 ppos = proj * vec4( ps[ tindex ].pos, 1.0 );
-  vec2 spos = ppos.xy / ppos.w;
+  vec3 spos = ppos.xyz / ppos.w;
   gl_Position =
     vec4( //texelFetch( texSampler, tpos, 0 ).xy +
-	 spos + position * 0.0012,
-	  0.0, 1.0 );
+	 spos + vec3( position * 0.0112, 0 ), 1.0 );
   color = colors[ tindex ];
 }
 

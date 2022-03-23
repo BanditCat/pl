@@ -20,8 +20,8 @@
 
 #include "pl.h"
 #include "prog.h"
-#include "os.h"
 #include "util.h"
+#include "os.h"
 
 
 program* newProgram( u32 size ){
