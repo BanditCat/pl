@@ -22,10 +22,8 @@
 
 
 struct particle{
-  vec3 pos;
-  vec3 vel;
-  float color;
-  float mass;
+  vec4 pos;
+  vec4 vel;
 };
 layout( binding = 1) buffer oparticleBuffer{
   particle ops[];
@@ -37,6 +35,6 @@ layout( binding = 2) buffer iparticleBuffer{
 
 void main(){
   ops[ gl_GlobalInvocationID.x ].pos =
-    ips[ gl_GlobalInvocationID.x ].pos;// + vec3 ( 0.001, 0.001, 0.001 );
+    ips[ gl_GlobalInvocationID.x ].pos + vec4( 0.001, 0.001, 0.001, 0 );
 }
  

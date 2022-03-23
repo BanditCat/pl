@@ -23,20 +23,17 @@
 layout(binding = 0) uniform UniformBufferObject {
   float time;
 } ubo; 
-layout(binding = 1) uniform sampler2D texSampler;
-layout( binding = 2) buffer colorBuffer{
-   vec3 colors[];
+layout( binding = 1) buffer colorBuffer{
+   vec4 colors[];
 };
 struct particle{
-  vec3 pos;
-  vec3 vel;
-  float color;
-  float mass;
+  vec4 pos;
+  vec4 vel;
 };
-layout( binding = 3) buffer particleBuffer{
+layout( binding = 2) buffer particleBuffer{
   particle ps[];
 };
-layout( binding = 4 ) buffer projBuffer{
+layout( binding = 3 ) buffer projBuffer{
   mat4 projm;
   mat4 rotm;
   mat4 irotm;
@@ -56,15 +53,14 @@ const vec2 positions[ 3 ] = vec2[](
 				   );
 
 void main(){
-  ivec2 size = textureSize( texSampler, 0 );
   int tindex =  gl_VertexIndex / 3;
   int pindex = gl_VertexIndex % 3;
   position = positions[ int( pindex ) ] * 3.46410161514;
-  vec4 ppos = vec4( ps[ tindex ].pos, 1.0 ) ;
+  vec4 ppos = vec4( ps[ tindex ].pos.xyz, 1.0 ) ;
   vec4 spos = (projm * rotm * posm * ppos) + projm *
-    vec4( position * 0.0412, 0, 1 );
+    vec4( position * 0.0112, 0, 1 );
   gl_Position = 
        spos;
-  color = colors[ tindex ];
+  color = colors[ tindex ].rgb;
 }
 

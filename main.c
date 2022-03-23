@@ -232,9 +232,9 @@ int main( int argc, const char** argv ){
 	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( -1.0, 1.0 );
 	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.01, 0.01 );
 	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.01, 0.01 );
-	for( int i = 0; i < 6; ++i )
+	for( int i = 0; i < 8; ++i )
 	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -1.0, 1.0 );
-	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.0, 1.0 );
+	cud[ ( y * gsz + x ) * cuesz + 3 ] = frand( 0.5, 1.0 );
 	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.5, 2.5 );
       }
 
@@ -245,16 +245,17 @@ int main( int argc, const char** argv ){
 		    "shaders\\quad.spv",
 		    false, "foo", 400, 400, NULL, 0, 6, (u8*)ps, 1, NULL, 0  );
     memfree( ps );
-    ps = newae( f32, gsz * gsz * 3 );
+    ps = newae( f32, gsz * gsz * 4 );
     for( u32 x = 0; x < gsz; ++x ){
       for( u32 y = 0; y < gsz; ++y ){
-	ps[ ( y * gsz + x ) * 3 + 0 ] = frand( 0.2, 1.0 );
-	ps[ ( y * gsz + x ) * 3 + 1 ] = frand( 0.2, 1.0 );
-	ps[ ( y * gsz + x ) * 3 + 2 ] = frand( 0.2, 1.0 );
+	ps[ ( y * gsz + x ) * 4 + 0 ] = frand( 0.2, 1.0 );
+	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( 0.5, 1.0 );
+	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( 0.3, 1.0 );
+	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( 0.5, 1.0 );
       }
     }
     marc;
-    plvkAddBuffer( vk, ps, gsz * gsz * 3 * 4 );
+    plvkAddBuffer( vk, ps, gsz * gsz * 4 * 4 );
     marc;
     plvkCreateUnit( vk, cusz, 1, 0, cuesz * 4,
 		    "shaders\\gravcomp.spv", NULL,
@@ -294,7 +295,7 @@ int main( int argc, const char** argv ){
   *u4 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 			"shaders\\unit3Frag.spv",
 			"shaders\\gravVert.spv",
-			true, "foofff", 50, 200, atts + 3, 4,
+			true, "foofff", 50, 200, atts + 4, 3,
 			gsz * gsz * 3, NULL, 1, NULL, 0 );
   
   plvkShow( u1 );
