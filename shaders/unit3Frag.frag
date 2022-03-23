@@ -30,7 +30,7 @@ void main(){
   if( dot( pos, pos ) > 1 )
     discard;
  else{
-    outColor = vec4( color.xy, gl_FragCoord.z, 1.0 );
+    outColor = vec4( color, 1.0 );
     }
 }
  

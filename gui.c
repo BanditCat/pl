@@ -43,7 +43,7 @@ typedef struct guiState{
 } guiState;
 
 
-
+#define DEADZONE 0.05
 
 LONG WINAPI eventLoop( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
   
@@ -193,6 +193,8 @@ void parseInput( RAWINPUT* rinp, u64 arsz ){
       idev->axes[ i ].val = (f32)( (long)value - idev->axes[ i ].minVal ) /
 	(f32)( idev->axes[ i ].maxVal - idev->axes[ i ].minVal );
       idev->axes[ i ].val = idev->axes[ i ].val * 2 - 1;
+      if( fabsolute( idev->axes[ i ].val ) < DEADZONE )
+	idev->axes[ i ].val = 0;
     }
 
     bool bstates[ MAX_BUTTONS ];

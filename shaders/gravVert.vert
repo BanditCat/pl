@@ -61,7 +61,8 @@ void main(){
   int pindex = gl_VertexIndex % 3;
   position = positions[ int( pindex ) ] * 3.46410161514;
   vec4 ppos = vec4( ps[ tindex ].pos, 1.0 ) ;
-  vec4 spos = (projm * rotm * posm * ppos) + vec4( position * 0.0412, 0, 0 );
+  vec4 spos = (projm * rotm * posm * ppos) + projm *
+    vec4( position * 0.0412, 0, 1 );
   gl_Position = 
        spos;
   color = colors[ tindex ];
