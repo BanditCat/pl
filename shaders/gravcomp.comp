@@ -25,16 +25,28 @@ struct particle{
   vec4 pos;
   vec4 vel;
 };
-layout( binding = 1) buffer oparticleBuffer{
+layout( binding = 1) writeonly restrict buffer oparticleBuffer{
   particle ops[];
 };
-layout( binding = 2) buffer iparticleBuffer{
+layout( binding = 2) readonly restrict buffer iparticleBuffer{
   particle ips[];
 };
 
+//shared 
 
 void main(){
-  ops[ gl_GlobalInvocationID.x ].pos =
-    ips[ gl_GlobalInvocationID.x ].pos + vec4( 0.001, 0.001, 0.001, 0 );
+  uint j = gl_GlobalInvocationID.x;
+  vec3 vel = vec3( 0 );
+  for( uint i = 0; i < 10000; ++i )
+    if( i != j ){
+      vec3 dif = ips[ i ].pos.xyz - ips[ j ].pos.xyz;
+      float dist = sqrt( dot( dif, dif ) );
+      vec3 fvec = ( dif / dist ) / ( dist * dist );
+      vel += fvec * 0.000000001;
+    }
+  vel = clamp( vel, -0.01, 0.01 );
+  vec3 mvel = ips[ j ].vel.xyz + vel;
+  ops[ j ].vel.xyz = mvel;
+  ops[ j ].pos.xyz = ips[ j ].pos.xyz + mvel;
 }
  

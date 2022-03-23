@@ -219,7 +219,7 @@ int main( int argc, const char** argv ){
 				 "shaders\\quad.spv",
 				 true, "foo", 300, 300, atts, 1, 6, NULL, 1, NULL, 0 );
   marc;
-  static const u32 gsz = 210;
+  static const u32 gsz = 100;
   {
     static const u32 cuesz = 8;
     static const u32 cusz = gsz * gsz;
@@ -230,10 +230,12 @@ int main( int argc, const char** argv ){
       for( u32 y = 0; y < gsz; ++y ){
 	ps[ ( y * gsz + x ) * 4 + 0 ] = frand( -1.0, 1.0 );
 	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( -1.0, 1.0 );
-	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.01, 0.01 );
+	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.0001, 0.01 );
 	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.01, 0.01 );
-	for( int i = 0; i < 8; ++i )
+	for( int i = 0; i < 3; ++i )
 	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -1.0, 1.0 );
+	for( int i = 4; i < 7; ++i )
+	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -0.001, 0.001 );
 	cud[ ( y * gsz + x ) * cuesz + 3 ] = frand( 0.5, 1.0 );
 	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.5, 2.5 );
       }
@@ -243,7 +245,7 @@ int main( int argc, const char** argv ){
     plvkCreateUnit( vk, gsz, gsz, VK_FORMAT_R32G32B32A32_SFLOAT, 16,
 		    "shaders\\gravFrag.spv",
 		    "shaders\\quad.spv",
-		    false, "foo", 400, 400, NULL, 0, 6, (u8*)ps, 1, NULL, 0  );
+		    false, "foo", 400, 400, NULL, 0, 6, (u8*)ps,0, NULL, 0  );
     memfree( ps );
     ps = newae( f32, gsz * gsz * 4 );
     for( u32 x = 0; x < gsz; ++x ){

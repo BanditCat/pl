@@ -37,7 +37,7 @@ LDFLAGS=-luser32 -lkernel32 -nostdlib -lhid -lCabinet -lshell32 -lbuild/vulkan-1
 STRIPC=llvm-strip
 RC=llvm-rc
 PACKC=upx
-GLSLC=glslc
+GLSLC=glslc --target-spv=spv1.5
 
 TARGET=./build/pl.exe
 DBGTARGET=./build/pl_debug.exe
