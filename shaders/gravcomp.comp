@@ -20,33 +20,42 @@
 
 #version 460
 
+#extension GL_EXT_control_flow_attributes : enable
+
+layout( local_size_x =  192  ) in;
 
 struct particle{
   vec4 pos;
   vec4 vel;
 };
-layout( binding = 1) writeonly restrict buffer oparticleBuffer{
+layout( binding = 1) writeonly  buffer oparticleBuffer{
   particle ops[];
 };
-layout( binding = 2) readonly restrict buffer iparticleBuffer{
+layout( binding = 2) readonly  buffer iparticleBuffer{
   particle ips[];
 };
 
-//shared 
+shared particle shr[ gl_WorkGroupSize.x ];
 
 void main(){
-  uint j = gl_GlobalInvocationID.x;
+  const uint size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   vec3 vel = vec3( 0 );
-  for( uint i = 0; i < 10000; ++i )
+  uint j = gl_GlobalInvocationID.x;
+  // [[unroll]]for( uint i = 0; i <; ++i )
+  //   shr[ i ] = ips[ i ];
+  // barrier();
+  [[unroll]]for( uint i = 0; i < size; ++i )
     if( i != j ){
       vec3 dif = ips[ i ].pos.xyz - ips[ j ].pos.xyz;
-      float dist = sqrt( dot( dif, dif ) );
+      float dist = sqrt( dot( dif, dif ) ) * 128;
       vec3 fvec = ( dif / dist ) / ( dist * dist );
-      vel += fvec * 0.000000001;
+      vel += fvec;
     }
-  vel = clamp( vel, -0.01, 0.01 );
-  vec3 mvel = ips[ j ].vel.xyz + vel;
+  vec3 mvel = ips[ j ].vel.xyz + vel * 0.0005;
+  mvel = clamp( mvel, -0.01, 0.01 );
   ops[ j ].vel.xyz = mvel;
   ops[ j ].pos.xyz = ips[ j ].pos.xyz + mvel;
+  // [[unroll]]for( uint i = 0; i <  gl_WorkGroupSize.; ++i )
+  //   ops[ i ] = shr[ i ];
 }
  

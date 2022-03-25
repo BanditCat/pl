@@ -214,13 +214,13 @@ int main( int argc, const char** argv ){
   plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
     plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
     plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL, NULL, NULL };
-  plvkUnit* u1 = plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
+  plvkUnit* u1 =plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				 "shaders\\unitFrag.spv",
 				 "shaders\\quad.spv",
 				 true, "foo", 300, 300, atts, 1, 6, NULL, 1, NULL, 0 );
   marc;
-  static const u32 gsz = 100;
-  {
+  static const u32 gsz = 192;
+ 
     static const u32 cuesz = 8;
     static const u32 cusz = gsz * gsz;
     seedRand( 31337 );
@@ -230,12 +230,12 @@ int main( int argc, const char** argv ){
       for( u32 y = 0; y < gsz; ++y ){
 	ps[ ( y * gsz + x ) * 4 + 0 ] = frand( -1.0, 1.0 );
 	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( -1.0, 1.0 );
-	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.0001, 0.01 );
-	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.01, 0.01 );
+	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.00001, 0.00001 );
+	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.00001, 0.00001 );
 	for( int i = 0; i < 3; ++i )
 	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -1.0, 1.0 );
 	for( int i = 4; i < 7; ++i )
-	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -0.001, 0.001 );
+	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -0.000001, 0.000001 );
 	cud[ ( y * gsz + x ) * cuesz + 3 ] = frand( 0.5, 1.0 );
 	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.5, 2.5 );
       }
@@ -259,15 +259,27 @@ int main( int argc, const char** argv ){
     marc;
     plvkAddBuffer( vk, ps, gsz * gsz * 4 * 4 );
     marc;
-    plvkCreateUnit( vk, cusz, 1, 0, cuesz * 4,
-		    "shaders\\gravcomp.spv", NULL,
-		    false, "foofff", 50, 200, NULL, 0,
-		    cusz, cud, 1, NULL, 0  );
+    const u32 tileSize = 192;
+    plvkUnit* gc = plvkCreateUnit( vk, cusz / tileSize, 1, 0, cuesz * 4,
+				   "shaders\\gravcomp.spv", NULL,
+				   false, "foofff", 50, 200, NULL, 0,
+				   cusz, cud, 1, NULL, 0  );
+    (void)gc;
+    /* for( u32 z = 0; z < 1; z++ ){ */
+    /*   plvkTickUnit( gc ); */
+    /*   f32* gd = plvkCopyComputeBuffer( gc ); */
+    /*   for( u32 y = 0; y < 100; y++ ){ */
+    /* 	endl(); */
+    /* 	  print( " " ); printFloat( gd[ y ] ); */
+    /*   } */
+    /*   memfree( gd ); */
+    /*   endl(); */
+    //    }
     marc;
     memfree( ps );
     memfree( cud );
 
-  }
+  
   marc;
   atts[ 3 ] = plvkGetAttachable( vk, 2 );
   atts[ 4 ] = plvkGetAttachable( vk, 1 );
@@ -289,9 +301,8 @@ int main( int argc, const char** argv ){
   marc;
   atts[ 7 ] = plvkGetAttachable( vk, 0 );
   marc;
-  //plvkUnit* moveUnit =
-    plvkCreateUnit( vk, 1, 1, 0, 4, "shaders\\moveComp.spv", NULL, false,
-		    NULL, 0, 0, atts + 7, 1, 256, NULL, 1, NULL, 0 );
+  plvkCreateUnit( vk, 1, 1, 0, 4, "shaders\\moveComp.spv", NULL, false,
+		  NULL, 0, 0, atts + 7, 1, 256, NULL, 1, NULL, 0 );
   atts[ 6 ] = plvkGetAttachable( vk, 0 );
   marc;
   *u4 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
