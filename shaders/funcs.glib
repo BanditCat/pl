@@ -15,55 +15,47 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Display fragment shader.                                                   //
-////////////////////////////////////////////////////////////////////////////////
 
-#version 460
-
-#include "funcs.glib"
-
-layout(binding = 0) uniform UniformBufferObject {
-  float time;
-} ubo; 
-layout( binding = 1) buffer colorBuffer{
-   vec4 colors[];
-};
-struct particle{
-  vec4 pos;
-  vec4 vel;
-};
-layout( binding = 2) buffer particleBuffer{
-  particle ps[];
-};
-layout( binding = 3 ) buffer projBuffer{
-  mat4 projm;
-  mat4 rotm;
-  mat4 irotm;
-  mat4 posm;
-  vec3 pos;
-  float fov;
-  vec3 rot;
-};
-
-layout(location = 0) out vec2 position;
-layout(location = 1) flat out vec3 color;
-
-const vec2 positions[ 3 ] = vec2[](
-				   vec2( 0.5, -0.28867513459 ), 
-				   vec2( -0.5, -0.28867513459 ),
-				   vec2( 0, 0.57735026919 )
-				   );
-
-void main(){
-  int tindex =  gl_VertexIndex / 3;
-  int pindex = gl_VertexIndex % 3;
-  position = positions[ int( pindex ) ] * 3.46410161514;
-  vec4 ppos = rotm * posm * vec4( ps[ tindex ].pos.xyz, 1.0 ) ;
-  vec4 spos = ppos + //projm *
-   vec4( ( faceMat( ppos.xyz ) *
-	   vec4( position * 0.0212, 0, 1 ) ).xyz, 1 );
-  gl_Position = 
-       projm * spos;
-  color = colors[ tindex ].rgb;
+mat4 rotzMat( float angle ){
+  return transpose( mat4( cos( angle ), -sin( angle ), 0, 0,
+			  sin( angle ), cos( angle ), 0, 0,
+			  0, 0, 1, 0,
+			  0, 0, 0, 1 ) );
+}
+mat4 rotyMat( float angle ){
+  return transpose( mat4( cos( angle ), 0, sin( angle ), 0,
+			  0, 1, 0, 0,
+			  -sin( angle ), 0, cos( angle ), 0,
+			  0, 0, 0, 1 ) );
+}
+mat4 rotxMat( float angle ){
+  return transpose( mat4( 1, 0, 0, 0,
+			  0, cos( angle ), -sin( angle ), 0,
+			  0, sin( angle ), cos( angle ), 0,
+			  0, 0, 0, 1 ) );
 }
 
+mat4 projMat( float leftright, float topbottom, float near, float far ){
+  return transpose( mat4( near / leftright, 0, 0, 0,
+			  0, near / topbottom, 0, 0,
+			  0, 0, ( near + far ) / ( near - far ),
+			  ( 2 * near * far ) / ( near - far ),
+			  0, 0, -1, 0 ) );
+}
+
+mat4 faceMat( vec3 newz ){
+  vec3 vnz = normalize( newz );
+  vec3 vnx = normalize( cross( vec3( 0, 1, 0 ), vnz ) );
+  vec3 vny = cross( vnz, vnx );
+  return mat4( vnx, 0,
+	       vny, 0,
+	       vnz, 0,
+	       0, 0, 0, 1 );
+}
+
+mat4 posMat( vec3 pos ){
+  return transpose( mat4( 1, 0, 0, pos.x,
+			  0, 1, 0, pos.y,
+			  0, 0, 1, pos.z,
+			  0, 0, 0, 1 ) );
+}
