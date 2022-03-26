@@ -42,7 +42,7 @@ void parseMouse( RAWINPUT* rinp ){
       
     idev->usagePage = 0;
     idev->minButton = 0;
-    idev->numButtons = 32;
+    idev->numButtons = 5;
     idev->buttons = newae( bool, idev->numButtons );
     idev->type = GPU_MOUSE;
     idev->numAxes = 4;
@@ -53,7 +53,23 @@ void parseMouse( RAWINPUT* rinp ){
 
   idev->axes[ 0 ].val = (f32)( rinp->data.mouse.lLastX ) / 3.0;
   idev->axes[ 1 ].val = (f32)( -rinp->data.mouse.lLastY ) / 3.0;
-  printInt( rinp->data.mouse.lLastX );endl();
+  
+  u32 mask = 1;
+  for( u32 i = 0; i < 5; ++i ){
+    if( rinp->data.mouse.usButtonFlags & mask )
+      idev->buttons[ i ] = true;
+    mask <<= 1;
+    if( rinp->data.mouse.usButtonFlags & mask )
+      idev->buttons[ i ] = false;
+    mask <<= 1;
+  }
+  if( rinp->data.mouse.usButtonFlags & 1024 )
+    idev->axes[ 2 ].val = (f32)( (short)rinp->data.mouse.usButtonData ) / 12.0;
+  if( rinp->data.mouse.usButtonFlags & 2048 )
+    idev->axes[ 3 ].val = (f32)( (short)rinp->data.mouse.usButtonData ) / 12.0;
+  
+
+  printInt( rinp->data.mouse.usButtonFlags );endl();
 }
 void parseKeyboard( RAWINPUT* rinp ){
   hasht* devices = state.osstate->devices;
