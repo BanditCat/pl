@@ -57,9 +57,10 @@ void parseKeyboard( RAWINPUT* rinp, u64 arsz ){
     marc;
   } else
     idev = *idevp;
+    
+  idev->buttons[ rinp->data.keyboard.VKey ] = !( rinp->data.keyboard.Flags &
+						1 );
   memfree( ppd );
-
-  marc;
 }
 void parseInput( RAWINPUT* rinp, u64 arsz ){
   u32 rsz = arsz;
@@ -174,8 +175,10 @@ void updateInputBuffers( hasht* devs, inputDeviceBuffers* devbs ){
       devbs->devices[ numDevices ].numAxes = inp->numAxes;
       devbs->devices[ numDevices ].boffset = numButtons;
       devbs->devices[ numDevices ].aoffset = numAxes;
-      devbs->types[ numDevices++ ] = GPU_OTHER;
+      devbs->types[ numDevices++ ] = inp->type;
       for( u32 j = 0; j < inp->numButtons; ++j ){
+	if( inp->buttons[ j ] )
+	  printInt( j );
 	devbs->buttons[ numButtons++ ] = inp->buttons[ j ];
       }
       for( u32 j = 0; j < inp->numAxes; ++j ){

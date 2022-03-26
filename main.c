@@ -379,15 +379,21 @@ int main( int argc, const char** argv ){
 					 
   // Main loop.
   plvkStartRendering( vk );
-  while( plvkeventLoop( vk ) ){
-    inputDevice** devp =
-      (inputDevice**)htByIndex( state.osstate->devices, 0, NULL );
+  bool done = false;
+  while( !done && plvkeventLoop( vk ) ){
+    for( u32 dev = 0; dev < htElementCount( state.osstate->devices ); ++dev ){
+      inputDevice** devp =
+	(inputDevice**)htByIndex( state.osstate->devices, dev, NULL );
     
-    inputDevice* dev;
-    if( devp ){
-      dev = *devp;
-      if( dev->buttons[ 7 ] )
-	break;
+      inputDevice* dev;
+      if( devp ){
+	dev = *devp;
+	if( dev->type == GPU_OTHER && dev->buttons[ 7 ] )
+	  done = true;
+
+	if( dev->type == GPU_KEYBOARD && dev->buttons[ 27 ] )
+	  done = true;
+      }
     }
   }
   // Run tests.

@@ -33,8 +33,8 @@ struct state{
   vec3 rot;
   bool init;
 };
-layout( binding = 1) writeonly restrict buffer outb{ state outstate; };
-layout( binding = 2) buffer inb{ state instate; };
+layout( binding = 1 ) writeonly restrict buffer outb{ state outstate; };
+layout( binding = 2 ) readonly restrict buffer inb{ state instate; };
 
 layout( binding = 3 ) uniform aspect{
   float aspx;
@@ -61,6 +61,14 @@ void main(){
   next.rot = vec3( 0, 0, 0 );
   for( uint i = 0; i < numDevices; ++i ){
     // Treat as xbone controller
+    if( getType( i ) == GPU_KEYBOARD ){
+      next.fov += ( getButton( i, 40 ) - getButton( i, 38 ) ) * deltaTime;
+      vec4 pdelta = vec4( vec3( getButton( i, 0x41 ) - getButton( i, 0x44 ),
+				getButton( i, 0x10 ) - getButton( i, 0x11 ),
+				getButton( i, 0x57 ) - getButton( i, 0x53 )
+				) * deltaTime * 5, 1 );
+      next.pos += ( instate.irotm * pdelta ).xyz;
+    }
     if( getType( i ) == GPU_OTHER ){
       next.fov += ( getButton( i, 2 ) - getButton( i, 3 ) ) * deltaTime;
       vec4 pdelta = vec4( vec3( -getAxis( i, 1 ), -getAxis( i, 0 ),
