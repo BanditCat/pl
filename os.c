@@ -143,8 +143,13 @@ void emessage( const char* message ){
 }
 
 void end( int ecode ){
+    if( state.vk )
+      plvkEnd( state.vk );
+  mark;
   if( !state.ended ){
+  mark;
     if( state.osstate ){
+  mark;
       u64 lim = htElementCount( state.osstate->devices );
       for( u64 i = 0; i < lim; ++i ){
 	inputDevice* dev = *( (inputDevice**)htByIndex( state.osstate->devices,
@@ -158,15 +163,17 @@ void end( int ecode ){
       htDestroy( state.osstate->devices );
       memfree( state.osstate );
     }
+  mark;
     state.ended = 1;
     if( state.compressedResources )
       htDestroy( state.compressedResources );
-    if( state.vk )
-      plvkEnd( state.vk );
+  mark;
+    mark;
 #ifdef DEBUG
     memCheck( 1 );
     eprintl( "Exiting from end()." );
 #endif
+  mark;
     FreeConsole();
     HeapDestroy( state.heap );
   }

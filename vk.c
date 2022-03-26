@@ -110,7 +110,9 @@ void plvkPrintGPUs( void ){
 }
 
 void plvkEnd( plvkInstance* vk ){
+  mark;
   plvkStopRendering( vk );
+  mark;
 
   destroyAttachables( vk );
   // Destroy units.
@@ -118,7 +120,9 @@ void plvkEnd( plvkInstance* vk ){
     plvkUnit* p = vk->unit;
     while( p ){
       plvkUnit* q = p->next;
+  mark;
       destroyUnit( p );
+  mark;
       p = q;
     }
   }
@@ -261,7 +265,9 @@ void plvkStartRendering( plvkInstance* vk ){
 }
 void plvkStopRendering( plvkInstance* vk ){
   vk->valid = 0;
+  mark;
   WaitForSingleObject( vk->renderThread, INFINITE );
+  mark;
   vkDeviceWaitIdle( vk->device );
 }
 void plvkPauseRendering( plvkInstance* vk ){
