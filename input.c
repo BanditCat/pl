@@ -27,21 +27,41 @@
 #include "os.h"
 #include "util.h"
 
-void parseKeyboard( RAWINPUT* rinp, u64 arsz ){
-  u32 rsz = arsz;
+void parseMouse( RAWINPUT* rinp ){
   hasht* devices = state.osstate->devices;
   u32 h = hash( &rinp->header.hDevice, sizeof( HANDLE ), devices );
   inputDevice** idevp =
     (inputDevice**)htFindWithHash( devices, &rinp->header.hDevice,
 				   sizeof( HANDLE ), NULL, h );
   inputDevice* idev;
-  if( (u32)-1 == GetRawInputDeviceInfoW( rinp->header.hDevice,
-					 RIDI_PREPARSEDDATA, NULL, &rsz ) )
-    die( "GetRawInputDeviceInfoW failed." );
-  PHIDP_PREPARSED_DATA ppd = mem( rsz );
-  if( (u32)-1 == GetRawInputDeviceInfoW( rinp->header.hDevice,
-					 RIDI_PREPARSEDDATA, ppd, &rsz ) )
-    die( "GetRawInputDeviceInfoW failed." );
+  if( !idevp ){
+    marc;
+    idev = newe( inputDevice );
+    htAddWithHash( devices, &rinp->header.hDevice, sizeof( HANDLE ),
+		   &idev, sizeof( inputDevice* ), h );
+      
+    idev->usagePage = 0;
+    idev->minButton = 0;
+    idev->numButtons = 32;
+    idev->buttons = newae( bool, idev->numButtons );
+    idev->type = GPU_MOUSE;
+    idev->numAxes = 4;
+    idev->axes = newae( axis, idev->numAxes );
+    marc;
+  } else
+    idev = *idevp;
+
+  idev->axes[ 0 ].val = (f32)( rinp->data.mouse.lLastX ) / 3.0;
+  idev->axes[ 1 ].val = (f32)( -rinp->data.mouse.lLastY ) / 3.0;
+  printInt( rinp->data.mouse.lLastX );endl();
+}
+void parseKeyboard( RAWINPUT* rinp ){
+  hasht* devices = state.osstate->devices;
+  u32 h = hash( &rinp->header.hDevice, sizeof( HANDLE ), devices );
+  inputDevice** idevp =
+    (inputDevice**)htFindWithHash( devices, &rinp->header.hDevice,
+				   sizeof( HANDLE ), NULL, h );
+  inputDevice* idev;
   if( !idevp ){
     idev = newe( inputDevice );
     htAddWithHash( devices, &rinp->header.hDevice, sizeof( HANDLE ),
@@ -52,20 +72,19 @@ void parseKeyboard( RAWINPUT* rinp, u64 arsz ){
     idev->numButtons = 256;
     idev->buttons = newae( bool, idev->numButtons );
     idev->type = GPU_KEYBOARD;
-    
     idev->numAxes = 0;
-    marc;
   } else
     idev = *idevp;
     
   idev->buttons[ rinp->data.keyboard.VKey ] = !( rinp->data.keyboard.Flags &
-						1 );
-  memfree( ppd );
+						 1 );
 }
 void parseInput( RAWINPUT* rinp, u64 arsz ){
   u32 rsz = arsz;
-  if( RIM_TYPEKEYBOARD == rinp->header.dwType ){
-    parseKeyboard( rinp, arsz );
+  if( RIM_TYPEMOUSE == rinp->header.dwType ){
+    parseMouse( rinp );
+  }else if( RIM_TYPEKEYBOARD == rinp->header.dwType ){
+    parseKeyboard( rinp );
   }else if( RIM_TYPEHID == rinp->header.dwType ){
     hasht* devices = state.osstate->devices;
     u32 h = hash( &rinp->header.hDevice, sizeof( HANDLE ), devices );
@@ -177,12 +196,15 @@ void updateInputBuffers( hasht* devs, inputDeviceBuffers* devbs ){
       devbs->devices[ numDevices ].aoffset = numAxes;
       devbs->types[ numDevices++ ] = inp->type;
       for( u32 j = 0; j < inp->numButtons; ++j ){
-	if( inp->buttons[ j ] )
-	  printInt( j );
 	devbs->buttons[ numButtons++ ] = inp->buttons[ j ];
       }
       for( u32 j = 0; j < inp->numAxes; ++j ){
 	devbs->axes[ numAxes++ ] = inp->axes[ j ].val;
+      }
+    }
+    if( inp->type == GPU_MOUSE ){
+      for( u32 j = 0; j < inp->numAxes; ++j ){
+	inp->axes[ j ].val = 0;
       }
     }
   }

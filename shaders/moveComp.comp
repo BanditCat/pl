@@ -60,7 +60,11 @@ void main(){
     next = instate;
   next.rot = vec3( 0, 0, 0 );
   for( uint i = 0; i < numDevices; ++i ){
-    // Treat as xbone controller
+    if( getType( i ) == GPU_MOUSE ){
+      next.rot += vec3( getAxis( i, 0 ), getAxis( i, 1 ),
+			getAxis( i, 2 )
+			) * deltaTime;
+    }
     if( getType( i ) == GPU_KEYBOARD ){
       next.fov += ( getButton( i, 40 ) - getButton( i, 38 ) ) * deltaTime;
       vec4 pdelta = vec4( vec3( getButton( i, 0x41 ) - getButton( i, 0x44 ),
@@ -68,7 +72,11 @@ void main(){
 				getButton( i, 0x57 ) - getButton( i, 0x53 )
 				) * deltaTime * 5, 1 );
       next.pos += ( instate.irotm * pdelta ).xyz;
+      next.rot += vec3( 0, 0,
+			getButton( i, 0x51 ) - getButton( i, 0x45 )
+			) * deltaTime;
     }
+    // Treat as xbone controller
     if( getType( i ) == GPU_OTHER ){
       next.fov += ( getButton( i, 2 ) - getButton( i, 3 ) ) * deltaTime;
       vec4 pdelta = vec4( vec3( -getAxis( i, 1 ), -getAxis( i, 0 ),
