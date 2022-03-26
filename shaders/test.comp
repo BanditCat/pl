@@ -34,23 +34,27 @@
 #extension GL_EXT_buffer_reference : enable
 #extension GL_EXT_control_flow_attributes : enable
 
-layout( local_size_x = 4, local_size_y = 4 ) in;
+layout( local_size_x = 32, local_size_y = 1 ) in;
 
-layout( binding = 1) buffer outcolors{
+layout( binding = 1) coherent buffer outcolors{
   float outbuf[ 256 ];
 };
-layout( binding = 2) buffer incolors{
+layout( binding = 2) coherent buffer incolors{
   float inbuf[ 256 ];
 };
-layout( binding = 3) buffer b{
+layout( binding = 3) coherent buffer b{
   float bmat[ 256 ];
 };
-layout( binding = 4) buffer c{
+layout( binding = 4) coherent buffer c{
   float cmat[ 256 ];
 };
 
+shared float16_t a16[ 256 ];
+shared float16_t b16[ 256 ];
+shared float c16[ 256 ];
+shared float d16[ 256 ];
+
 const uint sz = 256;  
-fcoopmatNV<16, gl_ScopeSubgroup  , 16, 16> tcmat[ sz ]; 
 void main(){
   // barrier();
   // fcoopmatNV<16, gl_ScopeSubgroup  , 16, 16> b[ sz ]; 
@@ -92,20 +96,57 @@ void main(){
   // outbuf[ 4 ] = gl_SubgroupSize;
   // barrier();
 
-  mat4 tm1 = faceMat( vec3( 1, 3, 5 ) );
-  vec4 tv1 = tm1 * vec4( 1, 1, 1, 1  );
+  mat4 tm1 = mat4( 0, 1, 2, 3,
+		   4, 5, 6, 7,
+		   8, 9, 10, 11,
+		   12, 13, 14, 15 );
+  mat4 tm2 = mat4( 1, 1, 0, 0,
+		   2, 0, 0, 0,
+		   0, 0, 0, 1,
+		   0, 0, 1, 0 );
+
+  mat4 tm3 = tm1 * tm2;
   
-  outbuf[ gl_LocalInvocationID.y * 16 + gl_LocalInvocationID.x ] =
-    tm1[ gl_LocalInvocationID.y ][ gl_LocalInvocationID.x ];
-  outbuf[ ( 6 ) * 16 + gl_LocalInvocationID.x ] =
-    tv1[ gl_LocalInvocationID.x ];
+  // outbuf[ ( gl_LocalInvocationID.y + 0 )* 16 +
+  // 	  ( gl_LocalInvocationID.x + 0 )] =
+  //   tm3[ gl_LocalInvocationID.y ][ gl_LocalInvocationID.x ];
+
+  uint i = gl_LocalInvocationID.x * 8;
+  for( uint j = 0; j < 8; ++j ){
+    a16[ i + j ] = float16_t(inbuf[ i + j ]);
+    b16[ i + j ] = float16_t(bmat[ i + j ]);
+    c16[ i + j ] = (cmat[ i + j ]);
+  }
+  barrier();
+  fcoopmatNV<16, gl_ScopeSubgroup  , 16, 16> tamat;
+  fcoopmatNV<16, gl_ScopeSubgroup  , 16, 16> tbmat;
+  fcoopmatNV<32, gl_ScopeSubgroup  , 16, 16> tcmat;
+  fcoopmatNV<32, gl_ScopeSubgroup  , 16, 16> tdmat;
+
+  barrier();
+  coopMatLoadNV( tamat, a16, 0, 16, false );
+  coopMatLoadNV( tbmat, b16, 0, 16, false );
+  coopMatLoadNV( tcmat, c16, 0, 16, false );
+
+  barrier();
+  tdmat = coopMatMulAddNV( tamat, tbmat, tcmat );
+  
+  coopMatStoreNV( tdmat, d16, 0, 16, false );
+  barrier();
+  for( uint j = 0; j < 8; ++j ){
+    outbuf[ i + j ] = d16[ i + j ];
+  }
+  barrier();
+  
   
   // for( uint i = 0; i < tcmat.length(); i++ )
   //   outbuf[ i ]
   // 	= tcmat[ i ];
   //  barrier();
      
-  
+  outbuf[ 0 ] = gl_SubgroupSize;
+  outbuf[ 1 ] = gl_NumSubgroups;
+  outbuf[ 2 ] = tcmat.length();
   // if( gl_GlobalInvocationID.x == 255 ){
   // }
   // barrier();

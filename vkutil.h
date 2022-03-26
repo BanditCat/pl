@@ -22,17 +22,12 @@
 #include "inc\vulkan\vulkan.h"
 #include "pl.h"
 #include "gui.h"
-
-#define MAX_AXES 256
-#define MAX_BUTTONS 256
+#include "input.h"
 
 typedef struct gpuState{
   f32 time;
-  f32 secondFraction;
   f32 deltaTime;
-  u32 _unused1;
-  f32 axes[ MAX_AXES ];
-  bool buttons[ MAX_BUTTONS ];
+  inputDeviceBuffers input;
 } gpuState;
 
 typedef struct plvkUnit plvkUnit;

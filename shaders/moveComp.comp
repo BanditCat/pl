@@ -19,13 +19,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
+#include "interface.glib"
 #include "funcs.glib"
 
-layout(binding = 0) uniform UniformBufferObject {
-  vec4 time;
-  vec4 axes[ 64 ];
-  ivec4 buttons[ 64 ];
-};
+
 struct state{
   mat4 projm;
   mat4 rotm;
@@ -36,7 +33,7 @@ struct state{
   vec3 rot;
   bool init;
 };
-layout( binding = 1) buffer outb{ state outstate; };
+layout( binding = 1) writeonly restrict buffer outb{ state outstate; };
 layout( binding = 2) buffer inb{ state instate; };
 
 layout( binding = 3 ) uniform aspect{
@@ -46,32 +43,41 @@ layout( binding = 3 ) uniform aspect{
 
 
 void main(){
+  state next;
   if( !instate.init ){
-    instate.rotm = mat4( 1, 0, 0, 0,
+    next.pos = next.rot = vec3( 0 );
+    next.fov = 1;
+    next.rotm = mat4( 1, 0, 0, 0,
+			 0, 1, 0, 0,
+			 0, 0, 1, 0,
+			 0, 0, 0, 1 );
+    next.irotm = mat4( 1, 0, 0, 0,
 			  0, 1, 0, 0,
 			  0, 0, 1, 0,
 			  0, 0, 0, 1 );
-    instate.irotm = mat4( 1, 0, 0, 0,
-			   0, 1, 0, 0,
-			   0, 0, 1, 0,
-			   0, 0, 0, 1 );
-    outstate.init = true;
-    instate.init = true;
+    next.init = true;
+  } else
+    next = instate;
+  next.rot = vec3( 0, 0, 0 );
+  for( uint i = 0; i < numDevices; ++i ){
+    // Treat as xbone controller
+    if( getType( i ) == GPU_OTHER ){
+      next.fov += ( getButton( i, 2 ) - getButton( i, 3 ) ) * deltaTime;
+      vec4 pdelta = vec4( vec3( -getAxis( i, 1 ), -getAxis( i, 0 ),
+				-getAxis( i, 4 ) ) * deltaTime * 5, 1 );
+      next.pos += ( instate.irotm * pdelta ).xyz;
+      next.rot += vec3( getAxis( i, 3 ), -getAxis( i, 2 ),
+			   getButton( i, 4 ) - getButton( i, 5 )  ) * deltaTime;
+    }
   }
-  outstate.fov = instate.fov + ( buttons[ 0 ].z - buttons[ 0 ].w ) * 0.01;
-  vec4 pdelta = vec4( vec3( -axes[ 0 ].y, -axes[ 0 ].x, -axes[ 1 ].x ) * 0.04,
-		      1 );
-  outstate.pos = instate.pos + ( instate.irotm * pdelta ).xyz;
-  outstate.rot = vec3( axes[ 0 ].w, -axes[ 0 ].z,
-		       buttons[ 1 ].x - buttons[ 1 ].y  ) * 0.015;
-  //outstate.proj =  posMat( outstate.pos ) * projMat( aspy, aspx, 0.1, 0.5 );
-  float fov = outstate.fov + 1;
-  outstate.projm = projMat( aspy * fov * 0.01, aspx * fov * 0.01,
+  next.projm = projMat( aspy * next.fov * 0.01, aspx * next.fov * 0.01,
 			    0.01, 1000.0 );
-  outstate.posm = posMat( outstate.pos + vec3 ( 0, 0, -3 ) );
-  outstate.irotm = instate.irotm * rotxMat( -outstate.rot.y ) *
-    rotyMat( -outstate.rot.x ) * rotzMat( -outstate.rot.z );
-  outstate.rotm = rotzMat( outstate.rot.z ) * rotyMat( outstate.rot.x ) *
-    rotxMat( outstate.rot.y ) * instate.rotm;
+  next.posm = posMat( next.pos + vec3 ( 0, 0, -3 ) );
+  next.irotm = next.irotm * rotxMat( -next.rot.y ) *
+    rotyMat( -next.rot.x ) * rotzMat( -next.rot.z );
+  next.rotm = rotzMat( next.rot.z ) * rotyMat( next.rot.x ) *
+    rotxMat( next.rot.y ) * next.rotm;
+
+  outstate = next;
 }
  

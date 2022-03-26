@@ -15,47 +15,61 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Compute shader.                                                            //
+// Input.                                                                     //
 ////////////////////////////////////////////////////////////////////////////////
 
-#version 460
 
-#extension GL_EXT_control_flow_attributes : enable
 
-layout( local_size_x =  192  ) in;
+#define MAX_INPUTS 32
+#define MAX_AXES 256
+#define MAX_BUTTONS 1024
 
-struct particle{
-  vec4 pos;
-  vec4 vel;
-};
-layout( binding = 1) writeonly restrict buffer oparticleBuffer{
-  particle ops[];
-};
-layout( binding = 2) readonly restrict buffer iparticleBuffer{
-  particle ips[];
-};
+#define DEADZONE 0.07
 
-shared particle shr[ gl_WorkGroupSize.x ];
+typedef struct hasht hasht;
 
-void main(){
-  const uint size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-  vec3 vel = vec3( 0 );
-  uint j = gl_GlobalInvocationID.x;
-  // [[unroll]]for( uint i = 0; i <; ++i )
-  //   shr[ i ] = ips[ i ];
-  // barrier();
-  [[unroll]]for( uint i = 0; i < size; ++i )
-    if( i != j ){
-      vec3 dif = ips[ i ].pos.xyz - ips[ j ].pos.xyz;
-      float dist = sqrt( dot( dif, dif ) ) * 128;
-      vec3 fvec = ( dif / dist ) / ( dist * dist );
-      vel += fvec;
-    }
-  vec3 mvel = ips[ j ].vel.xyz + vel * 0.0005;
-  mvel = clamp( mvel, -0.01, 0.01 );
-  ops[ j ].vel.xyz = mvel;
-  ops[ j ].pos.xyz = ips[ j ].pos.xyz + mvel;
-  // [[unroll]]for( uint i = 0; i <  gl_WorkGroupSize.; ++i )
-  //   ops[ i ] = shr[ i ];
-}
- 
+typedef struct axis{
+  u32 minAxis;
+  u32 usagePage;
+  s32 minVal;
+  s32 maxVal;
+  f32 val;
+} axis;
+
+
+typedef enum gpuInputDeviceType{
+  GPU_KEYBOARD = 1,
+  GPU_MOUSE = 2,
+  GPU_OTHER = 3
+} gpuInputDeviceType;
+
+
+typedef struct inputDevice{
+  gpuInputDeviceType type;
+  u32 usagePage;
+  u32 minButton;
+  u32 numButtons;
+  u32 numAxes;
+  bool* buttons;
+  axis* axes;
+} inputDevice;
+
+typedef struct gpuInputDevice{
+  u32 numButtons;
+  u32 numAxes;
+  u32 boffset;
+  u32 aoffset;
+} gpuInputDevice;  
+  
+
+typedef struct inputDeviceBuffers {
+  u32 numDevices;
+  u32 _unused1;
+  f32 axes[ MAX_AXES ];
+  f32 buttons[ MAX_BUTTONS ];
+  u32 types[ MAX_INPUTS ];
+  gpuInputDevice devices[ MAX_INPUTS ];
+} inputDeviceBuffers;
+
+void parseInput( RAWINPUT* rinp, u64 arsz );
+void updateInputBuffers( hasht* devs, inputDeviceBuffers* devbs );

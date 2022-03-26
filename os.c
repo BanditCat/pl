@@ -27,6 +27,7 @@
 #include "util.h"
 #include "os.h"
 #include "vk.h"
+#include "input.h"
 
 #define MEMCONST1 0x12FEEDFACEC0FFEE
 #define MEMCONST2 0xDEADBEEFDEADBEEF
@@ -85,7 +86,7 @@ void WINAPI __entry( HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLin
     size = sizeof( char* ) + ts;
     state.argv = memperm( sizeof( char* ) * 1 );
     *state.argv = memperm( slen( TARGET ) + 1 );
-    strcopy( ((char*)*state.argv), TARGET);
+    strcopy( ((char*)*state.argv), TARGET );
     state.argc = 1;
   }
   state.vk = NULL;
@@ -148,8 +149,10 @@ void end( int ecode ){
       for( u64 i = 0; i < lim; ++i ){
 	inputDevice* dev = *( (inputDevice**)htByIndex( state.osstate->devices,
 						 i, NULL ) );
-	memfree( dev->buttons );
-	memfree( dev->axes );
+	if( dev->buttons )
+	  memfree( dev->buttons );
+	if( dev->axes )
+	  memfree( dev->axes );
 	memfree( dev );
       }
       htDestroy( state.osstate->devices );

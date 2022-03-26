@@ -1,22 +1,28 @@
-gui.o: gui.c pl.h vk.h gui.h util.h os.h
-main.o: main.c pl.h prog.h util.h os.h gui.h vk.h
-os.o: os.c pl.h util.h os.h vk.h
+gui.o: gui.c pl.h vk.h gui.h util.h os.h input.h
+input.o: input.c vkutil.h inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h input.h \
+  os.h util.h
+main.o: main.c pl.h prog.h util.h os.h gui.h vk.h input.h
+os.o: os.c pl.h util.h os.h vk.h input.h
 prog.o: prog.c pl.h prog.h util.h os.h
 util.o: util.c pl.h util.h os.h
 vk.o: vk.c vkutil.h inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
-  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h util.h \
-  os.h vk.h
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h input.h \
+  util.h os.h vk.h
 vkutil.o: vkutil.c vkutil.h inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
-  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h util.h \
-  os.h
-gui_dbg.o: gui.c pl.h vk.h gui.h util.h os.h
-main_dbg.o: main.c pl.h prog.h util.h os.h gui.h vk.h
-os_dbg.o: os.c pl.h util.h os.h vk.h
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h input.h \
+  util.h os.h
+gui_dbg.o: gui.c pl.h vk.h gui.h util.h os.h input.h
+input_dbg.o: input.c vkutil.h inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h input.h \
+  os.h util.h
+main_dbg.o: main.c pl.h prog.h util.h os.h gui.h vk.h input.h
+os_dbg.o: os.c pl.h util.h os.h vk.h input.h
 prog_dbg.o: prog.c pl.h prog.h util.h os.h
 util_dbg.o: util.c pl.h util.h os.h
 vk_dbg.o: vk.c vkutil.h inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
-  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h util.h \
-  os.h vk.h
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h input.h \
+  util.h os.h vk.h
 vkutil_dbg.o: vkutil.c vkutil.h inc\vulkan\vulkan.h inc\vulkan\vk_platform.h \
-  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h util.h \
-  os.h
+  inc\vulkan\vulkan_core.h inc\vulkan\vulkan_win32.h pl.h gui.h input.h \
+  util.h os.h

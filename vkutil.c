@@ -18,10 +18,11 @@
 // Vulkan internal interface.                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <math.h>
+
 #include "vkutil.h"
 #include "util.h"
 #include "os.h"
-#include <math.h>
 
 // Validation layer callback.
 #ifdef DEBUG
@@ -36,6 +37,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL plvkDebugcb
     printInt( type );
     print( ", " );
     printInt( severity );
+    print( ", " );
+    printInt( type );
     print( ": " );
     printl( callback->pMessage );
   }
@@ -61,6 +64,7 @@ void setupDebugCreateinfo( VkDebugUtilsMessengerCreateInfoEXT* ci ){
 
 // Requirements
 const char* requiredDeviceExtensions[] = {
+  VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME,
   VK_NV_COOPERATIVE_MATRIX_EXTENSION_NAME,
   VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
   VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME, "VK_KHR_swapchain" };

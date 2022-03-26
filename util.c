@@ -162,14 +162,12 @@ void eprintIntInBase( u64 n, u8 base ){
   intToStringInBase( s, n, 256, base );
   eprint( s );
 }
-void printFloatDigits( f64 f, u64 digits ){
+void printFloatDigits( f64 f, u64 digits, u64 minWidth ){
   u32 dgs = digits > 11 ? 11 : digits;
   if( f < 0 ){
     print( "-" );
     f *= -1.0;
   }
-  if( f < 0.00000000001 )
-    print( "0.0" );
   else if( f > 9223372036854775806.0 )
     print( "<large>" );
   else{
@@ -178,7 +176,7 @@ void printFloatDigits( f64 f, u64 digits ){
     for( u32 i = 0; i < dgs; ++i )
       f *= 10;
     u64 fractionalPart = f;
-    printInt( integerPart );
+    printIntWithPrefix( integerPart, minWidth, ' ' );
     print( "." );
     printIntWithPrefix( fractionalPart, dgs, '0' );
   }

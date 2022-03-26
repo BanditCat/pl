@@ -15,47 +15,40 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Compute shader.                                                            //
+// Uniform buffer interface.                                                  //
 ////////////////////////////////////////////////////////////////////////////////
 
-#version 460
 
-#extension GL_EXT_control_flow_attributes : enable
+#define GPU_KEYBOARD 1
+#define GPU_MOUSE 2
+#define GPU_OTHER 3
+#define MAX_INPUTS 32
+#define MAX_AXES 256
+#define MAX_BUTTONS 1024
 
-layout( local_size_x =  192  ) in;
 
-struct particle{
-  vec4 pos;
-  vec4 vel;
+layout(binding = 0) uniform UniformBufferObject {
+  float time;
+  float deltaTime;
+  uint numDevices;
+  uint _unused1;
+  vec4 axes[ MAX_AXES / 4 ];
+  vec4 buttons[ MAX_BUTTONS / 4 ];
+  uvec4 types[ MAX_INPUTS / 4 ];
+  // x = numButtons, y = numAxes, z = boffset, w = aoffset
+  uvec4 devices[ MAX_INPUTS / 4 ];
 };
-layout( binding = 1) writeonly restrict buffer oparticleBuffer{
-  particle ops[];
-};
-layout( binding = 2) readonly restrict buffer iparticleBuffer{
-  particle ips[];
-};
 
-shared particle shr[ gl_WorkGroupSize.x ];
-
-void main(){
-  const uint size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-  vec3 vel = vec3( 0 );
-  uint j = gl_GlobalInvocationID.x;
-  // [[unroll]]for( uint i = 0; i <; ++i )
-  //   shr[ i ] = ips[ i ];
-  // barrier();
-  [[unroll]]for( uint i = 0; i < size; ++i )
-    if( i != j ){
-      vec3 dif = ips[ i ].pos.xyz - ips[ j ].pos.xyz;
-      float dist = sqrt( dot( dif, dif ) ) * 128;
-      vec3 fvec = ( dif / dist ) / ( dist * dist );
-      vel += fvec;
-    }
-  vec3 mvel = ips[ j ].vel.xyz + vel * 0.0005;
-  mvel = clamp( mvel, -0.01, 0.01 );
-  ops[ j ].vel.xyz = mvel;
-  ops[ j ].pos.xyz = ips[ j ].pos.xyz + mvel;
-  // [[unroll]]for( uint i = 0; i <  gl_WorkGroupSize.; ++i )
-  //   ops[ i ] = shr[ i ];
+float getType( in uint device ){
+  return types[ device / 4 ][ device % 4 ];
 }
- 
+
+float getAxis( in uint device, in uint index ){
+  uint i = devices[ device ].w + index;
+  return axes[ i / 4 ][ i % 4 ];
+}
+
+float getButton( in uint device, in uint index ){
+  uint i = devices[ device ].z + index;
+  return buttons[ i / 4 ][ i % 4 ];
+}

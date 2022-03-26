@@ -141,23 +141,10 @@ plvkInstance* plvkInit( s32 whichGPU, u32 debugLevel, bool useTensorCores ){
 
   return vk;
 }
-void updateGPUstate( plvkInstance* vk, f32 time ){
+void updateGPUstate( plvkInstance* vk, f32 time, f32 delta ){
   vk->UBOcpumem.time = time;
-  hasht* devs = state.osstate->devices;
-  u32 numButtons = 0;
-  u32 numAxes = 0;
-  for( u32 i = 0; i < htElementCount( devs ); ++i ){
-    inputDevice* inp = *( (inputDevice**)htByIndex( devs, i, NULL ) );
-    if( ( numButtons + inp->numButtons < MAX_BUTTONS ) &&
-	( numAxes + inp->numAxes < MAX_AXES ) ){
-      for( u32 j = 0; j < inp->numButtons; ++j ){
-	vk->UBOcpumem.buttons[ numButtons++ ] = inp->buttons[ j ];
-      }
-      for( u32 j = 0; j < inp->numAxes; ++j ){
-	vk->UBOcpumem.axes[ numAxes++ ] = inp->axes[ j ].val;
-      }
-    }
-  }
+  vk->UBOcpumem.deltaTime = delta;
+  updateInputBuffers( state.osstate->devices, &( vk->UBOcpumem.input ) );
   void* data;
   vkMapMemory( vk->device, vk->UBOs[ vk->currentImage ]->memory, 0,
 	       sizeof( gpuState ), 0, &data );
@@ -194,8 +181,8 @@ void plvkDraw( void ){
   u64 now = tickCount();
   elapsed = (f64)( now - lastFrameTime ) / tickFrequency();
   
-  updateGPUstate( vk, (f32)( now - firstDrawTime )
-		  / (f32)tickFrequency() );
+  updateGPUstate( vk, (f32)( now - firstDrawTime ) / (f32)tickFrequency(),
+		  (f32)( now - lastTime ) / (f32)tickFrequency() );
       
   ++vk->currentImage;
   vk->currentImage %= 2;

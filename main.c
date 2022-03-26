@@ -26,6 +26,7 @@
 #include "os.h"
 #include "gui.h"
 #include "vk.h"
+#include "input.h"
 
 
 typedef struct asp{
@@ -328,21 +329,33 @@ int main( int argc, const char** argv ){
     for( u32 x = 0; x < tdimx; x++ ){
       for( u32 y = 0; y < tdimy; y++ ){
 	ta[ y * tdimx + x ] = x == y ? 1.0 : 0.0;
-	tb[ y * tdimx + x ] = 2.0;
+	tb[ y * tdimx + x ] = (y * tdimx + x) * 0.01;
 	tc[ y * tdimx + x ] = 0.1;
       }
     }
     plvkAddBuffer( vk, tb, tsz * 4 );
     plvkAddBuffer( vk, tc, tsz * 4 );
     plvkAttachable* tatts[] = {
-      plvkGetAttachable( vk, 0 ),
-      plvkGetAttachable( vk, 1 ) };
+      plvkGetAttachable( vk, 1 ),
+      plvkGetAttachable( vk, 0 ) };
 
     //tb[ 2 ] = 2;
     plvkUnit* testUnit = plvkCreateUnit( vk, 1, 1, 0, 4,
 					 "shaders\\test.spv", NULL,
 					 false, "tttt", 0, 0, tatts, 2,
 					 tsz, (const void*)ta, 1, NULL, 0 );
+    for( u32 y = 0; y < tdimy; y++ ){
+      endl();
+      for( u32 x = 0; x < tdimx; x++ ){
+	print( " " ); printFloat( tb[ y * tdimx + x ] );
+      }
+    }
+    for( u32 y = 0; y < tdimy; y++ ){
+      endl();
+      for( u32 x = 0; x < tdimx; x++ ){
+	print( " " ); printFloat( tc[ y * tdimx + x ] );
+      }
+    }
     char* gd;
     for( u64 i = 0; i < 10; ++i ){
       printInt( i ); endl();

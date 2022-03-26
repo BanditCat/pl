@@ -123,23 +123,6 @@ inline f32 fabsolute( f32 n ){
     return -n;
 }
 
-typedef struct axis{
-  u32 minAxis;
-  u32 usagePage;
-  s32 minVal;
-  s32 maxVal;
-  f32 val;
-} axis;
-
-typedef struct inputDevice{
-  u32 usagePage;
-  u32 minButton;
-  u32 numButtons;
-  u32 numAxes;
-  bool* buttons;
-  axis* axes;
-} inputDevice;
-
 typedef struct osstate{
   hasht* devices;
 } osstate;
