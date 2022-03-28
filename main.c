@@ -233,11 +233,32 @@ int main( int argc, const char** argv ){
 	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( -1.0, 1.0 );
 	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.00001, 0.00001 );
 	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.00001, 0.00001 );
-	for( int i = 0; i < 3; ++i )
-	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -1.0, 1.0 );
+	  
+	/* for( int i = 0; i < 3; ++i ){ */
+	/*   u32 ind = ( y * gsz + x ) * cuesz; */
+	/*   cud[ ind + i ] = frand( -1.0, 1.0 ); */
+	/* } */
+	{
+	  u32 ind = ( y * gsz + x ) * cuesz;
+	  f32 a1 = frand( 0, cpi * 2 );
+	  f32 d1 = fsqrt( frand( 0, 1 ) ) * 0.8;
+	  cud[ ind + 0 ] = fsin( a1 ) * d1 + 2;
+	  cud[ ind + 1 ] = fcos( a1 ) * d1;
+	  cud[ ind + 2 ] = frand( -cpi, cpi );
+
+	  a1 = cud[ ind + 2 ];
+	  d1 = cud[ ind + 0 ] * 1.6;
+	  cud[ ind + 0 ] = fsin( a1 ) * d1;
+	  cud[ ind + 2 ] = fcos( a1 ) * d1;
+
+	  cud[ ind + 4 ] = -cud[ ind + 2 ] * 0.002;
+	  cud[ ind + 5 ] = 0;
+	  cud[ ind + 6 ] = cud[ ind ] * 0.002;
+	}
+	  
 	for( int i = 4; i < 7; ++i )
-	  cud[ ( y * gsz + x ) * cuesz + i ] = frand( -0.000001, 0.000001 );
-	cud[ ( y * gsz + x ) * cuesz + 3 ] = frand( 0.5, 1.0 );
+	  cud[ ( y * gsz + x ) * cuesz + i ] += frand( -0.0001, 0.0001 );
+	cud[ ( y * gsz + x ) * cuesz + 3 ] = frand( 0.5, 2.5 );
 	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.5, 2.5 );
       }
 
@@ -264,7 +285,7 @@ int main( int argc, const char** argv ){
     plvkUnit* gc = plvkCreateUnit( vk, cusz / tileSize, 1, 0, cuesz * 4,
 				   "shaders\\gravcomp.spv", NULL,
 				   false, "foofff", 50, 200, NULL, 0,
-				   cusz, cud, 1, NULL, 0  );
+				   cusz, cud, 1, &gsz, 1  );
     (void)gc;
     /* for( u32 z = 0; z < 1; z++ ){ */
     /*   plvkTickUnit( gc ); */

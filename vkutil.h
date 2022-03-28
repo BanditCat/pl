@@ -238,7 +238,7 @@ plvkUnit* createUnit( plvkInstance* vk, u32 width, u32 height,
 		      bool displayed, const char* title, int x, int y,
 		      plvkAttachable** attachments, u64 numAttachments,
 		      u64 drawSize, const void* pixels, u32 tickCount,
-		      u32* specializations, u64 numSpecializations );
+		      const u32* specializations, u64 numSpecializations );
 
 void destroyUnit( plvkUnit* u );
 void tickUnit( plvkUnit* u );

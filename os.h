@@ -116,6 +116,8 @@ u64 urand( void );
 f32 frand( f32 min, f32 max );
 
 f32 fsqrt( volatile f32 n );
+f32 fsin( volatile f32 n );
+f32 fcos( volatile f32 n );
 inline f32 fabsolute( f32 n ){
   if( n > 0 )
     return n;

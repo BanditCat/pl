@@ -19,12 +19,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
-
+#include "interface.glib"
 #include "funcs.glib"
 
-layout(binding = 0) uniform UniformBufferObject {
-  float time;
-} ubo; 
 layout( binding = 1) buffer colorBuffer{
    vec4 colors[];
 };
@@ -57,11 +54,12 @@ const vec2 positions[ 3 ] = vec2[](
 void main(){
   int tindex =  gl_VertexIndex / 3;
   int pindex = gl_VertexIndex % 3;
+  float size = pow( ps[ tindex ].pos.w, 0.3333333333333333 );
   position = positions[ int( pindex ) ] * 3.46410161514;
   vec4 ppos = rotm * posm * vec4( ps[ tindex ].pos.xyz, 1.0 ) ;
   vec4 spos = ppos + //projm *
    vec4( ( faceMat( ppos.xyz ) *
-	   vec4( position * 0.0212, 0, 1 ) ).xyz, 1 );
+	   vec4( position * 0.0152 * size, 0, 1 ) ).xyz, 1 );
   gl_Position = 
        projm * spos;
   color = colors[ tindex ].rgb;

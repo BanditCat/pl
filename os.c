@@ -641,4 +641,22 @@ f32 fsqrt( volatile f32 n ) {
     : "rm" (n));
   return d;
 }
+f32 fsin( volatile f32 n ) {
+  f32 d;
+ __asm ("flds %1\n"
+    "fsin\n"
+    "fstps %0\n"
+    : "=rm" (d) 
+    : "rm" (n));
+  return d;
+}
+f32 fcos( volatile f32 n ) {
+  f32 d;
+ __asm ("flds %1\n"
+    "fcos\n"
+    "fstps %0\n"
+    : "=rm" (d) 
+    : "rm" (n));
+  return d;
+}
 

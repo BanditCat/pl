@@ -239,7 +239,7 @@ plvkUnit* plvkCreateUnit( plvkInstance* vk, u32 width, u32 height,
 			  bool displayed, const char* title, int x, int y,
 			  plvkAttachable** attachments, u64 numAttachments,
 			  u64 drawSize, const void* pixels, u32 tickCount,
-			  u32* specializations, u64 numSpecializations );
+			  const u32* specializations, u64 numSpecializations );
 // This gets the nth attchable, 0 is the last one added, 1 is the one before
 // that, and so on. This function only returns NULL if there are no
 // attaachables, otherwise the first attached item (bottom of the stack) if n

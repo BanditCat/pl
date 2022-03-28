@@ -29,8 +29,8 @@ layout(binding = 1) uniform sampler2D texSampler;
 void main(){
   if( dot( pos, pos ) > 1 )
     discard;
- else{
-    outColor = vec4( color, 1.0 );
-    }
+  else{
+    outColor = vec4( color, 0.5 );
+  }
 }
  

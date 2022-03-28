@@ -67,9 +67,6 @@ void parseMouse( RAWINPUT* rinp ){
     idev->axes[ 2 ].val = (f32)( (short)rinp->data.mouse.usButtonData ) / 12.0;
   if( rinp->data.mouse.usButtonFlags & 2048 )
     idev->axes[ 3 ].val = (f32)( (short)rinp->data.mouse.usButtonData ) / 12.0;
-  
-
-  printInt( rinp->data.mouse.usButtonFlags );endl();
 }
 void parseKeyboard( RAWINPUT* rinp ){
   hasht* devices = state.osstate->devices;

@@ -21,8 +21,14 @@
 #version 460
 
 #extension GL_EXT_control_flow_attributes : enable
+#include "interface.glib"
 
-layout( local_size_x =  192  ) in;
+
+layout(constant_id = 1) const float epsilon = 0.001;
+layout(constant_id = 2) const float maxTime = 1.0;
+
+layout( local_size_x_id = 0 ) in;
+
 
 struct particle{
   vec4 pos;
@@ -38,23 +44,39 @@ layout( binding = 2) readonly restrict buffer iparticleBuffer{
 shared particle shr[ gl_WorkGroupSize.x ];
 
 void main(){
+  float td = deltaTime * 14;
+  if( td > maxTime )
+    td = maxTime;
+
   const uint size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-  vec3 vel = vec3( 0 );
+  vec3 force = vec3( 0 );
   uint j = gl_GlobalInvocationID.x;
   // [[unroll]]for( uint i = 0; i <; ++i )
   //   shr[ i ] = ips[ i ];
   // barrier();
-  [[unroll]]for( uint i = 0; i < size; ++i )
-    if( i != j ){
+  float jmass = ips[ j ].pos.w;
+  float jrad = pow( jmass, 0.3333333333333 );
+  float transfer = 0;
+  [[unroll]]for( uint i = 0; i < size; ++i ){
+    if( j != i ){
+      float imass = ips[ i ].pos.w;
+      float irad = pow( imass, 0.3333333333333 );
       vec3 dif = ips[ i ].pos.xyz - ips[ j ].pos.xyz;
-      float dist = sqrt( dot( dif, dif ) ) * 128;
-      vec3 fvec = ( dif / dist ) / ( dist * dist );
-      vel += fvec;
+      float dist = pow( dot( dif, dif ) + epsilon, 1.5 );
+      if( dist - ( irad + jrad ) * 1 < 0.005 ){
+	transfer += ( jmass - imass ) / 4000000;
+      }
+      vec3 fvec = ( dif * imass ) / dist;
+      force += fvec;
     }
-  vec3 mvel = ips[ j ].vel.xyz + vel * 0.0005;
-  mvel = clamp( mvel, -0.01, 0.01 );
-  ops[ j ].vel.xyz = mvel;
-  ops[ j ].pos.xyz = ips[ j ].pos.xyz + mvel;
+  }
+  force *= 0.00000009;
+  vec3 mforce = force * td * td;
+  vec3 mvel = ips[ j ].vel.xyz;
+  vec3 npos = ips[ j ].pos.xyz + mvel + mforce;
+  npos = mod( npos + 50, 100 ) - 50; 
+  ops[ j ].pos = vec4( npos, clamp( jmass + transfer, 0, 1000000000 ) );
+  ops[ j ].vel.xyz = clamp( mvel + td * force, -0.1, 0.1 );
   // [[unroll]]for( uint i = 0; i <  gl_WorkGroupSize.; ++i )
   //   ops[ i ] = shr[ i ];
 }
