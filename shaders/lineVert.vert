@@ -15,22 +15,53 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Display fragment shader.                                                   //
+// Wireframe vertex shader.                                                   //
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
+#include "interface.glib"
+#include "funcs.glib"
 
-layout(location = 0) out vec4 outColor;
-layout(location = 0) in vec2 pos;
-layout(location = 1) flat in vec3 color;
-layout(binding = 1) uniform sampler2D texSampler;
+layout( binding = 1) buffer colorBuffer{
+   vec4 colors[];
+};
+struct particle{
+  vec4 pos;
+  vec4 vel;
+};
+layout( binding = 2) buffer particleBuffer{
+  particle ps[];
+};
+layout( binding = 3 ) buffer projBuffer{
+  mat4 projm;
+  mat4 rotm;
+  mat4 irotm;
+  mat4 posm;
+  vec3 pos;
+  float fov;
+  vec3 rot;
+};
 
+layout(location = 0) out vec2 position;
+layout(location = 1) flat out vec3 color;
+
+const vec2 positions[ 3 ] = vec2[](
+				   vec2( 0.5, -0.28867513459 ), 
+				   vec2( -0.5, -0.28867513459 ),
+				   vec2( 0, 0.57735026919 )
+				   );
 
 void main(){
-  if( dot( pos, pos ) > 1 )
-    discard;
-  else{
-    outColor = vec4( color, 1.0 );
-  }
+  int tindex =  gl_VertexIndex / 3;
+  int pindex = gl_VertexIndex % 3;
+  float size = pow( ps[ tindex ].pos.w, 0.3333333333333333 );
+  position = positions[ int( pindex ) ] * 3.46410161514;
+  vec4 ppos = rotm * posm * vec4( ps[ tindex ].pos.xyz, 1.0 ) ;
+  vec4 spos = ppos + //projm *
+   vec4( ( faceMat( ppos.xyz ) *
+	   vec4( position * 0.0152 * size, 0, 1 ) ).xyz, 1 );
+  gl_Position = 
+       projm * spos;
+  color = colors[ tindex ].rgb;
 }
- 
+

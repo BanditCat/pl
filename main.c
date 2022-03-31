@@ -259,7 +259,7 @@ int main( int argc, const char** argv ){
 	for( int i = 4; i < 7; ++i )
 	  cud[ ( y * gsz + x ) * cuesz + i ] += frand( -0.0001, 0.0001 );
 	cud[ ( y * gsz + x ) * cuesz + 3 ] = frand( 0.5, 2.5 );
-	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.5, 2.5 );
+	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.0, 1.0 );
       }
 
     }
@@ -330,7 +330,7 @@ int main( int argc, const char** argv ){
   *u4 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 			"shaders\\unit3Frag.spv",
 			"shaders\\gravVert.spv",
-			true, "foofff", 50, 200, atts + 4, 3,
+			true, "foofff", 50, 200, atts + 5, 2,
 			gsz * gsz * 3, NULL, 1, NULL, 0 );
   
   plvkShow( u1 );

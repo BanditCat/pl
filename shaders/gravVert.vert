@@ -15,24 +15,21 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Display fragment shader.                                                   //
+// Particle vertex shader.                                                    //
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
 #include "interface.glib"
 #include "funcs.glib"
 
-layout( binding = 1) buffer colorBuffer{
-   vec4 colors[];
-};
 struct particle{
   vec4 pos;
   vec4 vel;
 };
-layout( binding = 2) buffer particleBuffer{
+layout( binding = 1) buffer particleBuffer{
   particle ps[];
 };
-layout( binding = 3 ) buffer projBuffer{
+layout( binding = 2 ) buffer projBuffer{
   mat4 projm;
   mat4 rotm;
   mat4 irotm;
@@ -62,6 +59,6 @@ void main(){
 	   vec4( position * 0.0152 * size, 0, 1 ) ).xyz, 1 );
   gl_Position = 
        projm * spos;
-  color = colors[ tindex ].rgb;
+  color = hsv2rgb( vec3( ps[ tindex ].vel.w, 0.5, 1.0 ) );
 }
 

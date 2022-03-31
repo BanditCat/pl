@@ -27,6 +27,11 @@
 layout(constant_id = 1) const float epsilon = 0.001;
 layout(constant_id = 2) const float maxTime = 1.0;
 
+layout(constant_id = 3) const uint ocdim = 4;
+
+
+
+
 layout( local_size_x_id = 0 ) in;
 
 

@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Display fragment shader.                                                   //
+// Wireframe fragment shader.                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
