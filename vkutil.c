@@ -1851,8 +1851,11 @@ void tickUnit( plvkUnit* u ){
 	  res == VK_SUBOPTIMAL_KHR )
 	draw = 1;
       if( res == VK_ERROR_OUT_OF_DATE_KHR ){
+	marc;
 	unbuildUnit( u );
+	marc;
 	buildUnit( u );
+	marc;
       }
     }
         

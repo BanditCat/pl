@@ -214,98 +214,93 @@ int main( int argc, const char** argv ){
   marc;
   plvkAttachable* atts[] = { plvkAddTexture( vk, "graphics\\tp.ppm" ),
     plvkAddTexture( vk, "graphics\\greekλLambda.ppm" ),
-    plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL, NULL, NULL };
+    plvkAddTexture( vk, "graphics\\lc.ppm" ), NULL, NULL, NULL, NULL };
   plvkUnit* u1 =plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
-				 "shaders\\unitFrag.spv",
-				 "shaders\\quad.spv",
-				 true, "foo", 300, 300, atts, 1, 6, NULL, 1, NULL, 0 );
+				"shaders\\unitFrag.spv",
+				"shaders\\quad.spv",
+				true, "foo", 300, 300, atts, 1, 6, NULL, 1, NULL, 0 );
   marc;
   static const u32 gsz = 192;
  
-    static const u32 cuesz = 8;
-    static const u32 cusz = gsz * gsz;
-    seedRand( 31337 );
-    newa( ps, f32, gsz * gsz * 4 );
-    newa( cud, f32, cusz * cuesz * 4 );
-    for( u32 x = 0; x < gsz; ++x ){
-      for( u32 y = 0; y < gsz; ++y ){
-	ps[ ( y * gsz + x ) * 4 + 0 ] = frand( -1.0, 1.0 );
-	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( -1.0, 1.0 );
-	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.00001, 0.00001 );
-	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.00001, 0.00001 );
+  static const u32 cuesz = 8;
+  static const u32 cusz = gsz * gsz;
+  seedRand( 31337 );
+  newa( ps, f32, gsz * gsz * 4 );
+  newa( cud, f32, cusz * cuesz * 4 );
+  for( u32 x = 0; x < gsz; ++x ){
+    for( u32 y = 0; y < gsz; ++y ){
+      ps[ ( y * gsz + x ) * 4 + 0 ] = frand( -1.0, 1.0 );
+      ps[ ( y * gsz + x ) * 4 + 1 ] = frand( -1.0, 1.0 );
+      ps[ ( y * gsz + x ) * 4 + 2 ] = frand( -0.00001, 0.00001 );
+      ps[ ( y * gsz + x ) * 4 + 3 ] = frand( -0.00001, 0.00001 );
 	  
-	/* for( int i = 0; i < 3; ++i ){ */
-	/*   u32 ind = ( y * gsz + x ) * cuesz; */
-	/*   cud[ ind + i ] = frand( -1.0, 1.0 ); */
-	/* } */
-	{
-	  u32 ind = ( y * gsz + x ) * cuesz;
-	  f32 a1 = frand( 0, cpi * 2 );
-	  f32 d1 = fsqrt( frand( 0, 1 ) ) * 0.8;
-	  cud[ ind + 0 ] = fsin( a1 ) * d1 + 2;
-	  cud[ ind + 1 ] = fcos( a1 ) * d1;
-	  cud[ ind + 2 ] = frand( -cpi, cpi );
 
-	  a1 = cud[ ind + 2 ];
-	  d1 = cud[ ind + 0 ] * 1.6;
-	  cud[ ind + 0 ] = fsin( a1 ) * d1;
-	  cud[ ind + 2 ] = fcos( a1 ) * d1;
+      {
+	u32 ind = ( y * gsz + x ) * cuesz;
+	f32 a1 = frand( 0, cpi * 2 );
+	f32 d1 = fsqrt( frand( 0, 1 ) ) * 0.8;
+	cud[ ind + 0 ] = fsin( a1 ) * d1 + 2;
+	cud[ ind + 1 ] = fcos( a1 ) * d1;
+	cud[ ind + 2 ] = frand( -cpi, cpi );
 
-	  cud[ ind + 4 ] = -cud[ ind + 2 ] * 0.002;
-	  cud[ ind + 5 ] = 0;
-	  cud[ ind + 6 ] = cud[ ind ] * 0.002;
-	}
+	a1 = cud[ ind + 2 ];
+	d1 = cud[ ind + 0 ] * 1.6;
+	cud[ ind + 0 ] = fsin( a1 ) * d1;
+	cud[ ind + 2 ] = fcos( a1 ) * d1;
+
+	cud[ ind + 4 ] = -cud[ ind + 2 ] * 0.002;
+	cud[ ind + 5 ] = 0;
+	cud[ ind + 6 ] = cud[ ind ] * 0.002;
+      }
 	  
-	for( int i = 4; i < 7; ++i )
-	  cud[ ( y * gsz + x ) * cuesz + i ] += frand( -0.0001, 0.0001 );
-	cud[ ( y * gsz + x ) * cuesz + 3 ] = frand( 0.5, 2.5 );
-	cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.0, 1.0 );
-      }
+      for( int i = 4; i < 7; ++i )
+	cud[ ( y * gsz + x ) * cuesz + i ] += frand( -0.0001, 0.0001 );
+      cud[ ( y * gsz + x ) * cuesz + 3 ] = frand( 0.5, 2.5 );
+      cud[ ( y * gsz + x ) * cuesz + 7 ] = frand( 0.0, 1.0 );
+    }
 
-    }
-    marc;
-    plvkCreateUnit( vk, gsz, gsz, VK_FORMAT_R32G32B32A32_SFLOAT, 16,
-		    "shaders\\gravFrag.spv",
-		    "shaders\\quad.spv",
-		    false, "foo", 400, 400, NULL, 0, 6, (u8*)ps,0, NULL, 0  );
-    memfree( ps );
-    ps = newae( f32, gsz * gsz * 4 );
-    for( u32 x = 0; x < gsz; ++x ){
-      for( u32 y = 0; y < gsz; ++y ){
-	ps[ ( y * gsz + x ) * 4 + 0 ] = frand( 0.2, 1.0 );
-	ps[ ( y * gsz + x ) * 4 + 1 ] = frand( 0.5, 1.0 );
-	ps[ ( y * gsz + x ) * 4 + 2 ] = frand( 0.3, 1.0 );
-	ps[ ( y * gsz + x ) * 4 + 3 ] = frand( 0.5, 1.0 );
-      }
-    }
-    marc;
-    plvkAddBuffer( vk, ps, gsz * gsz * 4 * 4 );
-    marc;
-    const u32 tileSize = 192;
-    plvkUnit* gc = plvkCreateUnit( vk, cusz / tileSize, 1, 0, cuesz * 4,
-				   "shaders\\gravcomp.spv", NULL,
-				   false, "foofff", 50, 200, NULL, 0,
-				   cusz, cud, 1, &gsz, 1  );
-    (void)gc;
-    /* for( u32 z = 0; z < 1; z++ ){ */
-    /*   plvkTickUnit( gc ); */
-    /*   f32* gd = plvkCopyComputeBuffer( gc ); */
-    /*   for( u32 y = 0; y < 100; y++ ){ */
-    /* 	endl(); */
-    /* 	  print( " " ); printFloat( gd[ y ] ); */
-    /*   } */
-    /*   memfree( gd ); */
-    /*   endl(); */
-    //    }
-    marc;
-    memfree( ps );
-    memfree( cud );
+  }
+  marc;
+  plvkCreateUnit( vk, gsz, gsz, VK_FORMAT_R32G32B32A32_SFLOAT, 16,
+		  "shaders\\gravFrag.spv",
+		  "shaders\\quad.spv",
+		  false, "foo", 400, 400, NULL, 0, 6, (u8*)ps,0, NULL, 0  );
+  memfree( ps );
+  marc;
+  const u32 tileSize = 192;
+  const u32 workGoupSize = gsz;
+  const f32 epsilon = 0.001;
+  const f32 maxTick = 1.0;
+  const u32 ocDim = 4;
+  const u32 ocDepth = 3;
+  const u32 ocNodeCount = 1024;
+  const f32 ocScale = 50.0;
+  const u32 ocNodeSize = 4 * ( 8 + ocDim * ocDim * ocDim );
+  
+  u32 cs[ 7 ];
+  f32* fcs = (f32*)cs;
+  cs[ 0 ] = workGoupSize;
+  fcs[ 1 ] = epsilon;
+  fcs[ 2 ] = maxTick;
+  cs[ 3 ] = ocDim;
+  cs[ 4 ] = ocDepth;
+  cs[ 5 ] = ocNodeCount;
+  fcs[ 6 ] = ocScale;
+
+  plvkAttachable* oc = plvkAddBuffer( vk, NULL, ocNodeSize * ocNodeCount );
+  
+  plvkUnit* gc = plvkCreateUnit( vk, cusz / tileSize, 1, 0, cuesz * 4,
+				 "shaders\\gravcomp.spv", NULL,
+				 false, "foofff", 50, 200, &oc, 1,
+				 cusz, cud, 1, cs, 7  );
+  (void)gc;
+  marc;
+  memfree( cud );
 
   
   marc;
-  atts[ 3 ] = plvkGetAttachable( vk, 2 );
-  atts[ 4 ] = plvkGetAttachable( vk, 1 );
-  atts[ 5 ] = plvkGetAttachable( vk, 0 );
+  atts[ 3 ] = plvkGetAttachable( vk, 1 );
+  atts[ 4 ] = plvkGetAttachable( vk, 0 );
   plvkUnit* u2 =  plvkCreateUnit( vk, 640, 400, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unitFrag.spv",
 				  "shaders\\quad.spv",
@@ -315,28 +310,55 @@ int main( int argc, const char** argv ){
   plvkUnit* u3 =  plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 				  "shaders\\unit2Frag.spv",
 				  "shaders\\quad.spv",
-				  true, "foo", 1050, 200, atts + 3, 1, 6, NULL,
+				  true, "foo", 1050, 200, atts + 2, 1, 6, NULL,
 				  1, NULL, 0  );
   marc;
   new( u4, plvkUnit* );
   plvkAddUniformBuffer( vk, sizeof( asp ), afunc, u4 );
   marc;
-  atts[ 7 ] = plvkGetAttachable( vk, 0 );
+  atts[ 6 ] = plvkGetAttachable( vk, 0 );
   marc;
   plvkCreateUnit( vk, 1, 1, 0, 4, "shaders\\moveComp.spv", NULL, false,
-		  NULL, 0, 0, atts + 7, 1, 256, NULL, 1, NULL, 0 );
-  atts[ 6 ] = plvkGetAttachable( vk, 0 );
+		  NULL, 0, 0, atts + 6, 1, 256, NULL, 1, NULL, 0 );
+  atts[ 5 ] = plvkGetAttachable( vk, 0 );
   marc;
   *u4 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
 			"shaders\\unit3Frag.spv",
 			"shaders\\gravVert.spv",
-			true, "foofff", 50, 200, atts + 5, 2,
+			true, "foofff", 50, 200, atts + 4, 2,
 			gsz * gsz * 3, NULL, 1, NULL, 0 );
-  
+
+
+
+
+
+
+  // Wireframes/octree.
+  const u32 ocnodes = 64;
+  const u32 ocwgsize = 16;
+
+  plvkAttachable* wfatts[ 3 ] = {};
+  memcopy( wfatts, atts + 4, plvkAttachable*, 2 );
+  //  plvkUnit* wf =
+    plvkCreateUnit( vk, ocnodes / ocwgsize, 1, 0, 4 * 4 * 2,
+				   "shaders\\wfcomp.spv", NULL,
+				   false, "foofff", 50, 200, &oc, 1,
+				 ocnodes, NULL, 1, &ocwgsize, 1  );
+  wfatts[ 2 ] = plvkGetAttachable( vk, 0 );
+  plvkUnit* u5 = plvkCreateUnit( vk, 1000, 1000, VK_FORMAT_R8G8B8A8_UNORM, 4,
+				 "shaders\\lineFrag.spv",
+				 "shaders\\lineVert.spv",
+				 true, "foofff", 1050, 200, wfatts, 3,
+				 ocnodes * 6, NULL, 1, NULL, 0 );
+    
+
+
+
   plvkShow( u1 );
   plvkShow( u2 );
   plvkShow( u3 );
   plvkShow( *u4 );
+  plvkShow( u5 );
 
 
   marc;

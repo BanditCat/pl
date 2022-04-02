@@ -24,10 +24,29 @@
 #include "interface.glib"
 
 
-layout(constant_id = 1) const float epsilon = 0.001;
-layout(constant_id = 2) const float maxTime = 1.0;
+layout(constant_id = 1) const float epsilon = 0;
+layout(constant_id = 2) const float maxTime = 0;
 
-layout(constant_id = 3) const uint ocdim = 4;
+
+struct particle{
+  vec4 pos;
+  vec4 vel;
+};
+
+layout(constant_id = 3) const uint ocdim = 0;
+layout(constant_id = 4) const uint ocdepth = 0;
+layout(constant_id = 5) const uint ocnodeCount = 1;
+layout(constant_id = 6) const float ocscale = 0.0;
+
+const uint ocdatasize = ( ocdim * ocdim * ocdim ) / 4;
+struct oc{
+  // pos.w is particle count
+  vec4 pos;
+  vec4 mass;
+  vec4 data[ ocdatasize ];
+};
+
+
 
 
 
@@ -35,24 +54,66 @@ layout(constant_id = 3) const uint ocdim = 4;
 layout( local_size_x_id = 0 ) in;
 
 
-struct particle{
-  vec4 pos;
-  vec4 vel;
-};
-layout( binding = 1) writeonly restrict buffer oparticleBuffer{
+layout( binding = 1 ) writeonly restrict buffer oparticleBuffer{
   particle ops[];
 };
-layout( binding = 2) readonly restrict buffer iparticleBuffer{
+layout( binding = 2 ) readonly restrict buffer iparticleBuffer{
   particle ips[];
 };
+layout( binding = 3 ) coherent restrict buffer octree{
+  uint next;
+  oc tree[ ocnodeCount ];
+};
 
-shared particle shr[ gl_WorkGroupSize.x ];
+void addParticle( particle p ){
+  float scale = ocscale;
+  uint index = 0;
+  [[unroll]]for( uint i = 0; i < ocdepth; ++i ){
+    vec3 mpos = ( p.pos.xyz - tree[ index ].pos.xyz ) / scale;
+    float mdim = ( ocdim - 1 ) / 2.0;
+    mpos = floor( mpos * vec3( mdim ) + vec3( mdim ) );
+    vec3 ncenter = ( mpos - vec3( mdim ) ) / vec3( mdim );
+    ncenter = ncenter * scale + tree[ index ].pos.xyz;
+    uint nindex = uint(dot( mpos, vec3( 1, ocdim, ocdim * ocdim ) ));
+    uint ncomp = nindex % 4;
+    nindex /= 4;
+      
+    float tmass = tree[ index ].mass.w + p.pos.w;
+    tree[ index ].mass = vec4( ( tree[ index ].mass.xyz * tree[ index ].mass.w +
+				 p.pos.xyz * p.pos.w ) / tmass, tmass );
+    
+    if( tree[ index ].data[ nindex ][ ncomp ] == 0 ){
+      next += 1;
+      tree[ index ].data[ nindex ][ ncomp ] = next;
+      tree[ next ].pos = vec4( ncenter, 0 );
+      tree[ next ].mass = vec4( 0 );
+      for( uint j = 0; j < ocdatasize; ++j )
+	tree[ next ].data[ j ] = vec4( 0 );
+      index = next;
+    } else
+      index = uint( tree[ index ].data[ nindex ][ ncomp ] );
+    scale /= ocdim;
+  }
+  
+}
+
 
 void main(){
   float td = deltaTime * 14;
   if( td > maxTime )
     td = maxTime;
 
+  // octree
+  if( gl_GlobalInvocationID.x == 0 ){
+    tree[ 0 ].pos = vec4( 0 );
+    tree[ 0 ].mass = vec4( 0 );
+    for( uint j = 0; j < ocdatasize; ++j )
+      tree[ 0 ].data[ j ] = vec4( 0 );
+
+    addParticle( ips[ 0 ] );
+  }
+
+  
   const uint size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
   vec3 force = vec3( 0 );
   uint j = gl_GlobalInvocationID.x;

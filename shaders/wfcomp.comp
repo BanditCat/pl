@@ -15,63 +15,35 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.     //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
-// Wireframe vertex shader.                                                   //
+// Compute shader.                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
 #version 460
+
+#extension GL_EXT_control_flow_attributes : enable
 #include "interface.glib"
-#include "funcs.glib"
+
+
+layout( local_size_x_id = 0 ) in;
+
+
+
+
+
+
 
 struct line{
-  vec4 begin;
+  vec4 start;
   vec4 end;
 };
-layout( binding = 3 ) buffer linesBuffer{
+layout( binding = 1 ) writeonly restrict buffer lines{
   line points[];
 };
-layout( binding = 2 ) buffer projBuffer{
-  mat4 projm;
-  mat4 rotm;
-  mat4 irotm;
-  mat4 posm;
-  vec3 pos;
-  float fov;
-  vec3 rot;
-};
-
-layout(location = 1) flat out vec3 color;
-
-const bool which[ 6 ] = { false, true, false, false, true, true };
-
-const vec2 positions[ 6 ] = vec2[](
-				   vec2( 0, -1.0 ), 
-				   vec2( 0, -1.0 ),
-				   vec2( 0, 1.0 ),
-				   vec2( 0, 1.0 ),
-				   vec2( 0, -1.0 ), 
-				   vec2( 0, 1.0 )
-				   );
 
 void main(){
-  int tindex =  gl_VertexIndex / 6;
-  int pindex = gl_VertexIndex % 6;
-  float size = 1;
-  vec3 lvec = ( points[ tindex ].begin.xyz - points[ tindex ].end.xyz );
-  lvec = ( rotm * vec4( lvec, 1.0 ) ).xyz;
-  vec3 position = normalize( cross( vec3( lvec.x, lvec.y, 0 ),
-				    vec3( 0, 0, positions[ pindex ].y ) ) );
-  vec3 lpos = points[ tindex ].begin.xyz;
-  if( which[ pindex ] )
-    lpos = points[ tindex ].end.xyz;
-  vec4 ppos = rotm * posm * vec4( lpos, 1.0 );
-  vec4 spos = ppos + //projm *
-//    vec4( ( faceMat( ppos.xyz ) *
-	    vec4( position * 0.0152 * size, 1 );// );//.xyz, 1 );
-  // vec4 spos = ppos + //projm *
-  //   vec4( ( faceMat( lpos.xyz ) *
-  // 	    vec4( position * 0.0152 * size, 1 ) ).xyz, 1 );
-  gl_Position = 
-    projm * spos;
-  color = hsv2rgb( vec3( points[ tindex ].end.w, 0.5, 1.0 ) );
+  uint i = gl_GlobalInvocationID.x;
+  float fi = i / 64.0;
+  points[ i ].start = vec4( -2.1, 0, fi, 0.3 );	
+  points[ i ].end = vec4( 2.1, 0, fi, 0.6 );	
 }
 
