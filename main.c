@@ -272,7 +272,7 @@ int main( int argc, const char** argv ){
   const f32 epsilon = 0.001;
   const f32 maxTick = 1.0;
   const u32 ocDim = 4;
-  const u32 ocDepth = 3;
+  const u32 ocDepth = 1;
   const u32 ocNodeCount = 1024;
   const f32 ocScale = 50.0;
   const u32 ocNodeSize = 4 * ( 8 + ocDim * ocDim * ocDim );

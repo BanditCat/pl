@@ -16,7 +16,7 @@
 ;;                                                                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
+(set-language-environment "UTF-8")
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -30,6 +30,10 @@
  '(custom-enabled-themes '(wheatgrass))
  '(desktop-save-mode t)
  '(global-tab-line-mode t)
+ '(package-archives
+   '(("gnu" . "https://elpa.gnu.org/packages/")
+     ("melpa" . "https://melpa.org/packages/")))
+ '(package-selected-packages '(haskell-mode))
  '(shell-file-name "C:\\Program Files\\Git\\bin\\bash.exe")
  '(show-paren-mode t)
  '(tab-bar-mode nil)
@@ -53,6 +57,7 @@
        (bandit-save)
        (cond
 	((eq major-mode 'emacs-lisp-mode) (eval-buffer) (message "ran"))
+	((eq major-mode 'haskell-mode) (async-shell-command (concat "runghc " (buffer-file-name))))
 	(t (compile (concat "make -j 24 " arg)))))
 
 (defun bandit-copypaste () (interactive)
@@ -142,3 +147,14 @@
       `((".*" . "~/backups" )))
 
 (load-library "glsl-mode")
+(require 'package)
+
+
+(require 'hs-lint)
+(defun my-haskell-mode-hook ()
+   (local-set-key "\C-cl" 'hs-lint))
+(add-hook 'haskell-mode-hook 'my-haskell-mode-hook)
+
+
+(package-initialize)
+
